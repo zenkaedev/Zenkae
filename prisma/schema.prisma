@@ -1,50 +1,121 @@
-// prisma/schema.prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-model GuildConfig {
-  id               Int     @id @default(autoincrement())
-  guildId          String  @unique
-
-  // canais / staff
-  recruitChannelId String?
-  staffChannelId   String?
-  staffRoleId      String?
-
-  // aparência do painel
-  panelTitle  String?
-  panelDesc   String?
-  panelImage  String?
-  panelThumb  String?
-  panelAccent String?
-
-  // Config do formulário (guardar JSON como string)
-  classOptions  String?   // JSON.stringify([{ label, value }, ...])
-  formQuestions String?   // JSON.stringify([{ kind, key, label, required, maxLength? }, ...])
-
-  @@map("GuildConfig")
+generator client {
+  provider = "prisma-client-js"
 }
 
+// ... seu datasource e generator permanecem
+
 model Application {
+  id         String   @id @default(cuid())
+  guildId    String
+  userId     String
+  username   String   // nome de usuário discord (salvo no momento da aplicação)
+  nick       String
+  className  String
+  status     String   @default("pending") // pending | approved | rejected
+  qAnswers   String?                         // array de respostas (até 4)
+  reason     String?                       // motivo da recusa (se houver)
+  messageId  String?                       // id da mensagem do cartão no canal de formulários
+  channelId  String?                       // canal onde o cartão foi publicado
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([guildId, userId])
+}
+
+model RecruitSettings {
+  guildId              String  @id        // uma config por guild
+  panelChannelId       String?            // canal fixo do painel público
+  formsChannelId       String?            // canal para os cartões (aprovação)
+  appearanceTitle      String?            // título do painel público
+  appearanceDescription String?           // descrição do painel público
+  appearanceImageUrl   String?            // imagem custom (opcional)
+  questions            String    @default("[]") // array de até 4 strings (perguntas)
+  dmAcceptedTemplate   String   @default("Parabéns! Você foi aprovado 🎉")
+  dmRejectedTemplate   String   @default("Obrigado por se inscrever. Infelizmente sua candidatura foi recusada. Motivo: {reason}")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model MessageCounter {
+  id       String   @id @default(cuid())
+  guildId  String
+  userId   String
+  count    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, userId])
+}
+
+model RecruitPanel {
+  guildId   String   @id
+  channelId String
+  messageId String
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- Eventos ----------
+model Event {
   id          String   @id @default(cuid())
-  userId      String
   guildId     String
-
-  status      String   @default("PENDING") // controlado no código
-  answers     String                 // JSON.stringify(...)
-
+  title       String
+  description String?
+  startsAt    DateTime
+  status      String   @default("scheduled") // 'scheduled' | 'cancelled' | 'completed'
+  channelId   String
+  messageId   String
   createdAt   DateTime @default(now())
-  decidedAt   DateTime?
-  moderatorId String?
-  reason      String?
-  messageId   String?
+  updatedAt   DateTime @updatedAt
 
-  @@unique([userId, guildId])
-  @@map("Application")
+  rsvps      EventRsvp[]
+  reminders  EventReminder[]
+
+  @@index([guildId, startsAt])
+}
+
+model EventRsvp {
+  id        String   @id @default(cuid())
+  eventId   String
+  guildId   String
+  userId    String
+  choice    String   // 'yes' | 'maybe' | 'no'
+  updatedAt DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([guildId, eventId, choice])
+}
+
+model EventReminder {
+  id      String   @id @default(cuid())
+  eventId String
+  kind    String   // '24h' | '1h' | '15m'
+  sentAt  DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, kind])
+}
+
+// ---------- Atividade semanal (check-in) ----------
+model MemberActivity {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  lastCheckAt DateTime @default(now())
+
+  @@unique([guildId, userId])
+}
+
+model ActivityPanel {
+  guildId    String   @id
+  channelId  String
+  messageId  String
+  weekStart  DateTime
+  updatedAt  DateTime @updatedAt
 }
