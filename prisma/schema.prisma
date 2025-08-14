@@ -1,0 +1,50 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model GuildConfig {
+  id               Int     @id @default(autoincrement())
+  guildId          String  @unique
+
+  // canais / staff
+  recruitChannelId String?
+  staffChannelId   String?
+  staffRoleId      String?
+
+  // aparência do painel
+  panelTitle  String?
+  panelDesc   String?
+  panelImage  String?
+  panelThumb  String?
+  panelAccent String?
+
+  // Config do formulário (guardar JSON como string)
+  classOptions  String?   // JSON.stringify([{ label, value }, ...])
+  formQuestions String?   // JSON.stringify([{ kind, key, label, required, maxLength? }, ...])
+
+  @@map("GuildConfig")
+}
+
+model Application {
+  id          String   @id @default(cuid())
+  userId      String
+  guildId     String
+
+  status      String   @default("PENDING") // controlado no código
+  answers     String                 // JSON.stringify(...)
+
+  createdAt   DateTime @default(now())
+  decidedAt   DateTime?
+  moderatorId String?
+  reason      String?
+  messageId   String?
+
+  @@unique([userId, guildId])
+  @@map("Application")
+}
