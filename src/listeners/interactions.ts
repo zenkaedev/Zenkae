@@ -11,10 +11,10 @@ import { replyV2Notice } from '../ui/v2';
 import { ids } from '../ui/ids';
 import { assertStaff } from '../guards/staff';
 
-/* ------------------------- RECRUIT ------------------------- */
+/* ------------------------- RECRUIT (painel antigo / fluxo existente) ------------------------- */
 import {
-  // painel público
-  handlePublishRecruitPanel,
+  // publicar painel (usado antes; manteremos para outras rotas internas se necessário)
+  handlePublishRecruitPanel as handlePublishRecruitPanelLegacy,
   openApplyModal,
   handleApplyModalSubmit,
   // settings
@@ -36,6 +36,17 @@ import {
   handleDecisionRejectOpen,
   handleDecisionRejectSubmit,
 } from '../modules/recruit/panel';
+
+/* ------------------------- RECRUIT (painel público NOVO V2) ------------------------- */
+import {
+  publishPublicRecruitPanelV2,
+  handleClassSelect,
+  openNickModal,
+  handleNickModalSubmit,
+  handleStartClick,
+  handleApplyQuestionsSubmit as handleApplyQuestionsSubmitPublic,
+  PUB_IDS,
+} from '../ui/recruit/panel.public';
 
 /* ------------------------- EVENTS ------------------------- */
 import {
@@ -110,13 +121,14 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
-      // publicar painel público
+      // publicar painel público — AGORA usa o NOVO V2
       if (interaction.isButton() && interaction.customId === ids.recruit.publish) {
         if (!(await assertStaff(interaction))) return;
-        await handlePublishRecruitPanel(interaction);
+        await publishPublicRecruitPanelV2(interaction);
         return;
       }
 
+      // ------------ Fluxo antigo (mantido) ------------
       // abrir modal de candidatura (nick/classe)
       if (interaction.isButton() && interaction.customId === ids.recruit.apply) {
         await openApplyModal(interaction);
@@ -136,7 +148,7 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
-      // submit do 2º modal (Q&A)
+      // submit do 2º modal (Q&A) — fluxo antigo
       if (interaction.isModalSubmit() && interaction.customId.startsWith('recruit:apply:q:modal:')) {
         const appId = interaction.customId.split(':').pop() as string;
         await handleApplyQuestionsSubmit(interaction, appId);
@@ -227,6 +239,40 @@ export function registerInteractionRouter(client: Client) {
         if (!(await assertStaff(interaction))) return;
         const appId = interaction.customId.split(':').pop() as string;
         await handleDecisionRejectSubmit(interaction, appId);
+        return;
+      }
+
+      /* ==================================================
+       *            RECRUIT — Painel Público NOVO V2
+       * ================================================== */
+
+      // Select de classe
+      if (interaction.isStringSelectMenu() && interaction.customId === PUB_IDS.classSelect) {
+        await handleClassSelect(interaction);
+        return;
+      }
+
+      // Abrir modal de NICK
+      if (interaction.isButton() && interaction.customId === PUB_IDS.nickOpen) {
+        await openNickModal(interaction);
+        return;
+      }
+
+      // Submit do modal de NICK
+      if (interaction.isModalSubmit() && interaction.customId === PUB_IDS.nickModal) {
+        await handleNickModalSubmit(interaction);
+        return;
+      }
+
+      // Botão "Iniciar Recrutamento" → valida nick/classe e abre modal de perguntas
+      if (interaction.isButton() && interaction.customId === PUB_IDS.start) {
+        await handleStartClick(interaction);
+        return;
+      }
+
+      // Submit do modal de perguntas do fluxo NOVO (prefixo recruit:pub:apply:q:modal:)
+      if (interaction.isModalSubmit() && interaction.customId.startsWith(PUB_IDS.applyQModalPrefix)) {
+        await handleApplyQuestionsSubmitPublic(interaction);
         return;
       }
 

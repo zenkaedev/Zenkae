@@ -16,6 +16,7 @@ import { recruitStore } from './store';
 import { buildScreen, replyV2Notice } from '../../ui/v2';
 import { ids } from '../../ui/ids';
 import { buildApplicationCard } from './card';
+import { publishPublicRecruitPanelV2 } from '../../ui/recruit/panel.public';
 
 /* -------------------------------------------------------
  * Painel público (Components V2) — lê Aparência
@@ -36,64 +37,8 @@ export function renderPublicRecruitPanel(opts?: { title?: string; description?: 
 export async function handlePublishRecruitPanel(
   interaction: ButtonInteraction | ChatInputCommandInteraction,
 ) {
-  if (!interaction.inCachedGuild()) return;
-
-  const guildId = interaction.guildId!;
-  const settings = await recruitStore.getSettings(guildId);
-  const ch = interaction.channel;
-
-  if (!ch?.isTextBased()) {
-    await replyV2Notice(interaction, '❌ Use em um canal de texto da guilda.', true);
-    return;
-  }
-
-  const target =
-    settings.panelChannelId
-      ? await interaction.client.channels.fetch(settings.panelChannelId).catch(() => null)
-      : ch;
-
-  if (!target || !target.isTextBased()) {
-    await replyV2Notice(
-      interaction,
-      '❌ Canal do painel inválido. Configure em **Recrutamento → Canal de Recrutamento**.',
-      true,
-    );
-    return;
-  }
-
-  const payload = renderPublicRecruitPanel({
-    title: settings.appearanceTitle ?? undefined,
-    description: settings.appearanceDescription ?? undefined,
-  });
-
-  // tenta editar o painel salvo
-  const saved = await recruitStore.getPanel?.(guildId).catch(() => null as any);
-  let finalMsgId: string | null = null;
-  let finalChId: string | null = null;
-
-  if (saved?.channelId && saved?.messageId) {
-    const existCh = await interaction.client.channels.fetch(saved.channelId).catch(() => null);
-    if (existCh?.isTextBased()) {
-      const existMsg = await (existCh as GuildTextBasedChannel).messages
-        .fetch(saved.messageId)
-        .catch(() => null);
-      if (existMsg) {
-        await existMsg.edit(payload);
-        finalMsgId = existMsg.id;
-        finalChId = (existMsg.channel as any).id;
-      }
-    }
-  }
-
-  // senão, manda novo
-  if (!finalMsgId) {
-    const sent = await (target as GuildTextBasedChannel).send(payload);
-    finalMsgId = sent.id;
-    finalChId = (sent.channel as any).id;
-  }
-
-  await recruitStore.setPanel(guildId, { channelId: finalChId!, messageId: finalMsgId! });
-  await replyV2Notice(interaction, '✅ Painel de recrutamento publicado/atualizado.', true);
+  // delega tudo para o novo publicador (painel V2)
+  return publishPublicRecruitPanelV2(interaction);
 }
 
 /* -------------------------------------------------------
