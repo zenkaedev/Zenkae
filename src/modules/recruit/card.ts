@@ -1,191 +1,293 @@
-import path from 'node:path';
-import {
-  ActionRowBuilder,
-  AttachmentBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  type Client,
-  ComponentType,
-} from 'discord.js';
-import { PrismaClient } from '@prisma/client';
-import { ids } from '../../ui/ids';
+// src/modules/recruit/card.ts
+// Zenkae — Recruit Application Card (Components V2 only, sem embeds)
+// Regra: se o usuário NÃO tiver banner → NÃO exibir imagem.
+// Layout: Banner (opcional) → Cabeçalho (título + infos + avatar à direita)
+//         → Separador → "Formulário" (Q/A) → Separador → Status → Botões
 
-// --- Constantes e Tipos (semelhante ao seu código) ---
+import type { Client, User } from 'discord.js';
+import { ButtonStyle, MessageFlags } from 'discord.js';
+// Importa a função para buscar a contagem de mensagens
+import { getMessageCount } from '../../listeners/messageCount';
 
-// Flag para ativar o modo Components V2, conforme a documentação
-const COMPONENTS_V2_FLAG = 1 << 15;
 
-const prisma = new PrismaClient();
+// Component type ids (Components V2)
+const V2 = {
+  ActionRow: 1,
+  Button: 2,
+  Section: 9,
+  TextDisplay: 10,
+  Thumbnail: 11,
+  MediaGallery: 12,
+  File: 13,
+  Separator: 14,
+  Container: 17,
+} as const;
 
-// Mantive seu tipo de dados, está ótimo
-type AppRow = {
-  id: string;
-  guildId: string;
-  userId: string;
-  username: string;
-  nick: string;
-  className: string;
-  status: 'pending' | 'approved' | 'rejected';
-  qAnswers: string | null;
-  reason: string | null;
-  messageId: string | null;
-  channelId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
 
-// --- Funções Auxiliares (semelhante ao seu código) ---
+export interface BuildExtras {
+  questions?: string[];
+  dmAcceptedTemplate?: string | null;
+  dmRejectedTemplate?: string | null;
+  locale?: string;                    // ex.: 'pt-BR'
+  accentColor?: number;              // RGB ex.: 0x3D348B
+}
 
-function parseAnswers(s?: string | null): string[] {
-  if (!s) return [];
+type MaybeDate = Date | string | number | null | undefined;
+
+// Helper para parsear JSON de forma segura
+function parseJsonArray(jsonString: string | null | undefined): string[] {
+  if (!jsonString) return [];
   try {
-    const v = JSON.parse(s);
-    return Array.isArray(v) ? (v as string[]).slice(0, 4) : [];
+    const parsed = JSON.parse(jsonString);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-async function getMessageCount(guildId: string, userId: string) {
-  const row = await prisma.messageCounter.findUnique({
-    where: { guildId_userId: { guildId, userId } },
-  });
-  return row?.count ?? 0;
-}
-
-function fmtDate(d?: Date | null) {
-  if (!d) return '—';
-  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
-  const dd = pad(d.getDate());
-  const mm = pad(d.getMonth() + 1);
-  const yy = d.getFullYear();
-  return `${dd}/${mm}/${yy}`;
-}
-
-// --- Função Principal Refatorada ---
-
+/**
+ * Constrói o cartão de candidatura usando Components V2.
+ * - Se houver banner do usuário → adiciona Media Gallery no topo
+ * - Se NÃO houver → não adiciona mídia (sem fallback roxo)
+ * - Avatar do candidato no HEAD (thumbnail à direita)
+ */
 export async function buildApplicationCard(
-  client: Client,
-  app: AppRow,
-  opts: { questions: string[]; dmAcceptedTemplate?: string; dmRejectedTemplate?: string },
+  client: Client,
+  app: any,
+  extras?: BuildExtras,
 ) {
-  // 1. Coleta de Dados (igual ao seu código, está perfeito)
-  const guild = await client.guilds.fetch(app.guildId);
-  const user = await client.users.fetch(app.userId).catch(() => null);
-  const member = await guild.members.fetch(app.userId).catch(() => null);
+  // --------- dados básicos ---------
+  const guildId: string | null = app?.guildId ?? null;
+  const userId: string | null = app?.userId ?? null;
+  const nick: string = (app?.nick ?? '').toString();
+  const className: string = (app?.className ?? '').toString();
+  const status: ApplicationStatus = (app?.status ?? 'pending') as ApplicationStatus;
 
-  const avatarUrl =
-    member?.displayAvatarURL({ extension: 'png', size: 128 }) ??
-    user?.displayAvatarURL({ extension: 'png', size: 128 });
+  // quem moderou (quando aprovado/recusado)
+  const moderatorId: string | null = app?.moderatorId ?? app?.staffId ?? null;
+  const moderatorNameFromDb: string | null = app?.moderatorName ?? null;
+  const reason: string | null = (app?.reason ?? null) || null;
 
-  const bannerUrl = user?.bannerURL({ extension: 'png', size: 512 });
-  const messages = await getMessageCount(app.guildId, app.userId);
-  const since = fmtDate(member?.joinedAt ?? null);
-  const answers = parseAnswers(app.qAnswers);
+  // timestamps
+  const createdAt: MaybeDate = app?.createdAt ?? null;
+  const updatedAt: MaybeDate = app?.updatedAt ?? createdAt ?? null;
 
-  // 2. Construção dos Componentes (AQUI ESTÁ A MUDANÇA)
+  const locale = extras?.locale ?? 'pt-BR';
 
-  const containerComponents = [];
-  const attachments = [];
+  // --------- fetch usuário e urls ---------
+  const user = userId ? await safeFetchUser(client, userId) : null;
+  const displayName = user?.globalName ?? user?.username ?? app?.username ?? 'Usuário';
+  const avatarUrl = user?.displayAvatarURL({ size: 256 });
+  const bannerUrl = user?.bannerURL?.({ size: 2048 }) ?? null;
 
-  // Componente 2.1: Media Gallery (Type 12) para o Banner
-  // Conforme a documentação, para exibir imagens, usamos uma Media Gallery.
-  if (bannerUrl) {
-    containerComponents.push({
-      type: ComponentType.MediaGallery,
-      items: [{ media: { url: bannerUrl } }],
-    });
-  } else {
-    // Fallback para o banner local
-    const bannerPath = path.join('assets', 'dashboard', 'banner.png');
-    const attachment = new AttachmentBuilder(bannerPath).setName('banner.png');
-    attachments.push(attachment);
+  // Busca a contagem de atividade diretamente aqui.
+  const activityCount = guildId && userId ? await getMessageCount(guildId, userId) : 0;
 
-    containerComponents.push({
-      type: ComponentType.MediaGallery,
-      items: [{ media: { url: 'attachment://banner.png' } }],
-    });
-  }
-
-  // Componente 2.2: Section (Type 9) para Título, Subtítulo e Avatar (Thumbnail)
-  // A documentação especifica que uma Section pode ter um 'accessory', que é perfeito para o avatar.
-  const title = `### ${user?.username ?? app.username} quer se juntar à guild!`;
-  const subtitle = `**Atividade**: ${messages} msgs · **Membro desde**: ${since}\n**Nick**: **${app.nick}** · **Classe**: **${app.className}**`;
-
-  const sectionComponents = [
-    { type: ComponentType.TextDisplay, content: title },
-    { type: ComponentType.TextDisplay, content: subtitle },
+  // --------- Seção principal com todas as infos e avatar ---------
+  // Combina Nick, Classe e Atividade em um único componente de texto
+  // para respeitar o limite de 3 componentes de texto por Seção da API do Discord.
+  const infoLines: string[] = [
+    `**Nick:** ${escapeMd(nick || '—')}`,
+    `**Classe:** ${escapeMd(className || '—')}`
   ];
 
-  const section: any = {
-    type: ComponentType.Section,
-    components: sectionComponents,
-  };
-
-  if (avatarUrl) {
-    section.accessory = {
-      type: ComponentType.Thumbnail,
-      media: { url: avatarUrl },
-    };
-  }
-  containerComponents.push(section);
-
-  // Componente 2.3: Separator (Type 14) para espaçamento visual
-  containerComponents.push({ type: ComponentType.Separator });
-
-  // Componente 2.4: Text Display (Type 10) para as Perguntas e Respostas
-  const qaLines = opts.questions.map((q, i) => {
-    const a = answers[i] || '_—_';
-    return `**${q}**: ${a}`;
-  });
-  containerComponents.push({
-    type: ComponentType.TextDisplay,
-    content: qaLines.join('\n'),
-  });
-
-  // Componente 2.5: Action Row (Type 1) com os Botões
-  // Sua lógica aqui já estava correta, apenas a integramos.
-  if (app.status === 'pending') {
-    const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(ids.recruit.approve(app.id))
-        .setLabel('Aprovar')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(ids.recruit.reject(app.id))
-        .setLabel('Recusar')
-        .setStyle(ButtonStyle.Danger),
-    );
-    containerComponents.push(actions.toJSON());
-  } else {
-    // Lógica para card já decidido
-    const label = app.status === 'approved' ? 'Aprovado' : 'Recusado';
-    const style = app.status === 'approved' ? ButtonStyle.Success : ButtonStyle.Danger;
-    const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('noop').setLabel(label).setStyle(style).setDisabled(true),
-    );
-    containerComponents.push(actions.toJSON());
+  if (typeof activityCount === 'number') {
+    infoLines.push(`**Atividade no servidor:** ${activityCount} msgs`);
   }
 
-  // 3. Montagem Final do Payload
+  const mainSectionComponents = [
+    { type: V2.TextDisplay, content: `# ${escapeMd(`Candidatura de ${displayName}`)}` },
+    { type: V2.TextDisplay, content: infoLines.join('\n') },
+  ];
 
-  // Mapeia o status para a cor da barra lateral do Container
+  const mainSection: any = {
+    type: V2.Section,
+    components: mainSectionComponents,
+    accessory: avatarUrl
+      ? {
+          type: V2.Thumbnail,
+          media: { url: avatarUrl },
+          description: 'Avatar do candidato',
+        }
+      : undefined,
+  };
+
+
+  // --------- seção Formulário (Q/A) ---------
+  const qaComponents: any[] = [];
+  const questions: string[] = (extras?.questions ?? [])
+    .map((q) => (q ?? '').toString())
+    .filter((q) => q.trim().length > 0)
+    .slice(0, 4);
+
+  const answers: string[] = parseJsonArray(app?.qAnswers);
+
+  // Exibe a seção de formulário se houver perguntas, mesmo sem respostas.
+  if (questions.length > 0) {
+    qaComponents.push({ type: V2.TextDisplay, content: `## Formulário` });
+    for (let i = 0; i < questions.length; i++) {
+      const rawQ = questions[i] ?? '';
+      const rawA = answers[i] ?? '—'; // Fallback para resposta vazia
+
+      const label = escapeMd(rawQ);
+      const value = escapeMd(rawA);
+
+      qaComponents.push({
+        type: V2.TextDisplay,
+        content: `**${label}:** ${value}`,
+      });
+    }
+  }
+
+  // --------- status ---------
+  const statusText = await renderStatus({
+    client,
+    status,
+    moderatorId,
+    moderatorNameFromDb: app?.moderatorName ?? null,
+    timestamp: updatedAt,
+    reason,
+    locale,
+    moderatedByDisplay: app?.moderatedByDisplay,
+    moderatedAt: app?.moderatedAt,
+  });
+
+  // --------- botões ---------
+  const buttonsRow = {
+    type: V2.ActionRow,
+    components: [
+      {
+        type: V2.Button,
+        style: ButtonStyle.Success,
+        custom_id: `recruit:decision:approve:${app.id}`,
+        label: 'Aprovar',
+      },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Danger,
+        custom_id: `recruit:decision:reject:${app.id}`,
+        label: 'Recusar',
+      },
+    ],
+  };
+
+  // --------- montagem do Container ---------
+  const containerChildren: any[] = [];
+
+  // banner (topo) — somente se houver
+  if (bannerUrl) {
+    containerChildren.push({
+      type: V2.MediaGallery,
+      items: [{ media: { url: bannerUrl } }],
+    });
+  }
+
+  // Adiciona a seção principal unificada
+  containerChildren.push(mainSection);
+
+  // separador
+  containerChildren.push({ type: V2.Separator, divider: true, spacing: 1 });
+
+  // formulário
+  if (qaComponents.length) {
+    containerChildren.push(...qaComponents);
+    containerChildren.push({ type: V2.Separator, divider: true, spacing: 1 });
+  }
+
+  // status
+  if (statusText) {
+    containerChildren.push({ type: V2.TextDisplay, content: statusText });
+  }
+
+  // [ALTERAÇÃO] Define a cor do container com base no status da aplicação.
   const accentColor =
-    app.status === 'approved' ? 0x57f287 : // Verde
-    app.status === 'rejected' ? 0xed4245 : // Vermelho
-    0x3d348b; // Roxo (Padrão)
+    status === 'approved' ? 0x57F287 :   // Verde para aprovado
+    status === 'rejected' ? 0xED4245 :   // Vermelho para recusado
+    extras?.accentColor ?? 0x3D348B;     // Roxo padrão para pendente
 
-  // O payload final tem a flag e um array de componentes de topo.
-  // Neste caso, apenas um Container (Type 17) que agrupa todo o resto.
-  return {
-    flags: COMPONENTS_V2_FLAG,
-    components: [
-      {
-        type: ComponentType.Container,
-        accent_color: accentColor,
-        components: containerComponents,
-      },
-    ],
-    files: attachments,
-  };
+  const components: any[] = [
+    {
+      type: V2.Container,
+      accent_color: accentColor,
+      components: containerChildren,
+    },
+  ];
+
+  // Adiciona a fileira de botões apenas se o status for 'pending'
+  if (status === 'pending') {
+    components.push(buttonsRow);
+  }
+
+  // payload final V2
+  return {
+    flags: MessageFlags.IsComponentsV2, // 1 << 15
+    components,
+  } as const;
+}
+
+// ---------- helpers ----------
+
+async function safeFetchUser(client: Client, userId: string): Promise<User | null> {
+  try {
+    const u = await client.users.fetch(userId, { force: true });
+    return u ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function escapeMd(input: string): string {
+  return (input ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/`/g, '\\`')
+    .replace(/\|/g, '\\|');
+}
+
+function formatDate(ts: MaybeDate, locale = 'pt-BR'): string {
+  if (!ts) return '';
+  const d = ts instanceof Date ? ts : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(d);
+}
+
+async function renderStatus(opts: {
+  client: Client;
+  status: ApplicationStatus;
+  moderatorId: string | null;
+  moderatorNameFromDb: string | null;
+  timestamp: MaybeDate;
+  reason: string | null;
+  locale: string;
+  moderatedByDisplay?: string | null;
+  moderatedAt?: Date | null;
+}): Promise<string> {
+  const { client, status, moderatorId, moderatorNameFromDb, timestamp, reason, locale, moderatedByDisplay, moderatedAt } = opts;
+
+  if (status === 'pending') {
+    return '🟡 **Status:** Em análise pela staff';
+  }
+
+  // tenta resolver displayName do moderador
+  let modName = moderatedByDisplay ?? moderatorNameFromDb ?? null;
+  if (!modName && moderatorId) {
+    const mod = await safeFetchUser(client, moderatorId);
+    modName = mod?.globalName ?? mod?.username ?? null;
+  }
+  const who = escapeMd(modName ?? 'Staff');
+  const when = formatDate(moderatedAt ?? timestamp, locale);
+  const whenTxt = when ? ` em ${when}` : '';
+
+  if (status === 'approved') {
+    return `🟢 **Status:** Aprovado por ${who}${whenTxt}`;
+  }
+
+  // rejected
+  const reasonTxt = reason ? ` pelo motivo: ${escapeMd(reason)}` : '';
+  return `🔴 **Status:** Recusado por ${who}${whenTxt}${reasonTxt}`;
 }

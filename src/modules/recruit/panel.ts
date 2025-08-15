@@ -150,14 +150,6 @@ export async function handleApplyModalSubmit(interaction: ModalSubmitInteraction
       className,
     });
 
-    console.log('[recruit] application created:', {
-      id: app?.id,
-      guildId,
-      userId: user.id,
-      nick,
-      className,
-    });
-
     // Perguntas personalizadas
     const settings = await recruitStore.getSettings(guildId);
     const questions = recruitStore.parseQuestions(settings.questions).slice(0, 4);
@@ -279,10 +271,13 @@ async function publishApplicationCard(
 
   const sent = await (target as GuildTextBasedChannel).send(cardPayload);
 
-  await recruitStore.setCardRef(app.id, {
-    channelId: (sent.channel as any).id,
-    messageId: sent.id,
-  });
+  // guarda referência do card para futuras edições
+  try {
+    await recruitStore.setCardRef(app.id, {
+      channelId: (sent.channel as any).id,
+      messageId: sent.id,
+    });
+  } catch {}
 
   await replyV2Notice(
     interaction,
@@ -513,13 +508,29 @@ export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms') {
  * Decisão (aprovar / recusar) + refresh de card
  * ----------------------------------------------------- */
 export async function handleDecisionApprove(inter: ButtonInteraction, appId: string) {
-  const app = await recruitStore.updateStatus(appId, 'approved');
+  // Quem aprovou (display name > global name > username)
+  const approverDisplay =
+    (inter.member && 'displayName' in inter.member ? inter.member.displayName : null) ??
+    inter.user.globalName ??
+    inter.user.username;
+
+  // Salva status + metadados do moderador (sem motivo)
+  const app = await recruitStore.updateStatus(
+    appId,
+    'approved',
+    null,                  // reason
+    inter.user.id,         // moderatedById
+    approverDisplay,       // moderatedByDisplay
+  );
+
   await refreshCard(inter, appId);
+
   const s = await recruitStore.getSettings(app.guildId);
   const templ = s.dmAcceptedTemplate ?? 'Parabéns! Você foi aprovado 🎉';
+
   try {
     const u = await inter.client.users.fetch(app.userId);
-    await u.send(templ);
+    await u.send(templ);   // DM de aprovado não precisa de {reason}
   } catch {}
   await replyV2Notice(inter, '✅ Aplicação aprovada.', true);
 }
@@ -543,15 +554,27 @@ export async function handleDecisionRejectOpen(inter: ButtonInteraction, appId: 
 }
 
 export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, appId: string) {
-  const reason = (inter.fields.getTextInputValue('reason') || '').trim();
-  const app = await recruitStore.updateStatus(appId, 'rejected', reason || null);
+  // Motivo puro, sem anexar o moderador (isso vai só para o card/log)
+  const reason = (inter.fields.getTextInputValue('reason') || '').trim() || 'Sem motivo informado';
+
+  const moderatorDisplay =
+    (inter.member && 'displayName' in inter.member ? inter.member.displayName : null) ??
+    inter.user.globalName ??
+    inter.user.username;
+
+  const app = await recruitStore.updateStatus(
+    appId,
+    'rejected',
+    reason,               // reason salvo puro
+    inter.user.id,        // moderatedById
+    moderatorDisplay,     // moderatedByDisplay
+  );
   await refreshCard(inter, appId);
 
   const s = await recruitStore.getSettings(app.guildId);
-  const templ = (s.dmRejectedTemplate ?? 'Sua candidatura foi recusada. Motivo: {reason}').replaceAll(
-    '{reason}',
-    reason || '—',
-  );
+  const templ = (s.dmRejectedTemplate ?? 'Sua candidatura foi recusada. Motivo: {reason}')
+    .replaceAll('{reason}', reason); // <- só o motivo, sem nome do staff
+
   try {
     const u = await inter.client.users.fetch(app.userId);
     await u.send(templ);

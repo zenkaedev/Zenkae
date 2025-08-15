@@ -10,24 +10,27 @@ generator client {
 // ... seu datasource e generator permanecem
 
 model Application {
-  id         String   @id @default(cuid())
-  guildId    String
-  userId     String
-  username   String   // nome de usuário discord (salvo no momento da aplicação)
-  nick       String
-  className  String
-  status     String   @default("pending") // pending | approved | rejected
-  qAnswers   String?                         // array de respostas (até 4)
-  reason     String?                       // motivo da recusa (se houver)
-  messageId  String?                       // id da mensagem do cartão no canal de formulários
-  channelId  String?                       // canal onde o cartão foi publicado
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  guildId            String
+  userId             String
+  username           String // nome de usuário discord (salvo no momento da aplicação)
+  nick               String
+  className          String
+  status             String    @default("pending") // pending | approved | rejected
+  qAnswers           String? // array de respostas (até 4)
+  reason             String? // motivo da recusa (se houver)
+  messageId          String? // id da mensagem do cartão no canal de formulários
+  channelId          String? // canal onde o cartão foi publicado
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // NOVOS CAMPOS:
+  moderatedById      String?
+  moderatedByDisplay String?
+  moderatedAt        DateTime?
 
   @@index([guildId, userId])
-}
-
-model RecruitSettings {
+}model RecruitSettings {
   guildId              String  @id        // uma config por guild
   panelChannelId       String?            // canal fixo do painel público
   formsChannelId       String?            // canal para os cartões (aprovação)

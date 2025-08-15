@@ -82,8 +82,25 @@ export const recruitStore = {
     return prisma.application.findUnique({ where: { id } });
   },
 
-  async updateStatus(id: string, status: ApplicationStatus, reason?: string | null) {
-    return prisma.application.update({ where: { id }, data: { status, reason: reason ?? null } });
+  async updateStatus(
+    id: string,
+    status: ApplicationStatus,
+    reason: string | null = null,
+    moderatedById?: string,
+    moderatedByDisplay?: string,
+  ) {
+    const data: any = {
+      status,
+      reason: reason ?? null,
+      moderatedAt: new Date(),
+    };
+    if (moderatedById) data.moderatedById = moderatedById;
+    if (moderatedByDisplay) data.moderatedByDisplay = moderatedByDisplay;
+
+    return prisma.application.update({
+      where: { id },
+      data,
+    });
   },
 
   async setCardRef(id: string, ref: { channelId: string; messageId: string }) {
