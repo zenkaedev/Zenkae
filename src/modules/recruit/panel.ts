@@ -18,29 +18,35 @@ import { ids } from '../../ui/ids';
 import { buildApplicationCard } from './card';
 
 /* -------------------------------------------------------
- * Painel público (Components V2)
+ * Painel público (Components V2) — lê Aparência
  * ----------------------------------------------------- */
-export function renderPublicRecruitPanel() {
+export function renderPublicRecruitPanel(opts?: { title?: string; description?: string }) {
   return buildScreen({
-    title: 'Painel de Recrutamento',
-    subtitle: 'Clique em **Quero entrar** para enviar seu nick e classe.',
+    title: opts?.title?.trim() || 'Painel de Recrutamento',
+    subtitle:
+      opts?.description?.trim() ||
+      'Clique em **Quero entrar** para enviar seu nick e classe.',
     buttons: [{ id: ids.recruit.apply, label: 'Quero entrar' }],
   });
 }
 
+/* -------------------------------------------------------
+ * Publicar/Atualizar painel público (edita se já existir)
+ * ----------------------------------------------------- */
 export async function handlePublishRecruitPanel(
   interaction: ButtonInteraction | ChatInputCommandInteraction,
 ) {
   if (!interaction.inCachedGuild()) return;
 
-  const settings = await recruitStore.getSettings(interaction.guildId!);
+  const guildId = interaction.guildId!;
+  const settings = await recruitStore.getSettings(guildId);
   const ch = interaction.channel;
+
   if (!ch?.isTextBased()) {
     await replyV2Notice(interaction, '❌ Use em um canal de texto da guilda.', true);
     return;
   }
 
-  // Se houver canal fixo configurado, publica lá; senão, usa o canal atual
   const target =
     settings.panelChannelId
       ? await interaction.client.channels.fetch(settings.panelChannelId).catch(() => null)
@@ -55,14 +61,39 @@ export async function handlePublishRecruitPanel(
     return;
   }
 
-  const payload = renderPublicRecruitPanel();
-  const sent = await (target as GuildTextBasedChannel).send(payload);
-  await recruitStore.setPanel(interaction.guildId!, {
-    channelId: (sent.channel as any).id,
-    messageId: sent.id,
+  const payload = renderPublicRecruitPanel({
+    title: settings.appearanceTitle ?? undefined,
+    description: settings.appearanceDescription ?? undefined,
   });
 
-  await replyV2Notice(interaction, 'Painel de recrutamento publicado/atualizado.', true);
+  // tenta editar o painel salvo
+  const saved = await recruitStore.getPanel?.(guildId).catch(() => null as any);
+  let finalMsgId: string | null = null;
+  let finalChId: string | null = null;
+
+  if (saved?.channelId && saved?.messageId) {
+    const existCh = await interaction.client.channels.fetch(saved.channelId).catch(() => null);
+    if (existCh?.isTextBased()) {
+      const existMsg = await (existCh as GuildTextBasedChannel).messages
+        .fetch(saved.messageId)
+        .catch(() => null);
+      if (existMsg) {
+        await existMsg.edit(payload);
+        finalMsgId = existMsg.id;
+        finalChId = (existMsg.channel as any).id;
+      }
+    }
+  }
+
+  // senão, manda novo
+  if (!finalMsgId) {
+    const sent = await (target as GuildTextBasedChannel).send(payload);
+    finalMsgId = sent.id;
+    finalChId = (sent.channel as any).id;
+  }
+
+  await recruitStore.setPanel(guildId, { channelId: finalChId!, messageId: finalMsgId! });
+  await replyV2Notice(interaction, '✅ Painel de recrutamento publicado/atualizado.', true);
 }
 
 /* -------------------------------------------------------
@@ -104,49 +135,60 @@ export async function handleApplyModalSubmit(interaction: ModalSubmitInteraction
   const nick = interaction.fields.getTextInputValue('nick').trim();
   const className = interaction.fields.getTextInputValue('class').trim();
 
-  const existing = await recruitStore.findByUser(guildId, user.id);
-  if (existing && existing.status === 'pending') {
-    await replyV2Notice(interaction, '⚠️ Você já tem uma aplicação pendente.', true);
-    return;
-  }
+  try {
+    const existing = await recruitStore.findByUser(guildId, user.id);
+    if (existing && existing.status === 'pending') {
+      await replyV2Notice(interaction, '⚠️ Você já tem uma aplicação pendente.', true);
+      return;
+    }
 
-  const app = await recruitStore.create({
-    guildId,
-    userId: user.id,
-    username: user.username,
-    nick,
-    className,
-  });
-
-  // Perguntas personalizadas (armazenadas como string JSON em RecruitSettings.questions)
-  const settings = await recruitStore.getSettings(guildId);
-  const questions = recruitStore.parseQuestions(settings.questions).slice(0, 4);
-
-  // Não é possível abrir um modal a partir de outro modal:
-  // então enviamos um botão para o usuário abrir o 2º modal (Q&A)
-  if (questions.length) {
-    await replyV2Notice(interaction, 'Clique para responder às perguntas personalizadas.', true);
-    await interaction.followUp({
-      flags: 1 << 6, // Ephemeral
-      components: [
-        {
-          type: 1,
-          components: [
-            {
-              type: 2,
-              style: 2,
-              custom_id: ids.recruit.applyQOpen(app.id),
-              label: 'Responder perguntas',
-            },
-          ],
-        } as any,
-      ],
+    const app = await recruitStore.create({
+      guildId,
+      userId: user.id,
+      username: user.username,
+      nick,
+      className,
     });
-    return;
-  }
 
-  // Sem perguntas → publica cartão imediatamente
-  await publishApplicationCard(interaction, app.id);
+    console.log('[recruit] application created:', {
+      id: app?.id,
+      guildId,
+      userId: user.id,
+      nick,
+      className,
+    });
+
+    // Perguntas personalizadas
+    const settings = await recruitStore.getSettings(guildId);
+    const questions = recruitStore.parseQuestions(settings.questions).slice(0, 4);
+
+    if (questions.length) {
+      await replyV2Notice(interaction, 'Clique para responder às perguntas personalizadas.', true);
+      await interaction.followUp({
+        flags: 1 << 6, // ephemeral
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 2,
+                custom_id: ids.recruit.applyQOpen(app.id),
+                label: 'Responder perguntas',
+              },
+            ],
+          } as any,
+        ],
+      });
+      return;
+    }
+
+    // Sem perguntas → publica o cartão direto
+    await publishApplicationCard(interaction, app.id);
+  } catch (e) {
+    console.error('[recruit] handleApplyModalSubmit error:', e);
+    await replyV2Notice(interaction, '❌ Falha ao registrar candidatura.', true);
+  }
 }
 
 export async function openApplyQuestionsModal(inter: ButtonInteraction, appId: string) {
@@ -175,15 +217,23 @@ export async function openApplyQuestionsModal(inter: ButtonInteraction, appId: s
 }
 
 export async function handleApplyQuestionsSubmit(interaction: ModalSubmitInteraction, appId: string) {
-  const answers: string[] = [];
-  for (let i = 1; i <= 4; i++) {
-    const v = interaction.fields.getTextInputValue(`q${i}`) || '';
-    if (v.trim()) answers.push(v.trim());
+  try {
+    const answers: string[] = [];
+    for (let i = 1; i <= 4; i++) {
+      const v = interaction.fields.getTextInputValue(`q${i}`) || '';
+      if (v.trim()) answers.push(v.trim());
+    }
+    await recruitStore.setAnswers(appId, answers);
+    await publishApplicationCard(interaction, appId);
+  } catch (e) {
+    console.error('[recruit] handleApplyQuestionsSubmit error:', e);
+    await replyV2Notice(interaction, '❌ Falha ao salvar respostas.', true);
   }
-  await recruitStore.setAnswers(appId, answers);
-  await publishApplicationCard(interaction, appId);
 }
 
+/* -------------------------------------------------------
+ * Publicação do cartão (robust targetId)
+ * ----------------------------------------------------- */
 async function publishApplicationCard(
   interaction: ModalSubmitInteraction | ButtonInteraction,
   appId: string,
@@ -195,18 +245,32 @@ async function publishApplicationCard(
   }
 
   const settings = await recruitStore.getSettings(app.guildId);
-  const targetId = settings.formsChannelId ?? interaction.channelId ?? undefined;
-    if (!targetId) {
-      await replyV2Notice(
-        interaction,
-        '❌ Configure o **Canal de formulário** em Recrutamento.',
-        true,
-      );
-      return;
-    }
-  const target = await interaction.client.channels.fetch(targetId).catch(() => null);
 
-  // monta o payload com Components V2 do card
+  // Resolve canal de publicação com fallback seguro
+  const fallbackChannelId = interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? null;
+  const targetId = settings.formsChannelId ?? fallbackChannelId;
+
+  if (!targetId) {
+    console.warn('[recruit] No target channel. formsChannelId and fallback are null.', {
+      guildId: app.guildId,
+      formsChannelId: settings.formsChannelId,
+      channelFromInteraction: interaction.channel?.id,
+    });
+    await replyV2Notice(
+      interaction,
+      '❌ Configure o **Canal de formulário** em Recrutamento (ou execute em um canal de texto).',
+      true,
+    );
+    return;
+  }
+
+  const target = await interaction.client.channels.fetch(targetId).catch(() => null);
+  if (!target || !target.isTextBased()) {
+    console.warn('[recruit] Target channel not text-based or not found:', { targetId });
+    await replyV2Notice(interaction, '❌ Canal alvo inválido para publicar o formulário.', true);
+    return;
+  }
+
   const cardPayload = await buildApplicationCard(interaction.client, app as any, {
     questions: recruitStore.parseQuestions(settings.questions),
     dmAcceptedTemplate: settings.dmAcceptedTemplate,
@@ -214,6 +278,7 @@ async function publishApplicationCard(
   });
 
   const sent = await (target as GuildTextBasedChannel).send(cardPayload);
+
   await recruitStore.setCardRef(app.id, {
     channelId: (sent.channel as any).id,
     messageId: sent.id,
@@ -246,11 +311,11 @@ export function renderRecruitSettingsUI(
       `Formulários: ${s.formsChannelId ? `<#${s.formsChannelId}>` : '_não definido_'}`,
     body,
     buttons: [
-      { id: ids.recruit.settingsForm, label: 'Editar formulário' },
+      { id: ids.recruit.settingsForm,         label: 'Editar formulário' },
       { id: ids.recruit.settingsPanelChannel, label: 'Canal de Recrutamento' },
       { id: ids.recruit.settingsFormsChannel, label: 'Canal de formulário' },
-      { id: ids.recruit.settingsAppearance, label: 'Aparência' },
-      { id: ids.recruit.settingsDM, label: 'DM Templates' },
+      { id: ids.recruit.settingsAppearance,   label: 'Aparência' },
+      { id: ids.recruit.settingsDM,           label: 'DM Templates' },
     ],
     back: { id: 'dash:recruit', label: 'Voltar' },
   });
@@ -445,7 +510,7 @@ export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms') {
 }
 
 /* -------------------------------------------------------
- * Decisão (aprovar / recusar)
+ * Decisão (aprovar / recusar) + refresh de card
  * ----------------------------------------------------- */
 export async function handleDecisionApprove(inter: ButtonInteraction, appId: string) {
   const app = await recruitStore.updateStatus(appId, 'approved');
@@ -494,9 +559,6 @@ export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, 
   await replyV2Notice(inter, '✅ Aplicação recusada.', true);
 }
 
-/* -------------------------------------------------------
- * Atualização do cartão
- * ----------------------------------------------------- */
 async function refreshCard(inter: ButtonInteraction | ModalSubmitInteraction, appId: string) {
   const app = await recruitStore.getById(appId);
   if (!app?.channelId || !app?.messageId) return;

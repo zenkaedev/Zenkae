@@ -40,10 +40,18 @@ export const recruitStore = {
     });
   },
 
+  // CORREÇÃO: Adicionando a função getPanel que faltava
+  async getPanel(guildId: string) {
+    return prisma.recruitPanel.findUnique({ where: { guildId } });
+  },
+
   async setPanel(guildId: string, ref: { channelId: string; messageId: string }) {
-    // Mantemos apenas como confirmação por enquanto
-    await this.getSettings(guildId);
-    return ref;
+    // Usamos upsert para criar ou atualizar o painel existente
+    return prisma.recruitPanel.upsert({
+        where: { guildId },
+        update: { channelId: ref.channelId, messageId: ref.messageId },
+        create: { guildId, ...ref },
+    });
   },
 
   async create(app: {

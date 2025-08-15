@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { renderDashboard } from '../ui/container';
+import { renderDashboard } from '../container';
 import { replyV2, replyV2Notice } from '../ui/v2';
 
 export const data = new SlashCommandBuilder()

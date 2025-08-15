@@ -1,16 +1,15 @@
 import {
-  AttachmentBuilder,
   StringSelectMenuBuilder,
   type JSONEncodable,
   type APIMessageTopLevelComponent,
+  type AttachmentBuilder,
 } from 'discord.js';
-import fs from 'node:fs';
-import path from 'node:path';
 
-import type { FilterKind } from '../modules/recruit/types';
-import { buildRecruitList } from '../modules/recruit/staff';
-import { buildEventsList } from '../modules/events/staff';
-import { buildScreen, loadBannerFrom, loadDefaultBanner } from './v2';
+import type { FilterKind } from './modules/recruit/types';
+import { buildRecruitList } from './modules/recruit/staff';
+import { buildEventsList } from './modules/events/staff';
+import { buildScreen, loadBannerFrom, loadDefaultBanner } from './ui/v2';
+import { ids } from './ui/ids';
 
 export type DashTab = 'home' | 'recruit' | 'events' | 'admin';
 export type DashState = { tab: DashTab; guildId?: string; filter?: FilterKind };
@@ -25,10 +24,10 @@ export type DashboardView = {
 // tenta achar banner por aba; se não achar, usa o de dashboard
 function bannerFor(tab: DashTab) {
   const dir =
-    tab === 'home'   ? 'dashboard' :
-    tab === 'recruit'? 'recruit'   :
-    tab === 'events' ? 'events'    :
-                       'admin';
+    tab === 'home'    ? 'dashboard' :
+    tab === 'recruit' ? 'recruit'   :
+    tab === 'events'  ? 'events'    :
+                        'admin';
 
   return loadBannerFrom(dir) ?? loadDefaultBanner();
 }
@@ -36,12 +35,13 @@ function bannerFor(tab: DashTab) {
 export async function renderDashboard(state: DashState): Promise<DashboardView> {
   const banner = bannerFor(state.tab);
 
+  /* -------------------- RECRUIT -------------------- */
   if (state.tab === 'recruit') {
     const filter: FilterKind = state.filter ?? 'all';
-    const { text } = await buildRecruitList(state.guildId ?? '', filter);
+    const text = await buildRecruitList(state.guildId ?? '', filter);
 
     const select = new StringSelectMenuBuilder()
-      .setCustomId('recruit:filter')
+      .setCustomId(ids.recruit.filter)
       .setPlaceholder('Filtrar candidaturas')
       .addOptions(
         { label: 'Todas',     value: 'all',      default: filter === 'all' },
@@ -56,16 +56,23 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       subtitle: 'Gerencie aplicações e publique o painel público.',
       body: text,
       selects: [select],
-      buttons: [{ id: 'recruit:publish', label: 'Publicar Painel' }],
+      buttons: [
+        { id: ids.recruit.publish, label: 'Publicar Painel' },
+        { id: 'recruit:settings',  label: '⚙️ Configurar' }, // atalho para tela de config
+      ],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;
   }
 
+  /* -------------------- EVENTS -------------------- */
   if (state.tab === 'events') {
     const list = await buildEventsList(state.guildId ?? '');
     const lines: string[] = [];
     for (const e of list) {
-      const when = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(e.startsAt));
+      const when = new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(new Date(e.startsAt));
       lines.push(`- **${e.title}** — ${when} · ✅ ${e.yes} · ❔ ${e.maybe} · ❌ ${e.no}`);
     }
     const body = lines.length ? lines.join('\n') : '_Nenhum evento agendado._';
@@ -75,11 +82,12 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       title: 'Eventos',
       subtitle: 'Prévia e gerenciamento dos próximos eventos.',
       body,
-      buttons: [{ id: 'events:new', label: 'Novo Evento' }],
+      buttons: [{ id: ids.events.new, label: 'Novo Evento' }],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;
   }
 
+  /* -------------------- ADMIN -------------------- */
   if (state.tab === 'admin') {
     return buildScreen({
       banner,
@@ -89,24 +97,24 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
         `- **Check-in semanal**: publica o painel público.\n` +
         `- **Limpar**: remove componentes desta mensagem.\n`,
       buttons: [
-        { id: 'activity:publish', label: 'Ativar Check-in Semanal' },
-        { id: 'admin:clean',      label: 'Limpar esta mensagem'   },
+        { id: ids.activity.publish, label: 'Ativar Check-in Semanal' },
+        { id: ids.admin.clean,      label: 'Limpar esta mensagem'   },
       ],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;
   }
 
-  // Home
+  /* -------------------- HOME -------------------- */
   return buildScreen({
     banner,
     title: 'Dashboard',
     subtitle: 'Instruções rápidas:',
     body:
-      `**Recruit** → fluxo público + fila\n` +
+      `**Recrutamento** → fluxo público + fila\n` +
       `**Eventos** → criação, RSVP e lembretes\n` +
       `**Admin** → check-in e utilidades`,
     buttons: [
-      { id: 'dash:recruit', label: 'Recruit' },
+      { id: 'dash:recruit', label: 'Recrutamento' },
       { id: 'dash:events',  label: 'Eventos' },
       { id: 'dash:admin',   label: 'Admin'   },
     ],

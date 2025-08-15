@@ -6,7 +6,7 @@ import {
   type InteractionReplyOptions,
 } from 'discord.js';
 
-import { renderDashboard, type DashTab } from '../ui/container';
+import { renderDashboard, type DashTab } from '../container';
 import { replyV2Notice } from '../ui/v2';
 import { ids } from '../ui/ids';
 import { assertStaff } from '../guards/staff';
@@ -302,6 +302,7 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
     } catch (err) {
+      // feedback efêmero seguro se ainda não respondeu
       try {
         if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
           await replyV2Notice(interaction, '❌ Ocorreu um erro ao processar.', true);
