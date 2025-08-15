@@ -1,77 +1,49 @@
-import type { ChatInputCommandInteraction } from "discord.js";
+// src/commands/recruit.ts
 import {
+  type ChatInputCommandInteraction,
   MessageFlags,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
+  SlashCommandBuilder,
 } from "discord.js";
 import type { AppCtx } from "../core/ctx";
-import { GuildConfigRepo } from "../db/repos/guildConfig.repo";
+import { buildClassStep } from "../ui/recruit/form";
+import { loadFormConfig } from "../services/recruit.config"; // CORREÇÃO: A função se chama loadFormConfig
 
-/**
- * /recruit setup|publish
- * - setup: placeholder (confirma painel)
- * - publish: publica painel público "Candidatar-se" no canal atual
- */
-export async function handleRecruitSlash(ix: ChatInputCommandInteraction, ctx: AppCtx) {
-  const log = ctx.logger.child({ scope: "recruit" });
+// Exporta a definição do comando para o script de deploy
+export const recruitCommandData = new SlashCommandBuilder()
+  .setName("recruit")
+  .setDescription("Inicia seu processo de candidatura para se juntar ao time.");
 
-  // Defer EFÊMERO logo no início para evitar 10062
-  await ix.deferReply({ flags: MessageFlags.Ephemeral });
+// Exporta o handler da interação
+export async function handleRecruitSlash(ix: ChatInputCommandInteraction, ctx: AppCtx) { // CORREÇÃO: ctx é necessário para loadFormConfig
+  const log = ctx.logger.child({ scope: "recruit-slash" });
+
+  // Garante que o comando está sendo usado em um servidor
+  if (!ix.guildId) {
+    await ix.reply({
+      content: "Use este comando dentro de um servidor.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
 
   try {
-    const sub = ix.options.getSubcommand(true); // "setup" ou "publish"
+    // 1. Carrega a configuração do formulário usando o serviço
+    const cfg = await loadFormConfig(ctx, ix.guildId);
 
-    if (sub === "setup") {
-      await ix.editReply({
-        content: "🔧 Tela de setup (placeholder). Em breve, edição persistente pelo dashboard.",
-      });
-      return;
+    // 2. Constrói a primeira etapa da UI (seleção de classe)
+    const payload = buildClassStep(cfg.classOptions);
+
+    // 3. Responde ao usuário de forma efêmera com a UI
+    await ix.reply({
+      ...payload,
+      flags: MessageFlags.Ephemeral, // Resposta visível apenas para o usuário
+    });
+  } catch (err) {
+    log.error({ err }, "Erro ao iniciar o processo de recrutamento");
+    if (ix.replied || ix.deferred) {
+      await ix.followUp({ content: "❌ Ops! Não consegui iniciar o formulário. Tente novamente.", flags: MessageFlags.Ephemeral });
+    } else {
+      await ix.reply({ content: "❌ Ops! Não consegui iniciar o formulário. Tente novamente.", flags: MessageFlags.Ephemeral });
     }
-
-    if (sub === "publish") {
-      const repo = new GuildConfigRepo(
-        (ctx.repos.guildConfig as any).prisma ?? (ctx as any).prisma
-      );
-      const cfg = await repo.getFormConfig(ix.guildId!);
-
-      const embed = new EmbedBuilder()
-        .setTitle("Recrutamento")
-        .setDescription(
-          [
-            cfg?.classOptions?.length
-              ? `Classes disponíveis: ${cfg.classOptions.map((c) => `\`${c.label}\``).join(", ")}`
-              : "Use o dashboard para definir as classes disponíveis.",
-            "",
-            "Clique no botão abaixo para iniciar sua candidatura.",
-          ].join("\n"),
-        );
-
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId("recruit:apply")
-          .setLabel("Candidatar-se")
-          .setStyle(ButtonStyle.Primary),
-      );
-
-      // ---- Type guard para canais que suportam send() ----
-      const ch = ix.channel;
-      if (!ch || typeof (ch as any).send !== "function") {
-        await ix.editReply({
-          content: "⚠️ Não consegui publicar aqui. Execute o comando num canal de texto do servidor.",
-        });
-        return;
-      }
-
-      await (ch as any).send({ embeds: [embed], components: [row] });
-      await ix.editReply({ content: "✅ Painel de recrutamento publicado no canal atual." });
-      return;
-    }
-
-    await ix.editReply({ content: "Subcomando não reconhecido." });
-  } catch (err: any) {
-    log.error({ err }, "Erro no /recruit");
-    await ix.editReply({ content: "❌ Não foi possível processar o comando." }).catch(() => {});
   }
 }

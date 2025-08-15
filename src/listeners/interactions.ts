@@ -1,16 +1,23 @@
+// src/listeners/interactions.ts
 import {
   Events,
   MessageFlags,
   type Client,
   type InteractionReplyOptions,
 } from 'discord.js';
-import { renderDashboard, type DashTab } from '../ui/container';
 
+import { renderDashboard, type DashTab } from '../ui/container';
+import { replyV2Notice } from '../ui/v2';
+import { ids } from '../ui/ids';
+import { assertStaff } from '../guards/staff';
+
+/* ------------------------- RECRUIT ------------------------- */
 import {
+  // painel público
   handlePublishRecruitPanel,
   openApplyModal,
   handleApplyModalSubmit,
-  // Settings
+  // settings
   openRecruitSettings,
   openEditFormModal,
   handleEditFormSubmit,
@@ -24,37 +31,54 @@ import {
   // Q&A extra
   openApplyQuestionsModal,
   handleApplyQuestionsSubmit,
-  // Decisions
+  // decisões
   handleDecisionApprove,
   handleDecisionRejectOpen,
   handleDecisionRejectSubmit,
 } from '../modules/recruit/panel';
 
-import { openNewEventModal, handleNewEventSubmit, handleRsvpClick } from '../modules/events/panel';
+/* ------------------------- EVENTS ------------------------- */
+import {
+  openNewEventModal,
+  handleNewEventSubmit,
+  handleRsvpClick,
+} from '../modules/events/panel';
 import { cancelEvent, notifyConfirmed } from '../modules/events/staff';
 
-import { publishActivityPanel, handleActivityCheck } from '../modules/activity/panel';
+/* ------------------------ ACTIVITY ------------------------ */
+import {
+  publishActivityPanel,
+  handleActivityCheck,
+} from '../modules/activity/panel';
 
-import { assertStaff } from '../guards/staff';
-import { ids } from '../ui/ids';
-import { replyV2Notice } from '../ui/v2';
+/** Mantém local para evitar import quebrado */
+type RecruitFilter = 'all' | 'pending' | 'approved' | 'rejected';
 
 export function registerInteractionRouter(client: Client) {
   client.on(Events.InteractionCreate, async (interaction) => {
     try {
-      /* ---------- /dashboard ---------- */
+      /* ==================================================
+       *                    /dashboard
+       * ================================================== */
       if (interaction.isChatInputCommand() && interaction.commandName === 'dashboard') {
         const privado = interaction.options.getBoolean('privado') ?? false;
-        const base = await renderDashboard({ tab: 'home', guildId: interaction.guildId ?? undefined });
+        const base = await renderDashboard({
+          tab: 'home',
+          guildId: interaction.guildId ?? undefined,
+        });
+
         const reply: InteractionReplyOptions = {
           ...base,
+          // Components V2 + Ephemeral por flags
           flags: (base.flags ?? 0) | (privado ? MessageFlags.Ephemeral : 0),
         };
         await interaction.reply(reply);
         return;
       }
 
-      /* ---------- Navegação principal (dash:*) ---------- */
+      /* ==================================================
+       *                Navegação principal (dash)
+       * ================================================== */
       if (interaction.isButton() && ids.dash.is(interaction.customId)) {
         const parsed = ids.dash.parse(interaction.customId);
         if (!parsed) {
@@ -62,66 +86,73 @@ export function registerInteractionRouter(client: Client) {
           return;
         }
         const tab = parsed.tab as DashTab;
-        const base = await renderDashboard({ tab, guildId: interaction.guildId ?? undefined });
+        const base = await renderDashboard({
+          tab,
+          guildId: interaction.guildId ?? undefined,
+        });
         await interaction.update(base);
         return;
       }
 
       /* ==================================================
-       *                     RECRUIT
+       *                      RECRUIT
        * ================================================== */
 
-      // Filtro da aba Recruit
+      // filtro da aba recruit
       if (interaction.isStringSelectMenu() && interaction.customId === ids.recruit.filter) {
-        const choice = interaction.values[0] as import('../modules/recruit/types').FilterKind;
-        const base = await renderDashboard({ tab: 'recruit', guildId: interaction.guildId!, filter: choice });
+        const choice = interaction.values[0] as RecruitFilter;
+        const base = await renderDashboard({
+          tab: 'recruit',
+          guildId: interaction.guildId!,
+          filter: choice,
+        });
         await interaction.update(base);
         return;
       }
 
-      // Publicar painel público de recrutamento
+      // publicar painel público
       if (interaction.isButton() && interaction.customId === ids.recruit.publish) {
         if (!(await assertStaff(interaction))) return;
         await handlePublishRecruitPanel(interaction);
         return;
       }
 
-      // Abrir modal de candidatura (nick/classe)
+      // abrir modal de candidatura (nick/classe)
       if (interaction.isButton() && interaction.customId === ids.recruit.apply) {
         await openApplyModal(interaction);
         return;
       }
 
-      // Submit do primeiro modal (nick/classe)
+      // submit do primeiro modal (nick/classe)
       if (interaction.isModalSubmit() && interaction.customId === 'recruit:apply:modal') {
         await handleApplyModalSubmit(interaction);
         return;
       }
 
-      // Botão para abrir o 2º modal (Q&A)
+      // botão para abrir 2º modal (Q&A)
       if (interaction.isButton() && interaction.customId.startsWith('recruit:apply:q:open:')) {
         const appId = interaction.customId.split(':').pop() as string;
         await openApplyQuestionsModal(interaction, appId);
         return;
       }
 
-      // Submit do 2º modal (Q&A)
+      // submit do 2º modal (Q&A)
       if (interaction.isModalSubmit() && interaction.customId.startsWith('recruit:apply:q:modal:')) {
         const appId = interaction.customId.split(':').pop() as string;
         await handleApplyQuestionsSubmit(interaction, appId);
         return;
       }
 
-      /* ---------- Recruit Settings (Dashboard → Recrutamento) ---------- */
+      /* -------- Recruit Settings (Dashboard → Recrutamento) -------- */
 
-      // Botão “Configurações” (se existir na UI)
+      // atalho opcional para abrir tela de configurações
       if (interaction.isButton() && interaction.customId === 'recruit:settings') {
         if (!(await assertStaff(interaction))) return;
         await openRecruitSettings(interaction);
         return;
       }
 
-      // Editar formulário (até 4 perguntas)
+      // editar formulário
       if (interaction.isButton() && interaction.customId === ids.recruit.settingsForm) {
         if (!(await assertStaff(interaction))) return;
         await openEditFormModal(interaction);
@@ -133,7 +164,7 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
-      // Aparência do painel público
+      // aparência
       if (interaction.isButton() && interaction.customId === ids.recruit.settingsAppearance) {
         if (!(await assertStaff(interaction))) return;
         await openAppearanceModal(interaction);
@@ -145,7 +176,7 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
-      // Templates de DM (aprovado/recusado)
+      // DM Templates
       if (interaction.isButton() && interaction.customId === ids.recruit.settingsDM) {
         if (!(await assertStaff(interaction))) return;
         await openDMTemplatesModal(interaction);
@@ -157,7 +188,7 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
-      // Definir canais (painel público / formulários)
+      // canais (painel / formulários)
       if (interaction.isButton() && interaction.customId === ids.recruit.settingsPanelChannel) {
         if (!(await assertStaff(interaction))) return;
         await openSelectPanelChannel(interaction);
@@ -179,22 +210,19 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
-      /* ---------- Decisão (aprovar / recusar) ---------- */
-
+      // decisões (aprovar/recusar)
       if (interaction.isButton() && ids.recruit.isApprove(interaction.customId)) {
         if (!(await assertStaff(interaction))) return;
         const appId = interaction.customId.split(':').pop() as string;
         await handleDecisionApprove(interaction, appId);
         return;
       }
-
       if (interaction.isButton() && ids.recruit.isReject(interaction.customId)) {
         if (!(await assertStaff(interaction))) return;
         const appId = interaction.customId.split(':').pop() as string;
         await handleDecisionRejectOpen(interaction, appId);
         return;
       }
-
       if (interaction.isModalSubmit() && interaction.customId.startsWith('recruit:decision:reject:modal:')) {
         if (!(await assertStaff(interaction))) return;
         const appId = interaction.customId.split(':').pop() as string;
@@ -203,9 +231,8 @@ export function registerInteractionRouter(client: Client) {
       }
 
       /* ==================================================
-       *                     EVENTS
+       *                      EVENTS
        * ================================================== */
-
       if (interaction.isButton() && interaction.customId === ids.events.new) {
         if (!(await assertStaff(interaction))) return;
         await openNewEventModal(interaction);
@@ -229,6 +256,7 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
+      // notificar confirmados
       if (interaction.isButton() && ids.events.isNotify(interaction.customId)) {
         if (!(await assertStaff(interaction))) return;
         const n = ids.events.parseNotify(interaction.customId);
@@ -240,6 +268,7 @@ export function registerInteractionRouter(client: Client) {
         return;
       }
 
+      // cancelar evento
       if (interaction.isButton() && ids.events.isCancel(interaction.customId)) {
         if (!(await assertStaff(interaction))) return;
         const c = ids.events.parseCancel(interaction.customId);
@@ -252,9 +281,8 @@ export function registerInteractionRouter(client: Client) {
       }
 
       /* ==================================================
-       *                    ACTIVITY
+       *                     ACTIVITY
        * ================================================== */
-
       if (interaction.isButton() && interaction.customId === ids.activity.publish) {
         if (!(await assertStaff(interaction))) return;
         await publishActivityPanel(interaction);
@@ -269,12 +297,10 @@ export function registerInteractionRouter(client: Client) {
       /* ==================================================
        *                      ADMIN
        * ================================================== */
-
       if (interaction.isButton() && interaction.customId === ids.admin.clean) {
         await interaction.update({ components: [] });
         return;
       }
-
     } catch (err) {
       try {
         if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {

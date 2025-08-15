@@ -1,104 +1,191 @@
-import * as D from 'discord.js';
-import { Brand, buildScreen } from '../../ui/v2';
-import { getMessageCount } from '../../listeners/messageCount';
-import { recruitStore } from './store';
+import path from 'node:path';
+import {
+  ActionRowBuilder,
+  AttachmentBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  type Client,
+  ComponentType,
+} from 'discord.js';
+import { PrismaClient } from '@prisma/client';
+import { ids } from '../../ui/ids';
 
-type App = {
-  id: string; guildId: string; userId: string; username: string;
-  nick: string; className: string; status: string;
-  qAnswers?: unknown | null;
-  reason?: string | null;
+// --- Constantes e Tipos (semelhante ao seu código) ---
+
+// Flag para ativar o modo Components V2, conforme a documentação
+const COMPONENTS_V2_FLAG = 1 << 15;
+
+const prisma = new PrismaClient();
+
+// Mantive seu tipo de dados, está ótimo
+type AppRow = {
+  id: string;
+  guildId: string;
+  userId: string;
+  username: string;
+  nick: string;
+  className: string;
+  status: 'pending' | 'approved' | 'rejected';
+  qAnswers: string | null;
+  reason: string | null;
+  messageId: string | null;
+  channelId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
-function accentByStatus(status: string) {
-  if (status === 'approved') return 0x22c55e; // verde
-  if (status === 'rejected') return 0xef4444; // vermelho
-  return Brand.purple;                         // roxo padrão
+// --- Funções Auxiliares (semelhante ao seu código) ---
+
+function parseAnswers(s?: string | null): string[] {
+  if (!s) return [];
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? (v as string[]).slice(0, 4) : [];
+  } catch {
+    return [];
+  }
 }
 
+async function getMessageCount(guildId: string, userId: string) {
+  const row = await prisma.messageCounter.findUnique({
+    where: { guildId_userId: { guildId, userId } },
+  });
+  return row?.count ?? 0;
+}
+
+function fmtDate(d?: Date | null) {
+  if (!d) return '—';
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  const dd = pad(d.getDate());
+  const mm = pad(d.getMonth() + 1);
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+
+// --- Função Principal Refatorada ---
+
 export async function buildApplicationCard(
-  client: D.Client, app: App, settings: { questions: string[]; dmAcceptedTemplate: string; dmRejectedTemplate: string },
+  client: Client,
+  app: AppRow,
+  opts: { questions: string[]; dmAcceptedTemplate?: string; dmRejectedTemplate?: string },
 ) {
-  const user = await client.users.fetch(app.userId, { force: true }).catch(() => null);
-  const avatar = user?.displayAvatarURL({ size: 256 });
-  const banner = (user as any)?.bannerURL?.({ size: 1024 }) || null;
+  // 1. Coleta de Dados (igual ao seu código, está perfeito)
+  const guild = await client.guilds.fetch(app.guildId);
+  const user = await client.users.fetch(app.userId).catch(() => null);
+  const member = await guild.members.fetch(app.userId).catch(() => null);
 
-  const msgCount = await getMessageCount(app.guildId, app.userId);
-  const memberSince = (await client.guilds.fetch(app.guildId).then(g => g.members.fetch(app.userId).catch(() => null)))
-    ?.joinedAt;
+  const avatarUrl =
+    member?.displayAvatarURL({ extension: 'png', size: 128 }) ??
+    user?.displayAvatarURL({ extension: 'png', size: 128 });
 
-  const header =
-    `**Título:** ${app.username} quer se juntar à guild!\n` +
-    `**Atividade:** ${msgCount} mensagens · Membro desde ${memberSince ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(memberSince) : '—'}\n` +
-    `**Nick:** ${app.nick}  **Classe:** ${app.className}`;
+  const bannerUrl = user?.bannerURL({ extension: 'png', size: 512 });
+  const messages = await getMessageCount(app.guildId, app.userId);
+  const since = fmtDate(member?.joinedAt ?? null);
+  const answers = parseAnswers(app.qAnswers);
 
-  // Q&A
-  const q = Array.isArray(settings.questions) ? settings.questions : [];
-  const a = Array.isArray(app.qAnswers) ? (app.qAnswers as string[]) : [];
-  const qaLines = q.map((qq, i) => `**${qq}**: ${a[i] ?? '_'}`).join('\n');
-  const body = qaLines || '_Sem perguntas personalizadas._';
+  // 2. Construção dos Componentes (AQUI ESTÁ A MUDANÇA)
 
-  // Botões (apenas se pending)
-  const buttons =
-    app.status === 'pending'
-      ? [
-          new D.ButtonBuilder().setCustomId(`recruit:decision:approve:${app.id}`).setLabel('Aprovar').setStyle(D.ButtonStyle.Success),
-          new D.ButtonBuilder().setCustomId(`recruit:decision:reject:${app.id}`).setLabel('Recusar').setStyle(D.ButtonStyle.Danger),
-        ]
-      : [];
+  const containerComponents = [];
+  const attachments = [];
 
-  // Montagem do container
-  const components: (D.JSONEncodable<D.APIMessageTopLevelComponent> | D.APIMessageTopLevelComponent)[] = [];
-
-  // Banner (se houver) usando MediaGallery
-  const anyD = D as any;
-  const MediaGalleryBuilder = anyD.MediaGalleryBuilder || anyD.GalleryBuilder;
-  const MediaGalleryItemBuilder = anyD.MediaGalleryItemBuilder || anyD.GalleryItemBuilder;
-  const ContainerBuilder = anyD.ContainerBuilder;
-  const TextDisplayBuilder = anyD.TextDisplayBuilder;
-  const SeparatorBuilder = anyD.SeparatorBuilder;
-  const SeparatorSpacingSize = anyD.SeparatorSpacingSize;
-  const SectionBuilder = anyD.SectionBuilder;
-  const ThumbnailBuilder = anyD.ThumbnailBuilder;
-
-  if (!ContainerBuilder || !TextDisplayBuilder) throw new Error('Components V2 indisponível');
-
-  const container = new ContainerBuilder().setAccentColor(accentByStatus(app.status));
-
-  if (banner && MediaGalleryBuilder && MediaGalleryItemBuilder) {
-    const gallery = new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(banner).setDescription('Banner do usuário'));
-    if (typeof (container as any).addMediaGalleryComponents === 'function') (container as any).addMediaGalleryComponents(gallery);
-    else if (typeof (container as any).addGalleryComponents === 'function') (container as any).addGalleryComponents(gallery);
-  }
-
-  // Cabeçalho com thumbnail (se suportado)
-  if (SectionBuilder && ThumbnailBuilder && typeof (container as any).addSectionComponents === 'function') {
-    const section = new SectionBuilder()
-      .setText(header)
-      .setAccessory(new ThumbnailBuilder().setURL(avatar ?? ''));
-    (container as any).addSectionComponents(section);
+  // Componente 2.1: Media Gallery (Type 12) para o Banner
+  // Conforme a documentação, para exibir imagens, usamos uma Media Gallery.
+  if (bannerUrl) {
+    containerComponents.push({
+      type: ComponentType.MediaGallery,
+      items: [{ media: { url: bannerUrl } }],
+    });
   } else {
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(header));
+    // Fallback para o banner local
+    const bannerPath = path.join('assets', 'dashboard', 'banner.png');
+    const attachment = new AttachmentBuilder(bannerPath).setName('banner.png');
+    attachments.push(attachment);
+
+    containerComponents.push({
+      type: ComponentType.MediaGallery,
+      items: [{ media: { url: 'attachment://banner.png' } }],
+    });
   }
 
-  // Divisor
-  if (SeparatorBuilder) {
-    container.addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize?.Large ?? 2).setDivider(true));
+  // Componente 2.2: Section (Type 9) para Título, Subtítulo e Avatar (Thumbnail)
+  // A documentação especifica que uma Section pode ter um 'accessory', que é perfeito para o avatar.
+  const title = `### ${user?.username ?? app.username} quer se juntar à guild!`;
+  const subtitle = `**Atividade**: ${messages} msgs · **Membro desde**: ${since}\n**Nick**: **${app.nick}** · **Classe**: **${app.className}**`;
+
+  const sectionComponents = [
+    { type: ComponentType.TextDisplay, content: title },
+    { type: ComponentType.TextDisplay, content: subtitle },
+  ];
+
+  const section: any = {
+    type: ComponentType.Section,
+    components: sectionComponents,
+  };
+
+  if (avatarUrl) {
+    section.accessory = {
+      type: ComponentType.Thumbnail,
+      media: { url: avatarUrl },
+    };
+  }
+  containerComponents.push(section);
+
+  // Componente 2.3: Separator (Type 14) para espaçamento visual
+  containerComponents.push({ type: ComponentType.Separator });
+
+  // Componente 2.4: Text Display (Type 10) para as Perguntas e Respostas
+  const qaLines = opts.questions.map((q, i) => {
+    const a = answers[i] || '_—_';
+    return `**${q}**: ${a}`;
+  });
+  containerComponents.push({
+    type: ComponentType.TextDisplay,
+    content: qaLines.join('\n'),
+  });
+
+  // Componente 2.5: Action Row (Type 1) com os Botões
+  // Sua lógica aqui já estava correta, apenas a integramos.
+  if (app.status === 'pending') {
+    const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(ids.recruit.approve(app.id))
+        .setLabel('Aprovar')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(ids.recruit.reject(app.id))
+        .setLabel('Recusar')
+        .setStyle(ButtonStyle.Danger),
+    );
+    containerComponents.push(actions.toJSON());
+  } else {
+    // Lógica para card já decidido
+    const label = app.status === 'approved' ? 'Aprovado' : 'Recusado';
+    const style = app.status === 'approved' ? ButtonStyle.Success : ButtonStyle.Danger;
+    const actions = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('noop').setLabel(label).setStyle(style).setDisabled(true),
+    );
+    containerComponents.push(actions.toJSON());
   }
 
-  // Q&A como texto
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
+  // 3. Montagem Final do Payload
 
-  // Botões
-  if (buttons.length) {
-    const row = new D.ActionRowBuilder<D.ButtonBuilder>().addComponents(...buttons);
-    (container as any).addActionRowComponents(row);
-  }
+  // Mapeia o status para a cor da barra lateral do Container
+  const accentColor =
+    app.status === 'approved' ? 0x57f287 : // Verde
+    app.status === 'rejected' ? 0xed4245 : // Vermelho
+    0x3d348b; // Roxo (Padrão)
 
-  components.push(container);
-
+  // O payload final tem a flag e um array de componentes de topo.
+  // Neste caso, apenas um Container (Type 17) que agrupa todo o resto.
   return {
-    components,
-    flags: D.MessageFlags.IsComponentsV2 as number,
+    flags: COMPONENTS_V2_FLAG,
+    components: [
+      {
+        type: ComponentType.Container,
+        accent_color: accentColor,
+        components: containerComponents,
+      },
+    ],
+    files: attachments,
   };
 }
