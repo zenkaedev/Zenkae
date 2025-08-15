@@ -70,3 +70,5 @@ export async function approveApplication(_: unknown, id: string) {
 export async function rejectApplication(_: unknown, id: string) {
   await recruitStore.updateStatus(id, 'rejected');
 }
+
+export { buildRecruitList };

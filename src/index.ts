@@ -3,6 +3,20 @@ import { Env } from './env';
 import { registerInteractionRouter } from './listeners/interactions';
 import { startEventReminders } from './scheduler/eventsReminder';
 import { registerMessageCounter } from './listeners/messageCount';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function bootstrap() {
+  // ping leve
+  await prisma.$queryRaw`SELECT 1`;
+  // ...seguir com login do discord.js
+}
+
+bootstrap().catch(async (err) => {
+  console.error('DB bootstrap error:', err);
+  process.exit(1);
+});
+
 
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });

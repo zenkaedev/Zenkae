@@ -1,3 +1,4 @@
+// src/modules/recruit/panel.ts
 import {
   ActionRowBuilder,
   ChannelSelectMenuBuilder,
@@ -194,35 +195,25 @@ async function publishApplicationCard(
   }
 
   const settings = await recruitStore.getSettings(app.guildId);
-
-  // formsChannelId pode ser null e interaction.channelId pode ser string | null.
-  const targetId = settings.formsChannelId ?? interaction.channelId ?? null;
-  if (!targetId) {
-    await replyV2Notice(
-      interaction,
-      '❌ Não foi possível determinar o canal. Defina o **Canal de formulário** nas configurações ou execute este fluxo em um canal de texto.',
-      true,
-    );
-    return;
-  }
-
+  const targetId = settings.formsChannelId ?? interaction.channelId ?? undefined;
+    if (!targetId) {
+      await replyV2Notice(
+        interaction,
+        '❌ Configure o **Canal de formulário** em Recrutamento.',
+        true,
+      );
+      return;
+    }
   const target = await interaction.client.channels.fetch(targetId).catch(() => null);
-  if (!target || !target.isTextBased()) {
-    await replyV2Notice(
-      interaction,
-      '❌ Configure o **Canal de formulário** em Recrutamento.',
-      true,
-    );
-    return;
-  }
 
-  const card = await buildApplicationCard(interaction.client, app as any, {
+  // monta o payload com Components V2 do card
+  const cardPayload = await buildApplicationCard(interaction.client, app as any, {
     questions: recruitStore.parseQuestions(settings.questions),
     dmAcceptedTemplate: settings.dmAcceptedTemplate,
     dmRejectedTemplate: settings.dmRejectedTemplate,
   });
 
-  const sent = await (target as GuildTextBasedChannel).send(card);
+  const sent = await (target as GuildTextBasedChannel).send(cardPayload);
   await recruitStore.setCardRef(app.id, {
     channelId: (sent.channel as any).id,
     messageId: sent.id,
@@ -234,7 +225,6 @@ async function publishApplicationCard(
     true,
   );
 }
-
 
 /* -------------------------------------------------------
  * Configurações (Dashboard → Recruit)

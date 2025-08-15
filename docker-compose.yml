@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    container_name: typescript-db-1
+    environment:
+      POSTGRES_USER: zenkae
+      POSTGRES_PASSWORD: zenkae
+      POSTGRES_DB: zenkae
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
