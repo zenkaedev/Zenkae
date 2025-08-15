@@ -7,48 +7,55 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ... seu datasource e generator permanecem
-
 model Application {
-  id                 String    @id @default(cuid())
-  guildId            String
-  userId             String
-  username           String // nome de usuário discord (salvo no momento da aplicação)
-  nick               String
-  className          String
-  status             String    @default("pending") // pending | approved | rejected
-  qAnswers           String? // array de respostas (até 4)
-  reason             String? // motivo da recusa (se houver)
-  messageId          String? // id da mensagem do cartão no canal de formulários
-  channelId          String? // canal onde o cartão foi publicado
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  username    String
+  nick        String
+  className   String
+  classId     String?
+  status      String   @default("pending") // pending | approved | rejected
+  qAnswers    String?
+  reason      String?
+  messageId   String?
+  channelId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  // NOVOS CAMPOS:
-  moderatedById      String?
-  moderatedByDisplay String?
-  moderatedAt        DateTime?
+  // Campos de moderação unificados
+  moderatorId String?
+  moderatedAt DateTime?
 
   @@index([guildId, userId])
-}model RecruitSettings {
-  guildId              String  @id        // uma config por guild
-  panelChannelId       String?            // canal fixo do painel público
-  formsChannelId       String?            // canal para os cartões (aprovação)
-  appearanceTitle      String?            // título do painel público
-  appearanceDescription String?           // descrição do painel público
-  appearanceImageUrl   String?            // imagem custom (opcional)
-  questions            String    @default("[]") // array de até 4 strings (perguntas)
-  dmAcceptedTemplate   String   @default("Parabéns! Você foi aprovado 🎉")
-  dmRejectedTemplate   String   @default("Obrigado por se inscrever. Infelizmente sua candidatura foi recusada. Motivo: {reason}")
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+}
+
+model RecruitSettings {
+  guildId               String  @id
+  panelChannelId        String?
+  formsChannelId        String?
+  appearanceTitle       String?
+  appearanceDescription String?
+  appearanceImageUrl    String?
+  appearanceThumbUrl    String?
+  appearanceAccent      Int?
+  questions             String  @default("[]")
+  
+  // Campos para gestão de classes e automação
+  classes               String  @default("[]")
+  defaultApprovedRoleId String?
+
+  dmAcceptedTemplate    String  @default("Parabéns! Você foi aprovado 🎉")
+  dmRejectedTemplate    String  @default("Obrigado por se inscrever. Infelizmente sua candidatura foi recusada. Motivo: {reason}")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 model MessageCounter {
-  id       String   @id @default(cuid())
-  guildId  String
-  userId   String
-  count    Int      @default(0)
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  count     Int      @default(0)
   updatedAt DateTime @updatedAt
 
   @@unique([guildId, userId])
@@ -74,8 +81,8 @@ model Event {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  rsvps      EventRsvp[]
-  reminders  EventReminder[]
+  rsvps     EventRsvp[]
+  reminders EventReminder[]
 
   @@index([guildId, startsAt])
 }
@@ -116,9 +123,9 @@ model MemberActivity {
 }
 
 model ActivityPanel {
-  guildId    String   @id
-  channelId  String
-  messageId  String
-  weekStart  DateTime
-  updatedAt  DateTime @updatedAt
+  guildId   String   @id
+  channelId String
+  messageId String
+  weekStart DateTime
+  updatedAt DateTime @updatedAt
 }
