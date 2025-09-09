@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -7,6 +8,8 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ===== Recruiting =====
+
 model Application {
   id        String   @id @default(cuid())
   guildId   String
@@ -15,35 +18,36 @@ model Application {
   nick      String
   className String
   classId   String?
-  status    String   @default("pending") // pending | approved | rejected
-  qAnswers  String?
+  status    String   @default("pending") // 'pending' | 'approved' | 'rejected'
+  qAnswers  String   @default("[]")      // JSON string
   reason    String?
   messageId String?
   channelId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Campos de moderação unificados
-  moderatedById String? // ID do moderador que fez a ação
-  moderatedByDisplay String? // Nome ou ID do moderador
-  moderatedAt DateTime?
+  // Moderação
+  moderatedById      String?
+  moderatedByDisplay String?
+  moderatedAt        DateTime?
 
   @@index([guildId, userId])
+  @@index([guildId, status, createdAt])
 }
 
 model RecruitSettings {
   guildId               String  @id
   panelChannelId        String?
   formsChannelId        String?
+
   appearanceTitle       String?
   appearanceDescription String?
   appearanceImageUrl    String?
   appearanceThumbUrl    String?
-  appearanceAccent      Int?
-  questions             String  @default("[]")
+  appearanceAccent      Int? // 0xRRGGBB opcional
 
-  // Campos para gestão de classes e automação
-  classes               String  @default("[]")
+  questions             String   @default("[]") // JSON string
+  classes               String   @default("[]") // JSON string { id,name,emoji,roleId,color }
   defaultApprovedRoleId String?
 
   dmAcceptedTemplate String   @default("Parabéns! Você foi aprovado 🎉")
@@ -69,7 +73,8 @@ model RecruitPanel {
   updatedAt DateTime @updatedAt
 }
 
-// ---------- Eventos ----------
+// ===== Eventos (RSVP) =====
+
 model Event {
   id          String   @id @default(cuid())
   guildId     String
@@ -93,7 +98,7 @@ model EventRsvp {
   eventId   String
   guildId   String
   userId    String
-  choice    String // 'yes' | 'maybe' | 'no'
+  choice    String   // 'yes' | 'maybe' | 'no'
   updatedAt DateTime @updatedAt
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -105,7 +110,7 @@ model EventRsvp {
 model EventReminder {
   id      String   @id @default(cuid())
   eventId String
-  kind    String // '24h' | '1h' | '15m'
+  kind    String   // '24h' | '1h' | '15m'
   sentAt  DateTime @default(now())
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -113,7 +118,8 @@ model EventReminder {
   @@unique([eventId, kind])
 }
 
-// ---------- Atividade semanal (check-in) ----------
+// ===== Atividade semanal (check-in) =====
+
 model MemberActivity {
   id          String   @id @default(cuid())
   guildId     String
@@ -129,4 +135,38 @@ model ActivityPanel {
   messageId String
   weekStart DateTime
   updatedAt DateTime @updatedAt
+}
+
+// ===== Enquetes (Polls) =====
+
+model Poll {
+  id          String   @id @default(cuid())
+  guildId     String
+  channelId   String
+  messageId   String?
+  question    String
+  optionsJson String   // JSON string: string[] (ordem = índices)
+  multi       Boolean  @default(false)
+  endsAt      DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  votes PollVote[]
+
+  @@index([guildId, createdAt])
+  @@index([guildId, endsAt])
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  userId    String
+  optionIdx Int
+  createdAt DateTime @default(now())
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId, optionIdx]) // toggle por opção no multi
+  @@index([pollId, optionIdx])
 }

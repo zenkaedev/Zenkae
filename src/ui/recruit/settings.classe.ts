@@ -4,6 +4,8 @@
 // ✅ Handlers: openRecruitClassesSettings, handleClassesSelect, openClassModal, handleClassModalSubmit, handleClassRemove
 // ✅ Defensivo contra TS2532/TS2339
 // ✅ Atualiza painel público após alterações
+// ✅ Atualizado: usa role.setColors({ primaryColor }) em vez de setColor/edit({ color })
+// ✅ Normalização aceita #RGB → #RRGGBB, e converte para inteiro ao aplicar
 
 import {
   ButtonInteraction,
@@ -50,17 +52,34 @@ function toEmoji(input?: string | null): { id?: string; name?: string; animated?
   return undefined;
 }
 
-/** Normaliza cor "#RRGGBB" (aceita com/sem #). */
+/** Normaliza cor para "#RRGGBB" (aceita #RGB/#RRGGBB, com/sem #). */
 function normalizeHexColor(input?: string): string | undefined {
   const raw = (input ?? '').trim();
   if (!raw) return undefined;
-  const m = /^#?([0-9a-fA-F]{6})$/.exec(raw);
-  return m && m[1] ? `#${m[1].toUpperCase()}` : undefined;
+  const core = raw.startsWith('#') ? raw.slice(1) : raw;
+  const m3 = /^([0-9a-fA-F]{3})$/.exec(core);
+  if (m3?.[1]) {
+    const [r, g, b] = m3[1].split('');
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+  }
+  const m6 = /^([0-9a-fA-F]{6})$/.exec(core);
+  if (m6?.[1]) return `#${m6[1]}`.toUpperCase();
+  return undefined;
+}
+
+/** Converte "#RRGGBB" para inteiro 0xRRGGBB. */
+function hexToInt(hex: string): number {
+  return parseInt(hex.replace('#', ''), 16);
 }
 
 /** String segura pra TextDisplay (escapa markdown básico). */
 function esc(s?: string | null) {
-  return String(s ?? '').replace(/\\/g, '\\\\').replace(/\*/g, '\\*').replace(/_/g, '\\_').replace(/`/g, '\\`').replace(/\|/g, '\\|');
+  return String(s ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\*/g, '\\*')
+    .replace(/_/g, '\\_')
+    .replace(/`/g, '\\`')
+    .replace(/\|/g, '\\|');
 }
 
 /** Monta as rows (select + botões) como JSON V2 puro. */
@@ -228,11 +247,16 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
 
   await recruitStore.updateSettings(inter.guildId, { classes });
 
-  // Aplica cor no cargo, se possível
+  // Aplica cor no cargo, se possível (API nova)
   if (roleRaw && color) {
     try {
       const role = inter.guild?.roles?.cache?.get(roleRaw) ?? (await inter.guild?.roles?.fetch(roleRaw).catch(() => null));
-      if (role && role.editable) await role.setColor(color as any, 'Atualizado via Gestão de Classes');
+      const managed = (role as any)?.managed;
+      const editable = (role as any)?.editable;
+      if (role && !managed && editable) {
+        const c = hexToInt(color);
+        await (role as any).setColors({ primaryColor: c }, 'Atualizado via Gestão de Classes').catch(() => {});
+      }
     } catch {}
   }
 

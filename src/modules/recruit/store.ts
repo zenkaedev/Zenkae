@@ -12,6 +12,8 @@ export type Class = {
   name: string;
   emoji?: string | null;
   roleId?: string | null;
+  /** Cor HEX padronizada em formato #RRGGBB (ou null) */
+  color?: string | null;
 };
 
 /* ------------------------------ JSON helpers ------------------------------ */
@@ -33,6 +35,43 @@ function parseArrayStr<T = string>(s?: string | null, fallback: T[] = []): T[] {
   } catch {
     return fallback;
   }
+}
+
+/* ------------------------------ Normalizadores ---------------------------- */
+
+/**
+ * Normaliza cor para o formato #RRGGBB.
+ * Aceita: #RGB, RGB, #RRGGBB, RRGGBB. Qualquer outro formato retorna null.
+ */
+function normalizeHexColor(input?: unknown): string | null {
+  if (input == null) return null;
+  const s = String(input).trim();
+  const raw = s.startsWith('#') ? s.slice(1) : s;
+
+  // #RGB → #RRGGBB
+  const short = /^([a-fA-F\d]{3})$/.exec(raw);
+  if (short?.[1]) {
+    const chars = short[1];
+    const r = chars[0], g = chars[1], b = chars[2];
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+  }
+
+  // #RRGGBB
+  const full = /^([a-fA-F\d]{6})$/.exec(raw);
+  if (full?.[1]) return `#${full[1]}`.toUpperCase();
+
+  return null;
+}
+
+/** Garante o shape seguro de uma Class vinda de JSON dinâmico */
+function normalizeClass(c: Partial<Class> | any): Class {
+  return {
+    id: String(c?.id ?? ''),
+    name: String(c?.name ?? '').slice(0, 60).trim(),
+    emoji: c?.emoji != null ? String(c.emoji).slice(0, 16) : null,
+    roleId: c?.roleId != null ? String(c.roleId) : null,
+    color: normalizeHexColor(c?.color),
+  };
 }
 
 /* ------------------------------- RecruitStore ------------------------------ */
@@ -112,13 +151,8 @@ export const recruitStore = {
     }
 
     if (Array.isArray(data.classes)) {
-      // saneamento básico: manter apenas chaves conhecidas
-      const clean = data.classes.map((c) => ({
-        id: String(c.id),
-        name: String(c.name ?? '').slice(0, 60).trim(),
-        emoji: c.emoji ? String(c.emoji).slice(0, 16) : null,
-        roleId: c.roleId ? String(c.roleId) : null,
-      }));
+      // saneamento básico: manter apenas chaves conhecidas + cor normalizada
+      const clean = data.classes.map((c) => normalizeClass(c));
       normalized.classes = toJsonString(clean);
     }
 
@@ -132,11 +166,13 @@ export const recruitStore = {
   /* ----------------------------- CLASSES JSON ---------------------------- */
 
   parseClasses(raw?: string | null): Class[] {
-    return parseArrayStr<Class>(raw, []);
+    const arr = parseArrayStr<any>(raw, []);
+    return arr.map((c) => normalizeClass(c));
   },
 
   stringifyClasses(classes: Class[]): string {
-    return toJsonString(classes);
+    // Garante que toda classe persistida está normalizada (inclusive cor)
+    return toJsonString(classes.map((c) => normalizeClass(c)));
   },
 
   /* ------------------------------ QUESTIONS ------------------------------ */

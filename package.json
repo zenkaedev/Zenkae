@@ -19,7 +19,7 @@
   "dependencies": {
     "@prisma/client": "^5.17.0",
     "@sentry/node": "^10.5.0",
-    "discord.js": "^14.21.0",
+    "discord.js": "^14.21.1",
     "dotenv": "^16.4.5",
     "pino": "^9.9.0",
     "zod": "^3.23.8"

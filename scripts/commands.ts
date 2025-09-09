@@ -1,9 +1,11 @@
 // scripts/commands.ts
-// Utilitário: LISTAR / PUBLICAR / LIMPAR slash (guild/global)
 import 'dotenv/config';
 import { REST, Routes } from 'discord.js';
-import { dashboardCommandData } from '../src/commands/dashboard';
-import { recruitCommandData } from '../src/commands/recruit';
+
+// ATENÇÃO (ESM): imports precisam terminar com .js
+import dashboardCommandData from '../src/commands/dashboard.js';
+import { recruitCommandData } from '../src/commands/recruit.js';
+import { pollCommandData } from '../src/commands/poll.js';
 
 const token = mustEnv('DISCORD_TOKEN');
 const clientId = mustEnv('DISCORD_CLIENT_ID');
@@ -11,10 +13,10 @@ const devGuildId = process.env.DEV_GUILD_ID || '';
 
 const rest = new REST({ version: '10' }).setToken(token);
 
-// 👉 comandos que VÃO pro Discord (guild/global)
 const COMMANDS = [
-  dashboardCommandData, // /dashboard open [ephemeral]
-  recruitCommandData,   // /recruit setup | publish
+  dashboardCommandData,
+  recruitCommandData,
+  pollCommandData,
 ];
 
 type Action =

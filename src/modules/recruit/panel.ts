@@ -26,6 +26,7 @@ import { publishPublicRecruitPanelV2 } from '../../ui/recruit/panel.public';
  * Helpers: ACK seguro + aviso compatível com defer
  * ----------------------------------------------------- */
 const processing = new Set<string>();
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function keyFrom(inter: ButtonInteraction | ModalSubmitInteraction) {
   const cid = (inter as any).customId ?? (inter as any).custom_id ?? 'no-cid';
@@ -128,12 +129,19 @@ async function setNicknameSafe(guild: Guild, userId: string, nick: string) {
 }
 
 // ---- Estilo de Classe (cor + emoji + hoist) ----
+/** Aceita #RGB / #RRGGBB / RGB / RRGGBB → retorna número 0xRRGGBB */
 function parseHexColor(input?: string | null): number | undefined {
   if (!input) return undefined;
   const s = String(input).trim();
-  const m = s.match(/^#?([0-9a-f]{6})$/i);
-  if (!m || typeof m[1] !== 'string') return undefined;
-  return parseInt(m[1], 16);
+  const raw = s.startsWith('#') ? s.slice(1) : s;
+  const short = /^([0-9a-f]{3})$/i.exec(raw);
+  if (short?.[1]) {
+    const [r, g, b] = short[1].split('');
+    return parseInt(`${r}${r}${g}${g}${b}${b}`, 16);
+  }
+  const full = /^([0-9a-f]{6})$/i.exec(raw);
+  if (full?.[1]) return parseInt(full[1], 16);
+  return undefined;
 }
 
 function extractUnicodeEmoji(input?: string | null): string | undefined {
@@ -142,7 +150,8 @@ function extractUnicodeEmoji(input?: string | null): string | undefined {
   if (!s) return undefined;
   // ignora custom <:name:id> ou <a:name:id>
   if (/^<a?:\w+:\d+>$/.test(s)) return undefined;
-  return s;
+  const uni = s.match(/\p{Extended_Pictographic}/u)?.[0];
+  return uni ?? undefined;
 }
 
 async function ensureClassRoleWithStyle(
@@ -152,32 +161,34 @@ async function ensureClassRoleWithStyle(
   classColorHex?: string | null,
   existingRoleId?: string | null,
 ): Promise<Role> {
-  // Se já houver ID salvo, tenta usar
+  const uni = extractUnicodeEmoji(classEmoji);
+  const baseName = `Classe | ${className}`;
+  const targetName = uni ? `Classe | ${uni} ${className}` : baseName;
+  const color = parseHexColor(classColorHex);
+
+  // 0) tenta por ID primeiro
   if (existingRoleId) {
     const byId = await guild.roles.fetch(String(existingRoleId)).catch(() => null);
     if (byId) {
-      const color = parseHexColor(classColorHex);
-      const uni = extractUnicodeEmoji(classEmoji);
-
-      const editData: any = { hoist: true };
-      if (typeof color !== 'undefined') editData.color = color;
+      // nome/hoist/mentionable
       try {
-        await byId.edit(editData);
+        await byId.edit({ name: targetName, hoist: true, mentionable: true });
       } catch {}
 
-      if (typeof uni !== 'undefined') {
-        try {
-          await (byId as any).edit({ unicodeEmoji: uni });
-        } catch {}
+      // cor — API nova
+      if (typeof color !== 'undefined') {
+        try { await (byId as any).setColors({ primaryColor: color }); } catch {}
+      }
+
+      // emoji unicode
+      if (uni) {
+        try { await (byId as any).setUnicodeEmoji(uni); } catch {}
       }
       return byId;
     }
   }
 
-  const uni = extractUnicodeEmoji(classEmoji);
-  const baseName = `Classe | ${className}`;
-  const targetName = uni ? `Classe | ${uni} ${className}` : baseName;
-
+  // 1) tenta por nome
   const fetched = await guild.roles.fetch().catch(() => null);
   let role =
     fetched?.find((r) => r.name === targetName) ??
@@ -186,36 +197,33 @@ async function ensureClassRoleWithStyle(
     guild.roles.cache.find((r) => r.name === baseName) ??
     null;
 
-  const color = parseHexColor(classColorHex);
-
+  // 2) cria se não existir
   if (!role) {
-    const createData: any = {
-      name: targetName,
-      hoist: true,
-      mentionable: true,
-      reason: `[recruit] auto-create class role ${className}`,
-    };
-    if (typeof color !== 'undefined') createData.color = color;
-
-    role = await guild.roles.create(createData);
-    if (typeof uni !== 'undefined') {
-      try {
-        await (role as any).edit({ unicodeEmoji: uni });
-      } catch {}
-    }
-    return role;
+    role = await guild.roles
+      .create({ name: targetName, hoist: true, mentionable: true, reason: `[recruit] auto-create class role ${className}` })
+      .catch(() => null as any);
+    await sleep(300); // evita race entre criar e editar
+    if (!role) throw new Error('Falha ao criar cargo de classe');
   }
 
-  const editData: any = { name: targetName, hoist: true };
-  if (typeof color !== 'undefined') editData.color = color;
-  try {
-    await role.edit(editData);
-  } catch {}
+  // 3) restrições
+  const managed = (role as any).managed;
+  const editable = (role as any).editable;
+  if (managed || !editable) return role;
 
-  if (typeof uni !== 'undefined') {
-    try {
-      await (role as any).edit({ unicodeEmoji: uni });
-    } catch {}
+  // 4) nome/hoist/mentionable
+  if (role.name !== targetName || !role.hoist || !role.mentionable) {
+    try { await role.edit({ name: targetName, hoist: true, mentionable: true }); } catch {}
+  }
+
+  // 5) cor — API nova
+  if (typeof color !== 'undefined') {
+    try { await (role as any).setColors({ primaryColor: color }); } catch {}
+  }
+
+  // 6) emoji unicode (se permitido no servidor)
+  if (uni) {
+    try { await (role as any).setUnicodeEmoji(uni); } catch {}
   }
 
   return role;
