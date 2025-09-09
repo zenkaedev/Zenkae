@@ -3,9 +3,10 @@ import 'dotenv/config';
 import { REST, Routes } from 'discord.js';
 
 // ATENÇÃO (ESM): imports precisam terminar com .js
-import dashboardCommandData from '../src/commands/dashboard.js';
-import { recruitCommandData } from '../src/commands/recruit.js';
-import { pollCommandData } from '../src/commands/poll.js';
+// scripts/commands.ts
+import { data as dashboardCommandData } from '../src/commands/dashboard';
+import { recruitCommandData } from '../src/commands/recruit';
+import { pollCommandData } from '../src/commands/poll';
 
 const token = mustEnv('DISCORD_TOKEN');
 const clientId = mustEnv('DISCORD_CLIENT_ID');
