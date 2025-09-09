@@ -17,45 +17,55 @@ export const ids = {
   },
 
   recruit: {
-    filter: 'recruit:filter' as const,
-    publish: 'recruit:publish' as const,
-    apply: 'recruit:apply' as const,
+    filter: 'recruit:filter' as const,
+    publish: 'recruit:publish' as const,
 
-    // Q&A (abrir segundo modal)
-    applyQOpen: (appId: string) => `recruit:apply:q:open:${appId}` as const,
+    apply: 'recruit:apply' as const,
+    applyQOpen: (appId: string) => `recruit:apply:q:open:${appId}` as const,
 
-    // Configurações
-    settingsForm: 'recruit:settings:form' as const,
-    settingsPanelChannel: 'recruit:settings:panelChannel' as const,
-    settingsFormsChannel: 'recruit:settings:formsChannel' as const,
-    settingsAppearance: 'recruit:settings:appearance' as const,
-    settingsDM: 'recruit:settings:dm' as const,
+    // Settings (form, aparência, canais, DMs)
+    settingsForm: 'recruit:settings:form' as const,
+    modalForm: 'recruit:settings:form:modal' as const,
 
-    // [NOVO] Gestão de Classes
+    settingsAppearance: 'recruit:settings:appearance' as const,
+    modalAppearance: 'recruit:settings:appearance:modal' as const,
+
+    settingsDM: 'recruit:settings:dm' as const,
+    modalDM: 'recruit:settings:dm:modal' as const,
+
+    settingsPanelChannel: 'recruit:settings:panel-channel' as const,
+    settingsFormsChannel: 'recruit:settings:forms-channel' as const,
+    selectPanelChannel: 'recruit:settings:select:panel-channel' as const,
+    selectFormsChannel: 'recruit:settings:select:forms-channel' as const,
+
+    // *** NOVO: Gestão de classes no dashboard ***
     settingsClasses: 'recruit:settings:classes' as const,
+    // alias para compat (códigos antigos usavam "classesOpen")
+    get classesOpen() { return this.settingsClasses },
+
     classCreate: 'recruit:settings:class:create' as const,
     modalClassSave: 'recruit:settings:class:save' as const,
+
     classEdit: (id: string) => `recruit:settings:class:edit:${id}` as const,
     classRemove: (id: string) => `recruit:settings:class:remove:${id}` as const,
+    classSelect: 'recruit:class:select',
+    // Removed duplicate properties to fix error
+
     modalClassUpdate: (id: string) => `recruit:settings:class:update:${id}` as const,
-    isClassEdit: (id: string) => id.startsWith('recruit:settings:class:edit:'),
-    isClassRemove: (id: string) => id.startsWith('recruit:settings:class:remove:'),
-    isModalClassUpdate: (id: string) => id.startsWith('recruit:settings:class:update:'),
 
-    selectPanelChannel: 'recruit:settings:select:panel' as const,
-    selectFormsChannel: 'recruit:settings:select:forms' as const,
+    // helpers
+    isClassEdit: (cid: string) => cid.startsWith('recruit:settings:class:edit:'),
+    isClassRemove: (cid: string) => cid.startsWith('recruit:settings:class:remove:'),
+    isModalClassUpdate: (cid: string) => cid.startsWith('recruit:settings:class:update:'),
 
-    modalForm: 'recruit:settings:form:modal' as const,
-    modalAppearance: 'recruit:settings:appearance:modal' as const,
-    modalDM: 'recruit:settings:dm:modal' as const,
+    // decisões
+    approve: (appId: string) => `recruit:decision:approve:${appId}` as const,
+    reject: (appId: string) => `recruit:decision:reject:${appId}` as const,
+    modalRejectReason: (appId: string) => `recruit:decision:reject:modal:${appId}` as const,
 
-    // Decisão
-    approve: (appId: string) => `recruit:decision:approve:${appId}` as const,
-    reject: (appId: string) => `recruit:decision:reject:${appId}` as const,
-    isApprove: (id: string) => id.startsWith('recruit:decision:approve:'),
-    isReject: (id: string) => id.startsWith('recruit:decision:reject:'),
-    modalRejectReason: (appId: string) => `recruit:decision:reject:modal:${appId}` as const,
-  },
+    isApprove: (id: string) => id.startsWith('recruit:decision:approve:'),
+    isReject:  (id: string) => id.startsWith('recruit:decision:reject:'),
+  },
 
   events: {
     new: 'events:new' as const,

@@ -9,6 +9,7 @@ import {
   ModalSubmitInteraction,
   TextInputBuilder,
   TextInputStyle,
+  MessageFlags,
 } from 'discord.js';
 
 // 🔧 path ajustado:
@@ -111,7 +112,8 @@ export async function handleAddClassModal(inter: ModalSubmitInteraction) {
   const roleId = (inter.fields.getTextInputValue('roleId') || '').trim() || null;
 
   if (!name) {
-    await inter.reply({ ephemeral: true, content: '❌ Nome é obrigatório.' });
+    await inter.reply({ flags: MessageFlags.Ephemeral
+, content: '❌ Nome é obrigatório.' });
     return true;
   }
 
@@ -126,7 +128,8 @@ export async function handleAddClassModal(inter: ModalSubmitInteraction) {
   const nextClasses = [...((s as any).classes ?? []), { id: cryptoRandom(), name, emoji, color, roleId }];
   await recruitStore.updateSettings(guildId, { ...(s as any), classes: nextClasses });
 
-  await inter.reply({ ephemeral: true, content: `✅ Classe **${name}** adicionada.` });
+  await inter.reply({ flags: MessageFlags.Ephemeral
+, content: `✅ Classe **${name}** adicionada.` });
   return true;
 }
 

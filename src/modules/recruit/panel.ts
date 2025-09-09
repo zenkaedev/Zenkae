@@ -10,6 +10,10 @@ import {
   type ChatInputCommandInteraction,
   type GuildTextBasedChannel,
   type ModalSubmitInteraction,
+  type InteractionReplyOptions,
+  Guild,
+  Role,
+  MessageFlags,
 } from 'discord.js';
 
 import { recruitStore } from './store';
@@ -19,14 +23,265 @@ import { buildApplicationCard } from './card';
 import { publishPublicRecruitPanelV2 } from '../../ui/recruit/panel.public';
 
 /* -------------------------------------------------------
+ * Helpers: ACK seguro + aviso compatível com defer
+ * ----------------------------------------------------- */
+const processing = new Set<string>();
+
+function keyFrom(inter: ButtonInteraction | ModalSubmitInteraction) {
+  const cid = (inter as any).customId ?? (inter as any).custom_id ?? 'no-cid';
+  const mid = inter.message && 'id' in inter.message ? inter.message.id : 'no-mid';
+  return `${inter.id}:${cid}:${inter.user.id}:${mid}`;
+}
+
+/** Garante o reconhecimento rápido da interação para evitar timeout do token. */
+async function ack(
+  inter: ButtonInteraction | ModalSubmitInteraction | ChatInputCommandInteraction,
+  opts?: { update?: boolean; ephemeral?: boolean },
+) {
+  try {
+    if ((inter as any).isButton?.() || (inter as any).isAnySelectMenu?.()) {
+      if (!inter.deferred && !inter.replied) {
+        if (opts?.update) return await (inter as ButtonInteraction).deferUpdate();
+        return await (inter as any).deferReply({
+          flags: (opts?.ephemeral ?? true) ? MessageFlags.Ephemeral : undefined,
+        });
+      }
+    } else if ('isModalSubmit' in inter && (inter as ModalSubmitInteraction).isModalSubmit()) {
+      if (!inter.deferred && !inter.replied) {
+        return await (inter as any).deferReply({
+          flags: (opts?.ephemeral ?? true) ? MessageFlags.Ephemeral : undefined,
+        });
+      }
+    } else {
+      // slash, etc
+      if (!inter.deferred && !inter.replied) {
+        return await (inter as any).deferReply({
+          flags: (opts?.ephemeral ?? true) ? MessageFlags.Ephemeral : undefined,
+        });
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
+/** Envia feedback respeitando se já houve defer. */
+async function notice(
+  inter: ButtonInteraction | ModalSubmitInteraction | ChatInputCommandInteraction,
+  message: string,
+  ephemeral = true,
+  options?: Omit<InteractionReplyOptions, 'content' | 'ephemeral'>,
+) {
+  try {
+    if (inter.deferred) {
+      const { flags, ...safe } = options ?? {};
+      return await (inter as any).editReply({ content: message, ...safe });
+    }
+    return await replyV2Notice(inter as any, message, ephemeral);
+  } catch {
+    if ((inter as any).replied) {
+      try {
+        return await (inter as any)
+          .followUp?.({
+            content: message,
+            flags: ephemeral ? MessageFlags.Ephemeral : undefined,
+          })
+          .catch(() => null);
+      } catch {}
+    }
+  }
+}
+
+/* -------------------------------------------------------
+ * Helpers: Guild ops (roles & nick) + estilo de classe
+ * ----------------------------------------------------- */
+
+// Busca/Cria cargo por nome
+async function ensureRoleByName(guild: Guild, name: string): Promise<Role> {
+  const cached = guild.roles.cache.find((r) => r.name === name);
+  if (cached) return cached;
+
+  const fetched = await guild.roles.fetch().catch(() => null);
+  const exists = fetched?.find((r) => r.name === name);
+  if (exists) return exists!;
+
+  return await guild.roles.create({
+    name,
+    mentionable: true,
+    reason: `[recruit] auto-create role ${name}`,
+  });
+}
+
+// Atribui cargos de forma idempotente
+async function addRolesSafe(guild: Guild, userId: string, roleIds: string[]) {
+  const member = await guild.members.fetch(userId).catch(() => null);
+  if (!member) return;
+  const toAdd = roleIds.filter((id) => !member.roles.cache.has(id));
+  if (toAdd.length) await member.roles.add(toAdd).catch(() => {});
+}
+
+// Atualiza apelido com fallback silencioso
+async function setNicknameSafe(guild: Guild, userId: string, nick: string) {
+  const member = await guild.members.fetch(userId).catch(() => null);
+  if (!member) return;
+  await member.setNickname(nick).catch(() => {});
+}
+
+// ---- Estilo de Classe (cor + emoji + hoist) ----
+function parseHexColor(input?: string | null): number | undefined {
+  if (!input) return undefined;
+  const s = String(input).trim();
+  const m = s.match(/^#?([0-9a-f]{6})$/i);
+  if (!m || typeof m[1] !== 'string') return undefined;
+  return parseInt(m[1], 16);
+}
+
+function extractUnicodeEmoji(input?: string | null): string | undefined {
+  if (!input) return undefined;
+  const s = String(input).trim();
+  if (!s) return undefined;
+  // ignora custom <:name:id> ou <a:name:id>
+  if (/^<a?:\w+:\d+>$/.test(s)) return undefined;
+  return s;
+}
+
+async function ensureClassRoleWithStyle(
+  guild: Guild,
+  className: string,
+  classEmoji?: string | null,
+  classColorHex?: string | null,
+  existingRoleId?: string | null,
+): Promise<Role> {
+  // Se já houver ID salvo, tenta usar
+  if (existingRoleId) {
+    const byId = await guild.roles.fetch(String(existingRoleId)).catch(() => null);
+    if (byId) {
+      const color = parseHexColor(classColorHex);
+      const uni = extractUnicodeEmoji(classEmoji);
+
+      const editData: any = { hoist: true };
+      if (typeof color !== 'undefined') editData.color = color;
+      try {
+        await byId.edit(editData);
+      } catch {}
+
+      if (typeof uni !== 'undefined') {
+        try {
+          await (byId as any).edit({ unicodeEmoji: uni });
+        } catch {}
+      }
+      return byId;
+    }
+  }
+
+  const uni = extractUnicodeEmoji(classEmoji);
+  const baseName = `Classe | ${className}`;
+  const targetName = uni ? `Classe | ${uni} ${className}` : baseName;
+
+  const fetched = await guild.roles.fetch().catch(() => null);
+  let role =
+    fetched?.find((r) => r.name === targetName) ??
+    fetched?.find((r) => r.name === baseName) ??
+    guild.roles.cache.find((r) => r.name === targetName) ??
+    guild.roles.cache.find((r) => r.name === baseName) ??
+    null;
+
+  const color = parseHexColor(classColorHex);
+
+  if (!role) {
+    const createData: any = {
+      name: targetName,
+      hoist: true,
+      mentionable: true,
+      reason: `[recruit] auto-create class role ${className}`,
+    };
+    if (typeof color !== 'undefined') createData.color = color;
+
+    role = await guild.roles.create(createData);
+    if (typeof uni !== 'undefined') {
+      try {
+        await (role as any).edit({ unicodeEmoji: uni });
+      } catch {}
+    }
+    return role;
+  }
+
+  const editData: any = { name: targetName, hoist: true };
+  if (typeof color !== 'undefined') editData.color = color;
+  try {
+    await role.edit(editData);
+  } catch {}
+
+  if (typeof uni !== 'undefined') {
+    try {
+      await (role as any).edit({ unicodeEmoji: uni });
+    } catch {}
+  }
+
+  return role;
+}
+
+function toArraySafe(value: any): any[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (value instanceof Set || value instanceof Map) return Array.from(value as any);
+  if (typeof value === 'object') return Object.values(value);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed
+        : typeof parsed === 'object'
+        ? Object.values(parsed)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** Lê metadados da classe a partir de settings.classes (array, objeto, Map/Set ou JSON). */
+function getClassMeta(
+  settings: any,
+  className: string,
+): { id?: string | null; name: string; emoji?: string | null; color?: string | null } | null {
+  const raw = toArraySafe(settings?.classes);
+
+  // normaliza itens (caso venham como [key, value] de Map)
+  const list = raw
+    .map((c: any) => {
+      if (Array.isArray(c) && c.length === 2 && typeof c[1] === 'object') return c[1];
+      return c;
+    })
+    .filter(Boolean) as any[];
+
+  const found = list.find((c: any) => {
+    const n = (c?.name ?? c?.className ?? c?.title ?? '').toString();
+    return n && n.toLowerCase() === className.toLowerCase();
+  });
+
+  if (!found) return null;
+
+  const emojiVal = found.emoji ?? found.icon ?? null;
+  const colorVal = found.color ?? found.colour ?? null;
+
+  return {
+    id: found.roleId ?? found.roleID ?? null,
+    name: className,
+    emoji: emojiVal != null ? String(emojiVal) : null,
+    color: colorVal != null ? String(colorVal) : null, // #RRGGBB
+  };
+}
+
+/* -------------------------------------------------------
  * Painel público (Components V2) — lê Aparência
  * ----------------------------------------------------- */
 export function renderPublicRecruitPanel(opts?: { title?: string; description?: string }) {
   return buildScreen({
     title: opts?.title?.trim() || 'Painel de Recrutamento',
     subtitle:
-      opts?.description?.trim() ||
-      'Clique em **Quero entrar** para enviar seu nick e classe.',
+      opts?.description?.trim() || 'Clique em **Quero entrar** para enviar seu nick e classe.',
     buttons: [{ id: ids.recruit.apply, label: 'Quero entrar' }],
   });
 }
@@ -37,7 +292,7 @@ export function renderPublicRecruitPanel(opts?: { title?: string; description?: 
 export async function handlePublishRecruitPanel(
   interaction: ButtonInteraction | ChatInputCommandInteraction,
 ) {
-  // delega tudo para o novo publicador (painel V2)
+  await ack(interaction, { ephemeral: true });
   return publishPublicRecruitPanelV2(interaction);
 }
 
@@ -74,6 +329,8 @@ export async function openApplyModal(interaction: ButtonInteraction) {
 export async function handleApplyModalSubmit(interaction: ModalSubmitInteraction) {
   if (!interaction.inCachedGuild()) return;
 
+  await ack(interaction, { ephemeral: true });
+
   const guildId = interaction.guildId!;
   const user = interaction.user;
 
@@ -83,7 +340,7 @@ export async function handleApplyModalSubmit(interaction: ModalSubmitInteraction
   try {
     const existing = await recruitStore.findByUser(guildId, user.id);
     if (existing && existing.status === 'pending') {
-      await replyV2Notice(interaction, '⚠️ Você já tem uma aplicação pendente.', true);
+      await notice(interaction, '⚠️ Você já tem uma aplicação pendente.', true);
       return;
     }
 
@@ -100,9 +357,9 @@ export async function handleApplyModalSubmit(interaction: ModalSubmitInteraction
     const questions = recruitStore.parseQuestions(settings.questions).slice(0, 4);
 
     if (questions.length) {
-      await replyV2Notice(interaction, 'Clique para responder às perguntas personalizadas.', true);
-      await interaction.followUp({
-        flags: 1 << 6, // ephemeral
+      await notice(interaction, 'Clique para responder às perguntas personalizadas.', true);
+      await (interaction as any).followUp({
+        flags: MessageFlags.Ephemeral,
         components: [
           {
             type: 1,
@@ -124,7 +381,7 @@ export async function handleApplyModalSubmit(interaction: ModalSubmitInteraction
     await publishApplicationCard(interaction, app.id);
   } catch (e) {
     console.error('[recruit] handleApplyModalSubmit error:', e);
-    await replyV2Notice(interaction, '❌ Falha ao registrar candidatura.', true);
+    await notice(interaction, '❌ Falha ao registrar candidatura.', true);
   }
 }
 
@@ -154,6 +411,7 @@ export async function openApplyQuestionsModal(inter: ButtonInteraction, appId: s
 }
 
 export async function handleApplyQuestionsSubmit(interaction: ModalSubmitInteraction, appId: string) {
+  await ack(interaction, { ephemeral: true });
   try {
     const answers: string[] = [];
     for (let i = 1; i <= 4; i++) {
@@ -164,7 +422,7 @@ export async function handleApplyQuestionsSubmit(interaction: ModalSubmitInterac
     await publishApplicationCard(interaction, appId);
   } catch (e) {
     console.error('[recruit] handleApplyQuestionsSubmit error:', e);
-    await replyV2Notice(interaction, '❌ Falha ao salvar respostas.', true);
+    await notice(interaction, '❌ Falha ao salvar respostas.', true);
   }
 }
 
@@ -177,23 +435,24 @@ async function publishApplicationCard(
 ) {
   const app = await recruitStore.getById(appId);
   if (!app) {
-    await replyV2Notice(interaction, '❌ Aplicação não encontrada.', true);
+    await notice(interaction, '❌ Aplicação não encontrada.', true);
     return;
   }
 
   const settings = await recruitStore.getSettings(app.guildId);
 
   // Resolve canal de publicação com fallback seguro
-  const fallbackChannelId = interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? null;
+  const fallbackChannelId =
+    (interaction as any).channel?.id ?? (interaction as any).guild?.rulesChannelId ?? null;
   const targetId = settings.formsChannelId ?? fallbackChannelId;
 
   if (!targetId) {
     console.warn('[recruit] No target channel. formsChannelId and fallback are null.', {
       guildId: app.guildId,
       formsChannelId: settings.formsChannelId,
-      channelFromInteraction: interaction.channel?.id,
+      channelFromInteraction: (interaction as any).channel?.id,
     });
-    await replyV2Notice(
+    await notice(
       interaction,
       '❌ Configure o **Canal de formulário** em Recrutamento (ou execute em um canal de texto).',
       true,
@@ -201,14 +460,14 @@ async function publishApplicationCard(
     return;
   }
 
-  const target = await interaction.client.channels.fetch(targetId).catch(() => null);
+  const target = await (interaction as any).client.channels.fetch(targetId).catch(() => null);
   if (!target || !target.isTextBased()) {
     console.warn('[recruit] Target channel not text-based or not found:', { targetId });
-    await replyV2Notice(interaction, '❌ Canal alvo inválido para publicar o formulário.', true);
+    await notice(interaction, '❌ Canal alvo inválido para publicar o formulário.', true);
     return;
   }
 
-  const cardPayload = await buildApplicationCard(interaction.client, app as any, {
+  const cardPayload = await buildApplicationCard((interaction as any).client, app as any, {
     questions: recruitStore.parseQuestions(settings.questions),
     dmAcceptedTemplate: settings.dmAcceptedTemplate,
     dmRejectedTemplate: settings.dmRejectedTemplate,
@@ -216,7 +475,6 @@ async function publishApplicationCard(
 
   const sent = await (target as GuildTextBasedChannel).send(cardPayload);
 
-  // guarda referência do card para futuras edições
   try {
     await recruitStore.setCardRef(app.id, {
       channelId: (sent.channel as any).id,
@@ -224,11 +482,7 @@ async function publishApplicationCard(
     });
   } catch {}
 
-  await replyV2Notice(
-    interaction,
-    '✅ Sua candidatura foi registrada! Aguarde retorno da staff.',
-    true,
-  );
+  await notice(interaction, '✅ Sua candidatura foi registrada! Aguarde retorno da staff.', true);
 }
 
 /* -------------------------------------------------------
@@ -251,11 +505,12 @@ export function renderRecruitSettingsUI(
       `Formulários: ${s.formsChannelId ? `<#${s.formsChannelId}>` : '_não definido_'}`,
     body,
     buttons: [
-      { id: ids.recruit.settingsForm,         label: 'Editar formulário' },
+      { id: ids.recruit.settingsForm, label: 'Editar formulário' },
       { id: ids.recruit.settingsPanelChannel, label: 'Canal de Recrutamento' },
       { id: ids.recruit.settingsFormsChannel, label: 'Canal de formulário' },
-      { id: ids.recruit.settingsAppearance,   label: 'Aparência' },
-      { id: ids.recruit.settingsDM,           label: 'DM Templates' },
+      { id: ids.recruit.settingsAppearance, label: 'Aparência' },
+      { id: ids.recruit.settingsDM, label: 'DM Templates' },
+      { id: ids.recruit.settingsClasses, label: 'Gerir Classes' },
     ],
     back: { id: 'dash:recruit', label: 'Voltar' },
   });
@@ -270,9 +525,7 @@ export async function openEditFormModal(inter: ButtonInteraction) {
   const s = await recruitStore.getSettings(inter.guildId!);
   const qs: string[] = recruitStore.parseQuestions(s.questions);
 
-  const modal = new ModalBuilder()
-    .setCustomId(ids.recruit.modalForm)
-    .setTitle('Editar formulário (4 perguntas)');
+  const modal = new ModalBuilder().setCustomId(ids.recruit.modalForm).setTitle('Editar formulário (4 perguntas)');
 
   for (let i = 0; i < 4; i++) {
     modal.addComponents(
@@ -291,11 +544,12 @@ export async function openEditFormModal(inter: ButtonInteraction) {
 }
 
 export async function handleEditFormSubmit(inter: ModalSubmitInteraction) {
+  await ack(inter, { ephemeral: true });
   const qs = [1, 2, 3, 4]
-    .map((i) => (inter.fields.getTextInputValue(`q${i}`) || '').trim())
+    .map((i) => ((inter as any).fields.getTextInputValue(`q${i}`) || '').trim())
     .filter(Boolean);
   await recruitStore.updateSettings(inter.guildId!, { questions: qs });
-  await replyV2Notice(inter, '✅ Formulário atualizado.', true);
+  await notice(inter, '✅ Formulário atualizado.', true);
 }
 
 export async function openAppearanceModal(inter: ButtonInteraction) {
@@ -338,19 +592,18 @@ export async function openAppearanceModal(inter: ButtonInteraction) {
 }
 
 export async function handleAppearanceSubmit(inter: ModalSubmitInteraction) {
+  await ack(inter, { ephemeral: true });
   await recruitStore.updateSettings(inter.guildId!, {
-    appearanceTitle: (inter.fields.getTextInputValue('title') || '').trim() || null,
-    appearanceDescription: (inter.fields.getTextInputValue('desc') || '').trim() || null,
-    appearanceImageUrl: (inter.fields.getTextInputValue('image') || '').trim() || null,
+    appearanceTitle: ((inter as any).fields.getTextInputValue('title') || '').trim() || null,
+    appearanceDescription: ((inter as any).fields.getTextInputValue('desc') || '').trim() || null,
+    appearanceImageUrl: ((inter as any).fields.getTextInputValue('image') || '').trim() || null,
   });
-  await replyV2Notice(inter, '✅ Aparência atualizada.', true);
+  await notice(inter, '✅ Aparência atualizada.', true);
 }
 
 export async function openDMTemplatesModal(inter: ButtonInteraction) {
   const s = await recruitStore.getSettings(inter.guildId!);
-  const modal = new ModalBuilder()
-    .setCustomId(ids.recruit.modalDM)
-    .setTitle('Templates de DM');
+  const modal = new ModalBuilder().setCustomId(ids.recruit.modalDM).setTitle('Templates de DM');
 
   modal.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -377,14 +630,15 @@ export async function openDMTemplatesModal(inter: ButtonInteraction) {
 }
 
 export async function handleDMTemplatesSubmit(inter: ModalSubmitInteraction) {
+  await ack(inter, { ephemeral: true });
   await recruitStore.updateSettings(inter.guildId!, {
     dmAcceptedTemplate:
-      (inter.fields.getTextInputValue('ok') || '').trim() || 'Parabéns! Você foi aprovado 🎉',
+      ((inter as any).fields.getTextInputValue('ok') || '').trim() || 'Parabéns! Você foi aprovado 🎉',
     dmRejectedTemplate:
-      (inter.fields.getTextInputValue('no') || '').trim() ||
+      ((inter as any).fields.getTextInputValue('no') || '').trim() ||
       'Obrigado por se inscrever. Infelizmente sua candidatura foi recusada. Motivo: {reason}',
   });
-  await replyV2Notice(inter, '✅ Templates de DM atualizados.', true);
+  await notice(inter, '✅ Templates de DM atualizados.', true);
 }
 
 /* -------------------------------------------------------
@@ -435,9 +689,10 @@ export async function openSelectFormsChannel(inter: ButtonInteraction) {
 }
 
 export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms') {
+  await ack(inter as ButtonInteraction, { ephemeral: true });
   const selId = (inter.values?.[0] as string | undefined) ?? undefined;
   if (!selId) {
-    await replyV2Notice(inter, '❌ Selecione um canal.', true);
+    await notice(inter, '❌ Selecione um canal.', true);
     return;
   }
 
@@ -446,38 +701,97 @@ export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms') {
   if (kind === 'forms') data.formsChannelId = selId;
 
   await recruitStore.updateSettings(inter.guildId!, data);
-  await replyV2Notice(inter, '✅ Canal salvo.', true);
+  await notice(inter, '✅ Canal salvo.', true);
 }
 
 /* -------------------------------------------------------
  * Decisão (aprovar / recusar) + refresh de card
  * ----------------------------------------------------- */
 export async function handleDecisionApprove(inter: ButtonInteraction, appId: string) {
-  // Quem aprovou (display name > global name > username)
-  const approverDisplay =
-    (inter.member && 'displayName' in inter.member ? inter.member.displayName : null) ??
-    inter.user.globalName ??
-    inter.user.username;
-
-  // Salva status + metadados do moderador (sem motivo)
-  const app = await recruitStore.updateStatus(
-    appId,
-    'approved',
-    null,                  // reason
-    inter.user.id,         // moderatedById
-    approverDisplay,       // moderatedByDisplay
-  );
-
-  await refreshCard(inter, appId);
-
-  const s = await recruitStore.getSettings(app.guildId);
-  const templ = s.dmAcceptedTemplate ?? 'Parabéns! Você foi aprovado 🎉';
+  const k = keyFrom(inter);
+  if (processing.has(k)) {
+    await ack(inter, { update: true });
+    return;
+  }
+  processing.add(k);
 
   try {
-    const u = await inter.client.users.fetch(app.userId);
-    await u.send(templ);   // DM de aprovado não precisa de {reason}
-  } catch {}
-  await replyV2Notice(inter, '✅ Aplicação aprovada.', true);
+    await ack(inter, { ephemeral: true });
+
+    const approverDisplay =
+      (inter.member && 'displayName' in inter.member ? (inter.member as any).displayName : null) ??
+      inter.user.globalName ??
+      inter.user.username;
+
+    const app = await recruitStore.updateStatus(appId, 'approved', null, inter.user.id, approverDisplay);
+
+    // ====== DISCORD: nick + cargos (cor/emoji/hoist para classe) ======
+    const guild =
+      inter.guild ?? (await inter.client.guilds.fetch(app.guildId).then((g) => g.fetch()).catch(() => null));
+
+    if (guild) {
+      // 1) Nick do formulário
+      if ((app as any).nick) {
+        await setNicknameSafe(guild, app.userId, (app as any).nick);
+      }
+
+      const settings = await recruitStore.getSettings(app.guildId);
+
+      // 2) Cargo geral (Aprovado) via defaultApprovedRoleId
+      let generalRoleId: string | null | undefined = (settings as any).defaultApprovedRoleId;
+      if (!generalRoleId) {
+        const role = await ensureRoleByName(guild, 'Aprovado');
+        generalRoleId = role.id;
+        try {
+          await recruitStore.updateSettings(app.guildId, { defaultApprovedRoleId: role.id });
+        } catch {}
+      }
+
+      // 3) Cargo de classe com estilo (cor/emoji/hoist)
+      let classRoleId: string | null = null;
+      const className = ((app as any).className || '').trim();
+      if (className) {
+        const meta = getClassMeta(settings, className);
+
+        // compat: usa mapeamento do store se existir; senão, usa meta?.id
+        const getClassRoleId = (recruitStore as any).getClassRoleId?.bind(recruitStore);
+        const setClassRoleId = (recruitStore as any).setClassRoleId?.bind(recruitStore);
+        const savedId = getClassRoleId ? await getClassRoleId(app.guildId, className) : meta?.id ?? undefined;
+
+        const role = await ensureClassRoleWithStyle(
+          guild,
+          className,
+          meta?.emoji ?? undefined,
+          meta?.color ?? undefined,
+          savedId ?? undefined,
+        );
+        classRoleId = role.id;
+
+        try {
+          if (setClassRoleId) await setClassRoleId(app.guildId, className, role.id);
+        } catch {}
+      }
+
+      // 4) Atribui cargos
+      const rolesToAdd = [generalRoleId, classRoleId].filter(Boolean) as string[];
+      if (rolesToAdd.length) {
+        await addRolesSafe(guild, app.userId, rolesToAdd);
+      }
+    }
+
+    await refreshCard(inter, appId);
+
+    const s = await recruitStore.getSettings(app.guildId);
+    const templ = s.dmAcceptedTemplate ?? 'Parabéns! Você foi aprovado 🎉';
+    try {
+      const u = await inter.client.users.fetch(app.userId);
+      await u.send(templ);
+    } catch {}
+
+    await notice(inter, '✅ Aplicação aprovada. Nick atualizado e cargos atribuídos.', true);
+  } finally {
+    processing.delete(k);
+  }
 }
 
 export async function handleDecisionRejectOpen(inter: ButtonInteraction, appId: string) {
@@ -499,46 +813,43 @@ export async function handleDecisionRejectOpen(inter: ButtonInteraction, appId: 
 }
 
 export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, appId: string) {
-  // Motivo puro, sem anexar o moderador (isso vai só para o card/log)
-  const reason = (inter.fields.getTextInputValue('reason') || '').trim() || 'Sem motivo informado';
+  await ack(inter, { ephemeral: true });
+
+  const reason = ((inter as any).fields.getTextInputValue('reason') || '').trim() || 'Sem motivo informado';
 
   const moderatorDisplay =
-    (inter.member && 'displayName' in inter.member ? inter.member.displayName : null) ??
-    inter.user.globalName ??
-    inter.user.username;
+    ((inter as any).member && 'displayName' in (inter as any).member
+      ? ((inter as any).member as any).displayName
+      : null) ??
+    (inter as any).user.globalName ??
+    (inter as any).user.username;
 
-  const app = await recruitStore.updateStatus(
-    appId,
-    'rejected',
-    reason,               // reason salvo puro
-    inter.user.id,        // moderatedById
-    moderatorDisplay,     // moderatedByDisplay
-  );
-  await refreshCard(inter, appId);
+  const app = await recruitStore.updateStatus(appId, 'rejected', reason, (inter as any).user.id, moderatorDisplay);
 
-  const s = await recruitStore.getSettings(app.guildId);
-  const templ = (s.dmRejectedTemplate ?? 'Sua candidatura foi recusada. Motivo: {reason}')
-    .replaceAll('{reason}', reason); // <- só o motivo, sem nome do staff
+  await refreshCard(inter as any, appId);
+
+  const s = await recruitStore.getSettings((app as any).guildId);
+  const templ = (s.dmRejectedTemplate ?? 'Sua candidatura foi recusada. Motivo: {reason}').replaceAll('{reason}', reason);
 
   try {
-    const u = await inter.client.users.fetch(app.userId);
+    const u = await (inter as any).client.users.fetch((app as any).userId);
     await u.send(templ);
   } catch {}
-  await replyV2Notice(inter, '✅ Aplicação recusada.', true);
+  await notice(inter as any, '✅ Aplicação recusada.', true);
 }
 
 async function refreshCard(inter: ButtonInteraction | ModalSubmitInteraction, appId: string) {
   const app = await recruitStore.getById(appId);
   if (!app?.channelId || !app?.messageId) return;
 
-  const ch = await inter.client.channels.fetch(app.channelId).catch(() => null);
+  const ch = await (inter as any).client.channels.fetch(app.channelId).catch(() => null);
   if (!ch?.isTextBased()) return;
 
   const msg = await (ch as GuildTextBasedChannel).messages.fetch(app.messageId).catch(() => null);
   if (!msg) return;
 
   const s = await recruitStore.getSettings(app.guildId);
-  const card = await buildApplicationCard(inter.client, app as any, {
+  const card = await buildApplicationCard((inter as any).client, app as any, {
     questions: recruitStore.parseQuestions(s.questions),
     dmAcceptedTemplate: s.dmAcceptedTemplate,
     dmRejectedTemplate: s.dmRejectedTemplate,

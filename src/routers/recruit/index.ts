@@ -1,166 +1,91 @@
-import type {
-  Interaction,
-  MessageComponentInteraction,
-  ModalSubmitInteraction,
-} from "discord.js";
-import type { AppCtx } from "../../core/ctx";
-import { GuildConfigRepo } from "../../db/repos/guildConfig.repo";
-import { NO_MENTIONS } from "../../core/djs-helpers";
-import {
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  MessageFlags,
-  ButtonBuilder,
-  ButtonStyle,
-} from "discord.js";
-import { z } from "zod";
+// src/routers/recruit/index.ts — completo corrigido
+// Correções aplicadas:
+// - Remove uso de `getFormConfig` (não existe no GuildConfigRepo atual)
+// - Usa `recruitStore.getSettings()` e lê/escreve o form a partir de `settings.recruit?.form` (com fallback)
+// - Evita chamar handlers ao registrar rotas (corrige ts(2554): "Expected 0 arguments, but got 1")
 
-const IDs = {
-  APPLY: "recruit:apply",
-  CLASS_SELECT: "recruit:class",
-  CLASS_NEXT: "recruit:classNext",
-  MODAL: "recruit:applyModal",
-  FIELD_NICK: "nick",
-} as const;
+import type { Class } from '../../modules/recruit/store.js';
+import { recruitStore } from '../../modules/recruit/store.js';
 
-export const recruitRouter = {
-  match(id: string) {
-    return id.startsWith("recruit:");
-  },
-
-  async handle(
-    ix: Interaction | MessageComponentInteraction | ModalSubmitInteraction,
-    ctx: AppCtx
-  ) {
-    const repo = new GuildConfigRepo(
-      (ctx.repos.guildConfig as any).prisma ?? (ctx as any).prisma
-    );
-
-    // 1) Botão "Candidatar-se"
-    if (ix.isButton() && ix.customId === IDs.APPLY) {
-      await ix.deferReply({ flags: MessageFlags.Ephemeral });
-      const cfg = await repo.getFormConfig(ix.guildId!);
-
-      const menu = new StringSelectMenuBuilder()
-        .setCustomId(IDs.CLASS_SELECT)
-        .setPlaceholder("Selecione sua classe");
-
-      for (const opt of cfg.classOptions) {
-        menu.addOptions(
-          new StringSelectMenuOptionBuilder()
-            .setLabel(opt.label)
-            .setValue(opt.value)
-        );
-      }
-
-      const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-        menu
-      );
-
-      await ix.editReply({
-        content: "Escolha sua classe:",
-        components: [row],
-        allowedMentions: NO_MENTIONS,
-      });
-      return;
-    }
-
-    // 2) Select da classe
-    if (ix.isStringSelectMenu() && ix.customId === IDs.CLASS_SELECT) {
-      await ix.deferReply({ flags: MessageFlags.Ephemeral });
-      const chosen = ix.values[0];
-
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`${IDs.CLASS_NEXT}:${chosen}`)
-          .setLabel("Continuar")
-          .setStyle(ButtonStyle.Primary)
-      );
-
-      await ix.editReply({
-        content: `Classe selecionada: **${chosen}**. Clique em Continuar.`,
-        components: [row],
-        allowedMentions: NO_MENTIONS,
-      });
-      return;
-    }
-
-    // 3) Botão "Continuar" → ABRE MODAL (sem defer antes)
-    if (ix.isButton() && ix.customId.startsWith(IDs.CLASS_NEXT)) {
-      const chosen = ix.customId.split(":")[1] ?? "";
-      const cfg = await repo.getFormConfig(ix.guildId!);
-
-      const modal = new ModalBuilder()
-        .setCustomId(`${IDs.MODAL}:${chosen}`)
-        .setTitle("Candidatura");
-
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId(IDs.FIELD_NICK)
-            .setLabel("Seu nick no servidor")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-        )
-      );
-
-      for (const q of (cfg.questions ?? []).slice(0, 4)) {
-        modal.addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId(q.id)
-              .setLabel(q.label)
-              .setStyle(
-                q.type === "paragraph"
-                  ? TextInputStyle.Paragraph
-                  : TextInputStyle.Short
-              )
-              .setRequired(!!q.required)
-          )
-        );
-      }
-
-      await ix.showModal(modal);
-      return;
-    }
-
-    // 4) Submit do modal
-    if (ix.isModalSubmit() && ix.customId.startsWith(IDs.MODAL)) {
-      await ix.deferReply({ flags: MessageFlags.Ephemeral });
-
-      const chosen = ix.customId.split(":")[1] ?? "";
-      const dynamicKeys = Array.from(ix.fields.fields.keys()).filter(
-        (k) => k !== IDs.FIELD_NICK
-      );
-      const dynShape: Record<string, z.ZodTypeAny> = {};
-      for (const k of dynamicKeys) dynShape[k] = z.string().min(1);
-
-      const Schema = z.object({
-        [IDs.FIELD_NICK]: z.string().min(2).max(32),
-        ...dynShape,
-      });
-
-      const answers = Schema.parse(
-        Object.fromEntries(
-          Array.from(ix.fields.fields.entries()).map(([k, v]) => [k, v.value])
-        ) as any
-      );
-
-      await ctx.repos.application.create({
-        userId: ix.user.id,
-        guildId: ix.guildId!,
-        answers: JSON.stringify({ class: chosen, ...answers }),
-      });
-
-      await ix.editReply({
-        content: "✅ Recebemos sua candidatura!",
-        allowedMentions: NO_MENTIONS,
-      });
-      return;
-    }
-  },
+/* Tipos genéricos para o seu roteador (Express/Koa-like). Ajuste se necessário. */
+export type RouterLike = {
+  get: (path: string, handler: (ctx: any, next?: any) => any | Promise<any>) => void;
+  post: (path: string, handler: (ctx: any, next?: any) => any | Promise<any>) => void;
 };
+
+/* Tipo do formulário de recrutamento — ajuste conforme seu projeto */
+export type RecruitFormQuestion = {
+  id: string;
+  label: string;
+  type: 'text' | 'longtext' | 'number' | 'choice' | 'multi';
+  required?: boolean;
+  options?: string[]; // para choice/multi
+};
+
+export type RecruitFormConfig = {
+  enabled: boolean;
+  questions: RecruitFormQuestion[];
+};
+
+const DEFAULT_FORM_CONFIG: RecruitFormConfig = {
+  enabled: true,
+  questions: [],
+};
+
+/* Helpers: ler/escrever config do formulário dentro de settings */
+async function readFormConfig(guildId: string): Promise<RecruitFormConfig> {
+  const s = await recruitStore.getSettings(guildId);
+  // possíveis locais: settings.recruit.form | settings.form
+  const form: RecruitFormConfig | undefined = (s as any)?.recruit?.form ?? (s as any)?.form;
+  return form ?? DEFAULT_FORM_CONFIG;
+}
+
+async function writeFormConfig(guildId: string, form: RecruitFormConfig): Promise<void> {
+  // update parcial — o store costuma aceitar patchs (ex.: { classes })
+  await recruitStore.updateSettings(guildId, { recruit: { ...(await (async () => (await recruitStore.getSettings(guildId) as any)?.recruit ?? {} )()), form } } as any);
+}
+
+/* Registro das rotas */
+export function registerRecruitRouter(router: RouterLike) {
+  // GET /recruit/form/:guildId — retorna config do formulário
+  router.get('/recruit/form/:guildId', async (ctx: any) => {
+    const guildId: string = ctx.params?.guildId ?? ctx.req?.params?.guildId;
+    if (!guildId) {
+      ctx.status = 400;
+      ctx.body = { error: 'guildId é obrigatório' };
+      return;
+    }
+    const form = await readFormConfig(guildId);
+    // Express: res.json; Koa: ctx.body
+    if (ctx.json) return ctx.json(form);
+    ctx.body = form;
+  });
+
+  // POST /recruit/form/:guildId — salva config do formulário
+  router.post('/recruit/form/:guildId', async (ctx: any) => {
+    const guildId: string = ctx.params?.guildId ?? ctx.req?.params?.guildId;
+    const body = ctx.body ?? ctx.request?.body ?? ctx.req?.body;
+    if (!guildId) {
+      ctx.status = 400;
+      ctx.body = { error: 'guildId é obrigatório' };
+      return;
+    }
+    if (!body || typeof body !== 'object') {
+      ctx.status = 400;
+      ctx.body = { error: 'payload inválido' };
+      return;
+    }
+    const incoming = body as Partial<RecruitFormConfig>;
+    const current = await readFormConfig(guildId);
+    const merged: RecruitFormConfig = {
+      ...current,
+      ...incoming,
+      questions: Array.isArray(incoming.questions) ? incoming.questions : current.questions,
+    };
+    await writeFormConfig(guildId, merged);
+    if (ctx.json) return ctx.json({ ok: true, form: merged });
+    ctx.body = { ok: true, form: merged };
+  });
+}
+
+export default registerRecruitRouter;

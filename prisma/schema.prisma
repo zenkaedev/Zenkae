@@ -8,23 +8,24 @@ generator client {
 }
 
 model Application {
-  id          String   @id @default(cuid())
-  guildId     String
-  userId      String
-  username    String
-  nick        String
-  className   String
-  classId     String?
-  status      String   @default("pending") // pending | approved | rejected
-  qAnswers    String?
-  reason      String?
-  messageId   String?
-  channelId   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  username  String
+  nick      String
+  className String
+  classId   String?
+  status    String   @default("pending") // pending | approved | rejected
+  qAnswers  String?
+  reason    String?
+  messageId String?
+  channelId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Campos de moderação unificados
-  moderatorId String?
+  moderatedById String? // ID do moderador que fez a ação
+  moderatedByDisplay String? // Nome ou ID do moderador
   moderatedAt DateTime?
 
   @@index([guildId, userId])
@@ -40,15 +41,15 @@ model RecruitSettings {
   appearanceThumbUrl    String?
   appearanceAccent      Int?
   questions             String  @default("[]")
-  
+
   // Campos para gestão de classes e automação
   classes               String  @default("[]")
   defaultApprovedRoleId String?
 
-  dmAcceptedTemplate    String  @default("Parabéns! Você foi aprovado 🎉")
-  dmRejectedTemplate    String  @default("Obrigado por se inscrever. Infelizmente sua candidatura foi recusada. Motivo: {reason}")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  dmAcceptedTemplate String   @default("Parabéns! Você foi aprovado 🎉")
+  dmRejectedTemplate String   @default("Obrigado por se inscrever. Infelizmente sua candidatura foi recusada. Motivo: {reason}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model MessageCounter {
@@ -92,7 +93,7 @@ model EventRsvp {
   eventId   String
   guildId   String
   userId    String
-  choice    String   // 'yes' | 'maybe' | 'no'
+  choice    String // 'yes' | 'maybe' | 'no'
   updatedAt DateTime @updatedAt
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -104,7 +105,7 @@ model EventRsvp {
 model EventReminder {
   id      String   @id @default(cuid())
   eventId String
-  kind    String   // '24h' | '1h' | '15m'
+  kind    String // '24h' | '1h' | '15m'
   sentAt  DateTime @default(now())
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
