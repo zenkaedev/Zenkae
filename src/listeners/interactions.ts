@@ -1,4 +1,4 @@
-// src/listeners/interactions.ts — FINAL (com SELECT de classes, asserts e flags)
+// src/listeners/interactions.ts — FINAL (com SELECT de classes, asserts e flags + POLL)
 import {
   Events,
   MessageFlags,
@@ -64,6 +64,11 @@ import { cancelEvent, notifyConfirmed } from '../modules/events/staff.js';
 // Activity
 import { publishActivityPanel, handleActivityCheck } from '../modules/activity/panel.js';
 
+// === POLL (NOVO) ===
+import { executePoll } from '../commands/poll.js';
+import { handlePollButton, handleCreatePollSubmit } from '../ui/poll/panel.js';
+import { pollIds } from '../ui/poll/ids.js';
+
 /** Mantém local para evitar import quebrado */
 type RecruitFilter = 'all' | 'pending' | 'approved' | 'rejected';
 
@@ -85,6 +90,14 @@ export function registerInteractionRouter(client: Client) {
           flags: (base.flags ?? 0) | (privado ? MessageFlags.Ephemeral : 0),
         };
         await interaction.reply(reply);
+        return;
+      }
+
+      /* ==================================================
+       *                    /poll (NOVO)
+       * ================================================== */
+      if (interaction.isChatInputCommand() && interaction.commandName === 'poll') {
+        await executePoll(interaction as any);
         return;
       }
 
@@ -352,6 +365,27 @@ export function registerInteractionRouter(client: Client) {
        * ================================================== */
       if (interaction.isButton() && interaction.customId === ids.admin.clean) {
         await interaction.update({ components: [] });
+        return;
+      }
+
+      /* ==================================================
+       *                 POLL Components/Modal (NOVO)
+       * ================================================== */
+      // Colocado ao fim para não interferir no restante
+      if (interaction.isButton() && interaction.customId?.startsWith('poll:')) {
+        try {
+          await handlePollButton(interaction as any);
+        } catch {
+          await replyV2Notice(interaction, '❌ Erro ao processar ação da enquete.', true);
+        }
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId === pollIds.createModal) {
+        try {
+          await handleCreatePollSubmit(interaction as any);
+        } catch {
+          await replyV2Notice(interaction, '❌ Erro ao processar formulário da enquete.', true);
+        }
         return;
       }
     } catch (err) {
