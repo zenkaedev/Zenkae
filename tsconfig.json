@@ -1,14 +1,20 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
     "strict": true,
     "noUncheckedIndexedAccess": true,
+
     "outDir": "dist",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    "types": ["node"],
+    "sourceMap": true,
+    "verbatimModuleSyntax": true
   },
-  "include": ["src", "scripts"]
+  "include": ["src", "scripts", "prisma"]
 }

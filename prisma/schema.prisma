@@ -158,6 +158,27 @@ model Poll {
   @@index([guildId, endsAt])
 }
 
+model VoiceActivity {
+  guildId      String
+  userId       String
+  totalSeconds Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@id([guildId, userId])
+  @@index([guildId, totalSeconds])
+}
+
+model VoiceActivityWeek {
+  guildId      String
+  userId       String
+  weekStart    DateTime
+  totalSeconds Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@id([guildId, userId, weekStart])
+  @@index([guildId, weekStart, totalSeconds])
+}
+
 model PollVote {
   id        String   @id @default(cuid())
   pollId    String

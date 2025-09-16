@@ -4,9 +4,9 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
-import type { AppCtx } from "../core/ctx";
-import { buildClassStep } from "../ui/recruit/form";
-import { loadFormConfig } from "../services/recruit.config"; // CORREÇÃO: A função se chama loadFormConfig
+import type { AppCtx } from "../core/ctx.js";
+import { buildClassStep } from "../ui/recruit/form.js";
+import { loadFormConfig } from "../services/recruit.config.js"; // CORREÇÃO: A função se chama loadFormConfig
 
 // Exporta a definição do comando para o script de deploy
 export const recruitCommandData = new SlashCommandBuilder()

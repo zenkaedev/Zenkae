@@ -1,11 +1,13 @@
 // src/commands/poll.ts
 import {
   SlashCommandBuilder,
-  ChatInputCommandInteraction,
+  type ChatInputCommandInteraction,
   PermissionFlagsBits,
 } from 'discord.js';
-import { openCreatePollModal, buildPollPayload } from '../ui/poll/panel';
-import { pollStore } from '../modules/poll/store';
+
+// ESM/NodeNext: imports relativos com .js
+import { openCreatePollModal, buildPollPayload } from '../ui/poll/panel.js';
+import { pollStore } from '../modules/poll/store.js';
 
 type MsgLink = { guildId: string; channelId: string; messageId: string } | null;
 function parseMessageLink(s: string): MsgLink {
@@ -13,7 +15,8 @@ function parseMessageLink(s: string): MsgLink {
   return m ? { guildId: m[1]!, channelId: m[2]!, messageId: m[3]! } : null;
 }
 
-export const pollCommandData = new SlashCommandBuilder()
+// ✅ agora exportamos o BUILDER (não JSON)
+export const data = new SlashCommandBuilder()
   .setName('poll')
   .setDescription('Criar e gerenciar enquetes')
   .addSubcommand((sc) => sc.setName('create').setDescription('Criar uma nova enquete'))
@@ -26,66 +29,46 @@ export const pollCommandData = new SlashCommandBuilder()
       ),
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  .toJSON();
+  .setDMPermission(false);
 
-export async function executePoll(inter: ChatInputCommandInteraction) {
-  // Guard: responder efêmero se não estiver em guild
+export async function execute(inter: ChatInputCommandInteraction) {
   if (!inter.inGuild()) {
     if (inter.isRepliable()) {
-      await inter
-        .reply({ content: 'Use este comando dentro de um servidor.', flags: 64 })
-        .catch(() => {});
+      await inter.reply({ content: 'Use este comando dentro de um servidor.', ephemeral: true }).catch(() => {});
     }
     return;
   }
 
-  // Subcommand robusto (não quebra se o Discord não enviar o sub explicitamente)
   const sub = inter.options.getSubcommand(false) ?? 'create';
 
-  // /poll create
   if (sub === 'create') {
-    // DIAGNÓSTICO: validar API disponível e abrir modal sem nenhum await pesado
     try {
-      // Algumas builds/ambientes transpõem tipos; garantimos que a função existe
       const anyInter = inter as any;
       if (typeof anyInter.showModal !== 'function') {
-        await inter
-          .reply({
-            content:
-              '❌ Este ambiente não expõe `interaction.showModal`. Verifique versão do discord.js (v14+) e intents.',
-            flags: 64,
-          })
-          .catch(() => {});
+        await inter.reply({
+          content: '❌ Este ambiente não expõe `interaction.showModal`. Verifique a versão do discord.js (v14+) e intents.',
+          ephemeral: true,
+        }).catch(() => {});
         return;
       }
-
-      // Abrir modal imediatamente
       await openCreatePollModal(inter as any);
       return;
     } catch (err: any) {
-      // Tornar o erro visível pra depurar (efêmero, sem stack poluída ao usuário)
-      const msg =
-        (err?.message as string) ||
-        (typeof err === 'string' ? err : 'Erro desconhecido ao abrir o modal.');
+      const msg = (err?.message as string) || (typeof err === 'string' ? err : 'Erro desconhecido ao abrir o modal.');
       if (inter.isRepliable()) {
         await inter
-          .reply({ content: `❌ Falha ao abrir o modal:\n\`\`\`${msg}\`\`\``, flags: 64 })
+          .reply({ content: `❌ Falha ao abrir o modal:\n\`\`\`${msg}\`\`\``, ephemeral: true })
           .catch(async () => {
             if (!inter.replied && !inter.deferred) {
-              await inter.followUp({ content: `❌ ${msg}`, flags: 64 }).catch(() => {});
+              await inter.followUp({ content: `❌ ${msg}`, ephemeral: true }).catch(() => {});
             }
           });
       }
-      // Log no console para inspeção no runner
-      try {
-        // eslint-disable-next-line no-console
-        console.error('[poll:create] showModal error:', err);
-      } catch {}
+      try { console.error('[poll:create] showModal error:', err); } catch {}
       return;
     }
   }
 
-  // /poll close mensagem:<link>
   if (sub === 'close') {
     await inter.deferReply({ ephemeral: true });
 
@@ -95,7 +78,7 @@ export async function executePoll(inter: ChatInputCommandInteraction) {
     if (parsed.guildId !== inter.guildId) return inter.editReply('❌ Essa mensagem não é deste servidor.');
 
     const ch = await inter.guild!.channels.fetch(parsed.channelId).catch(() => null);
-    if (!ch || !('isTextBased' in ch) || !ch.isTextBased())
+    if (!ch || !('isTextBased' in ch) || !(ch as any).isTextBased())
       return inter.editReply('❌ Canal não encontrado ou não é de texto.');
 
     const msg = await (ch as any).messages.fetch(parsed.messageId).catch(() => null);
@@ -127,14 +110,15 @@ export async function executePoll(inter: ChatInputCommandInteraction) {
     try {
       await msg.edit(payload as any);
     } catch {
-      await inter.followUp({ ...(payload as any), flags: 1 << 6 } as any).catch(() => {});
+      await inter.followUp({ ...(payload as any), ephemeral: true } as any).catch(() => {});
     }
 
     return inter.editReply('✅ Enquete encerrada.');
   }
 
-  // fallback
-  await inter.reply({ content: 'Subcomando não reconhecido.', flags: 64 }).catch(() => {});
+  await inter.reply({ content: 'Subcomando não reconhecido.', ephemeral: true }).catch(() => {});
 }
 
-export default { data: pollCommandData, execute: executePoll };
+// default + alias para compatibilidade com seu router atual
+export default { data, execute };
+export { execute as executePoll };
