@@ -8,21 +8,53 @@ import { PrismaClient } from '@prisma/client';
 import { loadCommands } from './commands/index.js';
 import { registerVoiceActivity } from './listeners/voiceActivity.js';
 
-const prisma = new PrismaClient();
+let prisma: PrismaClient | null = null;
 let clientRef: Client | null = null;
 
-async function bootstrap() {
-  // Warm-up do DB
-  await prisma.$queryRaw`SELECT 1`;
+function debugEnv() {
+  const keys = ["DISCORD_TOKEN", "DISCORD_CLIENT_ID", "CLIENT_ID", "DATABASE_URL"];
+  const present = keys.reduce<Record<string, boolean>>((acc, k) => {
+    acc[k] = !!process.env[k];
+    return acc;
+  }, {});
+  // DEBUG não vaza valores sensíveis
+  console.log("🔎 ENV check:", present);
+  if (!present.DATABASE_URL) {
+    // erro explícito pra evitar mensagem confusa do Prisma
+    throw new Error(
+      "DATABASE_URL ausente. Cadastre em Variáveis de Ambiente da Square Cloud " +
+      "(sem aspas, 1 linha, incluindo ?sslmode=require&channel_binding=require)."
+    );
+  }
+}
 
+async function warmupDB() {
+  prisma = new PrismaClient();
+  try {
+    // simples SELECT 1 só pra subir o engine com a DATABASE_URL
+    await prisma.$queryRaw`SELECT 1`;
+    console.log("✅ Prisma conectado");
+  } catch (err) {
+    console.error("❌ Prisma warm-up falhou. Verifique DATABASE_URL:", err);
+    throw err;
+  }
+}
+
+async function bootstrap() {
+  // 1) Confere ENV (não imprime segredos)
+  debugEnv();
+
+  // 2) Sobe DB
+  await warmupDB();
+
+  // 3) Cria cliente do Discord
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMessages, // necessário para ouvir messageCreate
-      // Se você LÊ message.content, habilite também:
-      // GatewayIntentBits.MessageContent,
-      GatewayIntentBits.GuildVoiceStates, // para voiceStateUpdate
-      GatewayIntentBits.GuildMembers, // (opcional) para joinedAt no card
+      GatewayIntentBits.GuildMessages,
+      // GatewayIntentBits.MessageContent, // habilite se precisar ler conteúdo
+      GatewayIntentBits.GuildVoiceStates,
+      GatewayIntentBits.GuildMembers,
     ],
   });
   clientRef = client;
@@ -46,7 +78,7 @@ async function bootstrap() {
       });
     }
 
-    // Deploy GLOBAL (ligue com DEPLOY_ON_BOOT=true, rode uma vez e desligue)
+    // Deploy GLOBAL opcional
     if (Env.DEPLOY_ON_BOOT) {
       try {
         const rest = new REST({ version: '10' }).setToken(Env.DISCORD_TOKEN);
@@ -61,8 +93,7 @@ async function bootstrap() {
           await rest.put(Routes.applicationCommands(clientId), { body: commands });
           console.log('✅ Deploy global concluído.');
         }
-
-        // (Opcional) limpar comandos por guild antigos:
+        // Limpeza opcional de comandos por guild:
         // if (Env.DEV_GUILD_ID) {
         //   await rest.put(Routes.applicationGuildCommands(clientId, Env.DEV_GUILD_ID), { body: [] });
         //   console.log('🧹 Guild commands antigos limpos.');
@@ -75,11 +106,13 @@ async function bootstrap() {
     startEventReminders(client);
   });
 
-  // Listeners
+  // 4) Listeners
   registerMessageCounter(client);
   registerInteractionRouter(client);
+  if (!prisma) throw new Error("Prisma não inicializado");
   registerVoiceActivity(client, prisma);
 
+  // 5) Login
   await client.login(Env.DISCORD_TOKEN);
 }
 
@@ -90,11 +123,11 @@ async function shutdown(code = 0) {
   shuttingDown = true;
   try {
     if (clientRef) {
-      try {
-        await clientRef.destroy();
-      } catch {}
+      try { await clientRef.destroy(); } catch {}
     }
-    await prisma.$disconnect();
+    if (prisma) {
+      try { await prisma.$disconnect(); } catch {}
+    }
   } finally {
     process.exit(code);
   }
