@@ -5,11 +5,11 @@ import {
   type AttachmentBuilder,
 } from 'discord.js';
 
-import type { FilterKind } from './modules/recruit/types';
-import { buildRecruitList } from './modules/recruit/staff';
-import { buildEventsList } from './modules/events/staff';
-import { buildScreen, loadBannerFrom, loadDefaultBanner } from './ui/v2';
-import { ids } from './ui/ids';
+import type { FilterKind } from './modules/recruit/types.js';
+import { buildRecruitList } from './modules/recruit/staff.js';
+import { buildEventsList } from './modules/events/staff.js';
+import { buildScreen, loadBannerFrom, loadDefaultBanner } from './ui/v2.js';
+import { ids } from './ui/ids.js';
 
 export type DashTab = 'home' | 'recruit' | 'events' | 'admin';
 export type DashState = { tab: DashTab; guildId?: string; filter?: FilterKind };
