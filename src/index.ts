@@ -1,55 +1,43 @@
 // src/index.ts
 import { Client, GatewayIntentBits, Events, ActivityType, REST, Routes } from 'discord.js';
+
+// 👇 Checagem das variáveis de ambiente ANTES de importar Prisma
+const must = (name: string) => {
+  const v = process.env[name];
+  console.log(`[env] ${name}:`, !!v); // não mostra valor real
+  if (!v) throw new Error(`Faltando variável: ${name}`);
+  return v;
+};
+
+must('DISCORD_TOKEN');
+must('DATABASE_URL'); // <- a problemática
+// (opcional) must('DISCORD_CLIENT_ID');
+
 import { Env } from './env.js';
 import { registerInteractionRouter } from './listeners/interactions.js';
 import { startEventReminders } from './scheduler/eventsReminder.js';
 import { registerMessageCounter } from './listeners/messageCount.js';
-// ⚠️ NÃO importar o Prisma aqui em cima – vamos importar depois da checagem de ENV
+import { PrismaClient } from '@prisma/client';
 import { loadCommands } from './commands/index.js';
 import { registerVoiceActivity } from './listeners/voiceActivity.js';
 
-type PrismaClientType = import('@prisma/client').PrismaClient;
-
-let prisma: PrismaClientType | null = null;
+const prisma = new PrismaClient();
 let clientRef: Client | null = null;
 
-function debugEnvOrThrow() {
-  const keys = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'CLIENT_ID', 'DATABASE_URL'];
-  const present = Object.fromEntries(keys.map(k => [k, !!process.env[k]]));
-  console.log('🔎 ENV check:', present);
-
-  if (!process.env.DATABASE_URL) {
-    throw new Error(
-      'DATABASE_URL ausente. Na Square Cloud, crie a variável exatamente como "DATABASE_URL" (sem aspas) e cole a URL COMPLETA do Neon, incluindo "?sslmode=require&channel_binding=require".'
-    );
-  }
-}
-
-async function warmupDB() {
-  const { PrismaClient } = await import('@prisma/client'); // import dinâmico
-  prisma = new PrismaClient();
+async function bootstrap() {
+  // Warm-up do DB
   try {
     await prisma.$queryRaw`SELECT 1`;
     console.log('✅ Prisma conectado');
   } catch (err) {
-    console.error('❌ Prisma warm-up falhou. Verifique DATABASE_URL:', err);
+    console.error('❌ Falha ao conectar no Prisma:', err);
     throw err;
   }
-}
 
-async function bootstrap() {
-  // 1) Checa ENV ANTES de tocar no Prisma
-  debugEnvOrThrow();
-
-  // 2) Sobe DB
-  await warmupDB();
-
-  // 3) Discord client
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
-      // GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildMembers,
     ],
@@ -98,31 +86,12 @@ async function bootstrap() {
 
   registerMessageCounter(client);
   registerInteractionRouter(client);
-  if (!prisma) throw new Error('Prisma não inicializado');
   registerVoiceActivity(client, prisma);
 
   await client.login(Env.DISCORD_TOKEN);
 }
 
-// Shutdown limpo
-let shuttingDown = false;
-async function shutdown(code = 0) {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  try {
-    if (clientRef) { try { await clientRef.destroy(); } catch {} }
-    if (prisma) { try { await prisma.$disconnect(); } catch {} }
-  } finally {
-    process.exit(code);
-  }
-}
-
-process.on('SIGINT', () => void shutdown(0));
-process.on('SIGTERM', () => void shutdown(0));
-process.on('uncaughtException', (err) => { console.error('💥 uncaughtException:', err); void shutdown(1); });
-process.on('unhandledRejection', (reason) => { console.error('💥 unhandledRejection:', reason); void shutdown(1); });
-
 bootstrap().catch((err) => {
   console.error('DB/bootstrap error:', err);
-  void shutdown(1);
+  process.exit(1);
 });
