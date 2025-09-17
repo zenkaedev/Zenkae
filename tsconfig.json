@@ -1,20 +1,46 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    // Opções de Saída
+    "outDir": "./dist",
+    "rootDir": "./src",
+    
+    // Module Resolution
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-
-    "outDir": "dist",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    
+    // Interoperabilidade
     "esModuleInterop": true,
-    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    // Type Checking
+    "strict": true,
     "skipLibCheck": true,
-
-    "types": ["node"],
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    
+    // Emit
+    "declaration": false,
     "sourceMap": true,
-    "verbatimModuleSyntax": true
+    "removeComments": true,
+    
+    // Experimental
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    
+    // Node.js
+    "resolveJsonModule": true,
+    "allowJs": false
   },
-  "include": ["src", "scripts", "prisma"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
