@@ -27,7 +27,7 @@ let clientRef: Client | null = null;
 async function bootstrap() {
   // Warm-up do DB
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await prisma.$executeRawUnsafe('SELECT 1');
     console.log('✅ Prisma conectado');
   } catch (err) {
     console.error('❌ Falha ao conectar no Prisma:', err);
