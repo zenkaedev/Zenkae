@@ -10,8 +10,13 @@ const must = (name: string) => {
 };
 
 must('DISCORD_TOKEN');
-must('DATABASE_URL'); // <- a problemática
-// (opcional) must('DISCORD_CLIENT_ID');
+must('DATABASE_URL'); // precisa estar true aqui
+
+// Debug rápido da URL (pra confirmar host/porta e se tem params)
+try {
+  const u = new URL(process.env.DATABASE_URL!);
+  console.log('[db url]', u.hostname, u.port || '(5432)', u.search || '(sem params)');
+} catch {}
 
 import { Env } from './env.js';
 import { registerInteractionRouter } from './listeners/interactions.js';
@@ -25,7 +30,7 @@ const prisma = new PrismaClient();
 let clientRef: Client | null = null;
 
 async function bootstrap() {
-  // Warm-up do DB
+  // Warm-up do DB (sem prepared statement)
   try {
     await prisma.$executeRawUnsafe('SELECT 1');
     console.log('✅ Prisma conectado');
