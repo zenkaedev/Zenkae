@@ -12,11 +12,21 @@ const must = (name: string) => {
 must('DISCORD_TOKEN');
 must('DATABASE_URL'); // precisa estar true aqui
 
-// Debug rápido da URL (pra confirmar host/porta e se tem params)
+// Debug rápido da URL (pra confirmar host/porta/params)
 try {
   const u = new URL(process.env.DATABASE_URL!);
   console.log('[db url]', u.hostname, u.port || '(5432)', u.search || '(sem params)');
 } catch {}
+
+// 👉 AQUI: cria as tabelas automaticamente no boot (uma vez)
+import { execSync } from 'node:child_process';
+try {
+  console.log('⏳ Aplicando schema no banco (prisma db push)...');
+  execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+  console.log('✅ Schema aplicado');
+} catch (e) {
+  console.error('⚠️ prisma db push falhou (seguindo mesmo assim):', e);
+}
 
 import { Env } from './env.js';
 import { registerInteractionRouter } from './listeners/interactions.js';
