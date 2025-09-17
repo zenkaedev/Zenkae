@@ -1,29 +1,40 @@
 {
   "name": "zenkae-bot",
   "version": "1.0.0",
-  "description": "Bot Discord Zenkae",
-  "main": "dist/index.js",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18.17" },
   "scripts": {
-    "dev": "tsx --env-file=.env src/index.ts",
-    "build": "tsc -p tsconfig.json || exit 1",
-    "start": "node dist/index.js",
-    "deploy": "npm run build && npm run start",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+
+    "postinstall": "prisma generate",
+    "start": "prisma db push --accept-data-loss && tsx src/index.ts",
+    "start:migrate": "prisma migrate deploy && tsx src/index.ts",
+
+    "deploy:global": "tsx scripts/deploy-commands.ts",
+    "clear:guild": "tsx scripts/clear-guild-commands.ts",
+
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
-    "postinstall": "prisma generate"
+    "prisma:migrate": "prisma migrate dev --name init",
+    "migrate:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed"
   },
+  "prisma": { "seed": "tsx prisma/seed.ts" },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "@sentry/node": "^8.43.0",
-    "date-fns": "^2.30.0",
-    "discord.js": "^14.16.3",
+    "@prisma/client": "^5.17.0",
+    "@sentry/node": "^10.5.0",
+    "discord.js": "^14.21.1",
     "dotenv": "^16.4.5",
-    "pino": "^9.5.0",
-    "prisma": "^5.22.0",
-    "typescript": "^5.7.2"
+    "pino": "^9.9.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "^22.10.6",
-    "tsx": "^4.19.2"
+    "@types/pino": "^7.0.4",
+    "prisma": "^5.17.0",
+    "tslib": "^2.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }
