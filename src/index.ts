@@ -18,16 +18,6 @@ try {
   console.log('[db url]', u.hostname, u.port || '(5432)', u.search || '(sem params)');
 } catch {}
 
-// 👉 AQUI: cria as tabelas automaticamente no boot (uma vez)
-import { execSync } from 'node:child_process';
-try {
-  console.log('⏳ Aplicando schema no banco (prisma db push)...');
-  execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
-  console.log('✅ Schema aplicado');
-} catch (e) {
-  console.error('⚠️ prisma db push falhou (seguindo mesmo assim):', e);
-}
-
 import { Env } from './env.js';
 import { registerInteractionRouter } from './listeners/interactions.js';
 import { startEventReminders } from './scheduler/eventsReminder.js';
