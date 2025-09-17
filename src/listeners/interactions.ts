@@ -76,7 +76,7 @@ type RecruitFilter = 'all' | 'pending' | 'approved' | 'rejected';
 async function ensureDeferredModal(i: ModalSubmitInteraction) {
   if (!i.isRepliable()) return;
   if (!i.deferred && !i.replied) {
-    await i.deferReply({ ephemeral: true }).catch(() => {});
+    await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
   }
 }
 
@@ -239,7 +239,7 @@ export function registerInteractionRouter(client: Client) {
         await openNickModal(interaction); return;
       }
       if (interaction.isModalSubmit() && interaction.customId === PUB_IDS.nickModal) {
-        await ensureDeferredModal(interaction); await handleNickModalSubmit(interaction); return;
+        await handleNickModalSubmit(interaction); return;
       }
       if (interaction.isButton() && interaction.customId === PUB_IDS.start) {
         await handleStartClick(interaction); return;
