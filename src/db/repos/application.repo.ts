@@ -22,7 +22,7 @@ export default class ApplicationRepo {
     className: string;
     answers?: string[]; // será serializado
   }) {
-    const qAnswers = data.answers ? JSON.stringify(data.answers) : null;
+    const qAnswers = data.answers ? JSON.stringify(data.answers) : undefined;
     const app = await prisma.application.create({
       data: { guildId: data.guildId, userId: data.userId, username: data.username, nick: data.nick, className: data.className, qAnswers },
     });

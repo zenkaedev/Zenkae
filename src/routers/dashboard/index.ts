@@ -3,7 +3,7 @@ import type {
   MessageComponentInteraction,
   ModalSubmitInteraction,
 } from "discord.js";
-import type { AppCtx } from "../../core/ctx";
+import type { AppCtx } from "../../core/ctx.js";
 import {
   DASH,
   renderDashHome,
@@ -11,7 +11,7 @@ import {
   renderEventsMenu,
   renderEngageMenu,
   renderAdminMenu,
-} from "../../ui/dashboard/home";
+} from "../../ui/dashboard/home.js";
 
 /**
  * Regras:

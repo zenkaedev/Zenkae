@@ -7,7 +7,7 @@ import {
   ComponentType,
 } from 'discord.js';
 import { PrismaClient } from '@prisma/client';
-import { ids } from '../../ui/ids';
+import { ids } from '../../ui/ids.js';
 
 const prisma = new PrismaClient();
 

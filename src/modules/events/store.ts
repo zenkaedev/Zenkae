@@ -1,5 +1,5 @@
-import { prisma } from '../../prisma/client';
-import type { EventDTO, RsvpChoice, EventWithCounts, EventStatus } from './types';
+import { prisma } from '../../prisma/client.js';
+import type { EventDTO, RsvpChoice, EventWithCounts, EventStatus } from './types.js';
 
 function toDTO(e: any): EventDTO {
   return {

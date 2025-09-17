@@ -7,7 +7,7 @@
 import type { Client, User } from 'discord.js';
 import { ButtonStyle, MessageFlags } from 'discord.js';
 // Importa a função para buscar a contagem de mensagens
-import { getMessageCount } from '../../listeners/messageCount';
+import { getMessageCount } from '../../listeners/messageCount.js';
 
 
 // Component type ids (Components V2)

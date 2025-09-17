@@ -1,4 +1,4 @@
-import { prisma } from '../../prisma/client';
+import { prisma } from '../../prisma/client.js';
 
 export const activityStore = {
   async upsertCheck(guildId: string, userId: string) {

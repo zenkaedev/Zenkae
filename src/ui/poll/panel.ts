@@ -11,8 +11,8 @@ import {
   TextInputStyle,
   type Guild,
 } from 'discord.js';
-import { pollStore } from '../../modules/poll/store';
-import { pollIds } from './ids';
+import { pollStore } from '../../modules/poll/store.js';
+import { pollIds } from './ids.js';
 
 const V2 = { ActionRow: 1, Button: 2, TextDisplay: 10, Separator: 14, Container: 17 } as const;
 

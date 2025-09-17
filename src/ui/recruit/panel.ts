@@ -2,9 +2,9 @@
 // Painel público (sem embed). Botão principal com emoji + label (claro), navegação opcional com ícones.
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { EMOJI } from '../icons.generated';
-import { navRow } from '../common/icon-kit';
-import { COLORS } from '../common/tokens';
+import { EMOJI } from '../icons.generated.js';
+import { navRow } from '../common/icon-kit.js';
+import { COLORS } from '../common/tokens.js';
 
 // Tipagem mínima do que usamos de GuildConfig
 export type GuildConfigLike = {

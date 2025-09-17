@@ -1,5 +1,5 @@
 import { PermissionsBitField, type GuildMember, type RepliableInteraction, MessageFlags } from 'discord.js';
-import { Env } from '../env';
+import { Env } from '../env.js';
 
 export function isStaffMember(member?: GuildMember | null) {
   if (!member) return false;

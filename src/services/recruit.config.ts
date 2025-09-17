@@ -2,7 +2,7 @@
 // Lê a config de formulário do GuildConfig (classes + perguntas),
 // aceita SQLite (string JSON) e Postgres (Json nativo), e aplica defaults.
 
-import type { AppCtx } from '../core/ctx';
+import type { AppCtx } from '../core/ctx.js';
 
 export type ClassOption = { label: string; value: string };
 
@@ -44,8 +44,14 @@ function safeParseJson<T>(val: unknown, fallback: T): T {
  */
 export async function loadFormConfig(ctx: AppCtx, guildId: string): Promise<FormConfig> {
   const row = await ctx.repos.guildConfig.getByGuildId(guildId);
-  const classes = safeParseJson<ClassOption[]>(row?.classOptions, []);
-  const questions = safeParseJson<FormQuestion[]>(row?.formQuestions, []);
+  const classes = safeParseJson<ClassOption[]>(
+    (row && 'classOptions' in row ? (row as any).classOptions : undefined),
+    []
+  );
+  const questions = safeParseJson<FormQuestion[]>(
+    (row && 'formQuestions' in row ? (row as any).formQuestions : undefined),
+    []
+  );
 
   return {
     classOptions: classes.length ? classes : DEFAULT_CLASSES,

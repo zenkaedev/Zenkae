@@ -1,7 +1,7 @@
 import { StringSelectMenuBuilder } from 'discord.js';
-import { recruitStore, type ApplicationStatus } from './store';
-import { buildScreen } from '../../ui/v2';
-import { ids } from '../../ui/ids';
+import { recruitStore, type ApplicationStatus } from './store.js';
+import { buildScreen } from '../../ui/v2.js';
+import { ids } from '../../ui/ids.js';
 
 export type FilterKind = 'all' | 'pending' | 'approved' | 'rejected';
 

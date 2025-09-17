@@ -1,5 +1,5 @@
 import type { Client, GuildTextBasedChannel } from 'discord.js';
-import { eventsStore } from '../modules/events/store';
+import { eventsStore } from '../modules/events/store.js';
 
 type ReminderKind = '24h' | '1h' | '15m';
 

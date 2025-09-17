@@ -13,7 +13,7 @@ import {
 } from 'discord.js';
 
 // 🔧 path ajustado:
-import { recruitStore } from '../../modules/recruit/store';
+import { recruitStore } from '../../modules/recruit/store.js';
 
 const IDS = {
   open: 'recruit:classes:open',

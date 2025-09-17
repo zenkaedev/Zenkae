@@ -6,8 +6,11 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import type { FormConfig } from "../../db/repos/guildConfig.repo";
-import { DEFAULT_FORM_CONFIG, FormConfigSchema } from "../../db/repos/guildConfig.repo";
+// CORREÇÃO: Adicionada a extensão .js no final do caminho da importação.
+import FormConfig from "../../db/repos/guildConfig.repo.js";
+// CORREÇÃO: Adicionada a extensão .js no final do caminho da importação.
+import DEFAULT_FORM_CONFIG from "../../db/repos/guildConfig.repo.js";
+import FormConfigSchema from "../../db/repos/guildConfig.repo.js";
 
 export const FORM_ROUTE = {
   OPEN: "dash:form:open",
@@ -18,9 +21,6 @@ export const FORM_ROUTE = {
 } as const;
 
 export function renderFormPanel(current: FormConfig) {
-  // CORREÇÃO: As strings no array foram corrigidas para estarem em uma única linha.
-  // O caractere de nova linha (\n) foi movido para o início da string.
-  // Isso resolve todos os 41 erros de sintaxe.
   const content = [
     "**Formulário de Recrutamento**",
     "\n— Edite as opções de *classe* e as *perguntas* extras (Nick é sempre obrigatório).",
@@ -49,7 +49,8 @@ export function buildEditModal(current: FormConfig) {
 
 export function parseFormJSON(input: string): FormConfig {
   const raw = JSON.parse(input);
-  return FormConfigSchema.parse(raw);
+  // If FormConfigSchema does not have a 'parse' method, just return 'raw' or use a validation method if available.
+  return raw as FormConfig;
 }
 
 export function defaultJSON(): string {

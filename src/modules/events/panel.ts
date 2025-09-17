@@ -7,9 +7,9 @@ import {
   type ModalSubmitInteraction,
   type GuildTextBasedChannel,
 } from 'discord.js';
-import { eventsStore } from './store';
-import type { RsvpChoice } from './types';
-import { buildScreen, replyV2Notice } from '../../ui/v2';
+import { eventsStore } from './store.js';
+import type { RsvpChoice } from './types.js';
+import { buildScreen, replyV2Notice } from '../../ui/v2.js';
 
 function brDate(dt: Date) {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeStyle: 'short' }).format(dt);

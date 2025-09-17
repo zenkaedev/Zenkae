@@ -16,11 +16,11 @@ import {
   MessageFlags,
 } from 'discord.js';
 
-import { recruitStore } from './store';
-import { buildScreen, replyV2Notice } from '../../ui/v2';
-import { ids } from '../../ui/ids';
-import { buildApplicationCard } from './card';
-import { publishPublicRecruitPanelV2 } from '../../ui/recruit/panel.public';
+import { recruitStore } from './store.js';
+import { buildScreen, replyV2Notice } from '../../ui/v2.js';
+import { ids } from '../../ui/ids.js';
+import { buildApplicationCard } from './card.js';
+import { publishPublicRecruitPanelV2 } from '../../ui/recruit/panel.public.js';
 
 /* -------------------------------------------------------
  * Helpers: ACK seguro + aviso compatível com defer

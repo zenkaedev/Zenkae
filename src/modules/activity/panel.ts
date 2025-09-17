@@ -3,8 +3,8 @@ import {
   type ChatInputCommandInteraction,
   type GuildTextBasedChannel,
 } from 'discord.js';
-import { activityStore } from './store';
-import { buildScreen, replyV2Notice } from '../../ui/v2';
+import { activityStore } from './store.js';
+import { buildScreen, replyV2Notice } from '../../ui/v2.js';
 
 function weekStart(d = new Date()) {
   const dt = new Date(d);
