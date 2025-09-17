@@ -72,6 +72,30 @@ import { pollIds } from '../ui/poll/ids.js';
 /** Mantém local para evitar import quebrado */
 type RecruitFilter = 'all' | 'pending' | 'approved' | 'rejected';
 
+/**
+ * Helper V2-safe: garante ACK rápido para componentes e edita a mensagem original.
+ * - Para Button/Select: se ainda não houve ACK, faz `deferUpdate()` e depois `editReply(base)`.
+ * - Para outros (slash/etc.): mantém o fluxo padrão reply/edit.
+ * Não altera a lógica existente dos handlers chamados abaixo.
+ */
+async function safeUpdate(interaction: any, base: InteractionReplyOptions | any) {
+  try {
+    if ((interaction.isButton?.() || interaction.isAnySelectMenu?.()) && interaction.isRepliable?.()) {
+      if (!interaction.deferred && !interaction.replied) {
+        try { await interaction.deferUpdate(); } catch { /* noop */ }
+      }
+      return await interaction.editReply(base as any);
+    }
+    // fallback genérico
+    if (interaction.deferred || interaction.replied) return await interaction.editReply(base as any);
+    return await interaction.reply(base as any);
+  } catch (err) {
+    // último recurso: aviso efêmero V2-safe
+    try { await replyV2Notice(interaction, '❌ Não foi possível atualizar a interface.', true); } catch {}
+    throw err;
+  }
+}
+
 export function registerInteractionRouter(client: Client) {
   client.on(Events.InteractionCreate, async (interaction) => {
     try {
@@ -115,7 +139,8 @@ export function registerInteractionRouter(client: Client) {
           tab,
           guildId: interaction.guildId ?? undefined,
         });
-        await interaction.update(base);
+        // 🔒 V2-safe + ACK imediato para componentes
+        await safeUpdate(interaction, base);
         return;
       }
 
@@ -131,7 +156,8 @@ export function registerInteractionRouter(client: Client) {
           guildId: interaction.guildId!,
           filter: choice,
         });
-        await interaction.update(base);
+        // 🔒 V2-safe + ACK imediato para componentes
+        await safeUpdate(interaction, base);
         return;
       }
 
@@ -364,7 +390,8 @@ export function registerInteractionRouter(client: Client) {
        *                      ADMIN
        * ================================================== */
       if (interaction.isButton() && interaction.customId === ids.admin.clean) {
-        await interaction.update({ components: [] });
+        // 🔒 ACK imediato + update seguro
+        await safeUpdate(interaction, { components: [] });
         return;
       }
 
