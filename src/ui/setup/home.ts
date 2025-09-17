@@ -3,9 +3,9 @@
 // Usa nossa paleta/tokens e os emojis gerados.
 
 import { ActionRowBuilder, ButtonBuilder } from 'discord.js';
-import { COLORS } from '../common/tokens';
-import { EMOJI } from '../icons.generated';
-import { iconButton } from '../common/icon-kit';
+import { COLORS } from '../common/tokens.js';
+import { EMOJI } from '../icons.generated.js';
+import { iconButton } from '../common/icon-kit.js';
 
 export function buildSetupHome() {
   // Header estilizado (título forte + ícone de engrenagem)
