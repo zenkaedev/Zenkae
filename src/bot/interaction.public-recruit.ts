@@ -10,7 +10,7 @@ import {
   handleStartClick,
   handleApplyQuestionsSubmit,
   PUB_IDS,
-} from '../ui/recruit/panel.public';
+} from '../ui/recruit/panel.public.js';
 
 export async function routePublicRecruit(i: any) {
   try {

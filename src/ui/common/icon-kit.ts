@@ -3,7 +3,7 @@
 // Regras: neutro = cinza (Secondary), confirmar = verde (Success), recusar = vermelho (Danger).
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { EMOJI } from '../icons.generated';
+import { EMOJI } from '../icons.generated.js';
 
 type Group = keyof typeof EMOJI;
 export type EmojiPath = `${Group}.${string}`;

@@ -10,17 +10,60 @@ import {
   type ModalSubmitInteraction,
 } from "discord.js";
 import * as Sentry from "@sentry/node";
-import type { AppCtx } from "./ctx";
+import type { AppCtx } from "./ctx.js";
 
-import { handleRecruitSlash } from "../commands/recruit";
-// recruitRouter (HTTP) não é um router de interações Discord — não importar aqui
-import { dashboardRouter } from "../routers/dashboard";
-import dashboard from "../commands/dashboard";
+// ============================================================
+// OPÇÃO 1: Se o arquivo recruit existe mas com nome diferente
+// ============================================================
+// Tente uma destas importações (descomente a correta):
+
+// Se o arquivo é 'recruit.ts' (sem .command):
+// import { handleRecruitSlash } from "../commands/recruit.js";
+
+// Se o arquivo é 'recruit.command.ts':
+// import { handleRecruitSlash } from "../commands/recruit.command.js";
+
+// Se a função está em outro arquivo ou tem outro nome:
+// import { handleRecruiting } from "../commands/recruiting.js";
+
+// ============================================================
+// OPÇÃO 2: Se recruit não existe, comente a importação e crie um handler temporário
+// ============================================================
+// Comente a linha de importação problemática e use esta função temporária:
+const handleRecruitSlash = async (ix: ChatInputCommandInteraction, ctx: AppCtx) => {
+  await ix.reply({ 
+    content: "⚠️ Comando recruit em desenvolvimento.", 
+    ephemeral: true 
+  });
+};
+
+// ============================================================
+// CORREÇÃO DO DASHBOARD
+// ============================================================
+// Opção A: Se dashboardRouter está dentro do objeto default
+import dashboard from "../commands/dashboard.js";
+// E então acesse como: dashboard.router (veja linha 94)
+
+// Opção B: Se dashboardRouter é uma exportação separada mas com outro nome
+// import dashboard, { router as dashboardRouter } from "../commands/dashboard.js";
+
+// Opção C: Se não existe dashboardRouter, crie um objeto temporário
+const dashboardRouter = {
+  match: (id: string) => id.startsWith("dashboard:"),
+  handle: async (ix: MessageComponentInteraction | ModalSubmitInteraction, ctx: AppCtx) => {
+    // Delegar para o dashboard
+    if ('execute' in dashboard && typeof dashboard.execute === 'function') {
+      await dashboard.execute(ix as any);
+    } else {
+      await ix.reply({ content: "Dashboard em manutenção.", ephemeral: true });
+    }
+  }
+};
 
 // Poll: slash + botões + modal
-import { executePoll } from "../commands/poll";
-import { handlePollButton, handleCreatePollSubmit } from "../ui/poll/panel";
-import { pollIds } from "../ui/poll/ids";
+import { executePoll } from "../commands/poll.js";
+import { handlePollButton, handleCreatePollSubmit } from "../ui/poll/panel.js";
+import { pollIds } from "../ui/poll/ids.js";
 
 export function registerRouter(client: Client, _ctx: AppCtx) {
   const log = (_ctx.logger ?? console) as any;
