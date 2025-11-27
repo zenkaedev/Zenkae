@@ -145,8 +145,8 @@ export async function openNewEventModal(inter: ButtonInteraction) {
 export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
   if (!inter.inCachedGuild()) return;
 
-  // Defer immediately to avoid timeout/double reply issues
-  await inter.deferReply({ flags: MessageFlags.Ephemeral });
+  // Router already deferred via ensureDeferredModal, so we skip deferReply here
+  // await inter.deferReply({ flags: MessageFlags.Ephemeral }); // REMOVED to prevent double defer
 
   const title = inter.fields.getTextInputValue('title').trim();
   const date = inter.fields.getTextInputValue('date').trim();
