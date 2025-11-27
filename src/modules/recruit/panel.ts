@@ -23,7 +23,7 @@ import {
 
 import { recruitStore } from './store.js';
 import { ids } from '../../ui/ids.js';
-import { publishPublicRecruitPanelV2 } from '../../ui/recruit/panel.public.js';
+import { publishPublicRecruitPanelV2, openNickModal } from '../../ui/recruit/panel.public.js';
 
 /* --------------------------------------------------------------------------------
    Painel de Controle (Staff)
@@ -50,32 +50,31 @@ export async function renderRecruitPanel(guildId: string) {
     .setTitle('⚙️ Painel de Recrutamento')
     .setDescription(
       `Configure aqui as opções de recrutamento do servidor.\n\n` +
-      `**Status**: ${s.enabled ? '🟢 Ativo' : '🔴 Desativado'}\n` +
       `**Canal do Painel Público**: ${s.panelChannelId ? `<#${s.panelChannelId}>` : 'Não definido'}\n` +
       `**Canal de Formulários (Staff)**: ${s.formsChannelId ? `<#${s.formsChannelId}>` : 'Não definido'}\n` +
-      `**Classes**: ${s.classes.length} configuradas\n` +
-      `**Perguntas**: ${s.questions.length} definidas`,
+      `**Classes**: ${recruitStore.parseClasses(s.classes).length} configuradas\n` +
+      `**Perguntas**: ${recruitStore.parseQuestions(s.questions).length} definidas`,
     )
     .setColor(0x2b2d31);
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(ids.recruit.settings.classes)
+      .setCustomId(ids.recruit.settingsClasses)
       .setLabel('Classes')
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('🛡️'),
     new ButtonBuilder()
-      .setCustomId(ids.recruit.settings.questions)
+      .setCustomId(ids.recruit.settingsForm)
       .setLabel('Perguntas')
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('📝'),
     new ButtonBuilder()
-      .setCustomId(ids.recruit.settings.appearance)
+      .setCustomId(ids.recruit.settingsAppearance)
       .setLabel('Aparência')
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('🎨'),
     new ButtonBuilder()
-      .setCustomId(ids.recruit.settings.templates)
+      .setCustomId(ids.recruit.settingsDM)
       .setLabel('Templates DM')
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('📨'),
@@ -83,11 +82,11 @@ export async function renderRecruitPanel(guildId: string) {
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(ids.recruit.settings.setChannelPanel)
+      .setCustomId(ids.recruit.settingsPanelChannel)
       .setLabel('Canal Painel')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId(ids.recruit.settings.setChannelForms)
+      .setCustomId(ids.recruit.settingsFormsChannel)
       .setLabel('Canal Forms')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
@@ -111,26 +110,33 @@ export async function handlePublishRecruitPanel(
 
 export async function handleRecruitSettingsButton(
   interaction: ButtonInteraction,
-  sub: string,
+  sub?: string, // sub pode ser undefined se chamado diretamente sem split
 ) {
-  // sub: classes, questions, appearance, templates, setChannelPanel, setChannelForms
+  // Se sub não for passado, tenta inferir ou abrir o painel principal
+  if (!sub) {
+    // Se for o botão principal de settings, renderiza o painel
+    const payload = await renderRecruitPanel(interaction.guildId!);
+    await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+    return;
+  }
+
   if (sub === 'classes') {
-    // Redireciona para UI de classes (outro arquivo ou modal)
-    // Por simplicidade, vou abrir um modal de edição rápida ou menu
-    // Mas classes é complexo. Vamos focar no básico.
     await notice(interaction, '⚙️ Configuração de classes via comando `/recruit classes` (em breve).', true);
-  } else if (sub === 'questions') {
+  } else if (sub === 'form') {
     await openQuestionsModal(interaction);
   } else if (sub === 'appearance') {
     await openAppearanceModal(interaction);
-  } else if (sub === 'templates') {
+  } else if (sub === 'dm') {
     await openDMTemplatesModal(interaction);
-  } else if (sub === 'setChannelPanel') {
+  } else if (sub === 'panel-channel') {
     await openChannelSelect(interaction, 'panel');
-  } else if (sub === 'setChannelForms') {
+  } else if (sub === 'forms-channel') {
     await openChannelSelect(interaction, 'forms');
   }
 }
+
+// Alias para compatibilidade com interactions.ts
+export const openRecruitSettings = handleRecruitSettingsButton;
 
 /* ---------------- Modais de Configuração ---------------- */
 
@@ -139,11 +145,9 @@ async function openQuestionsModal(inter: ButtonInteraction) {
   const qs = recruitStore.parseQuestions(s.questions);
 
   const modal = new ModalBuilder()
-    .setCustomId('recruit:settings:questions:modal')
+    .setCustomId('recruit:settings:form:modal')
     .setTitle('Editar Perguntas');
 
-  // Discord limita a 5 inputs. Vamos permitir editar as 4 primeiras + 1 extra?
-  // Ou apenas as 5 primeiras.
   for (let i = 0; i < 5; i++) {
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -160,6 +164,9 @@ async function openQuestionsModal(inter: ButtonInteraction) {
   await inter.showModal(modal);
 }
 
+// Exports explícitos para interactions.ts
+export { openQuestionsModal as openEditFormModal };
+
 export async function handleEditFormSubmit(inter: ModalSubmitInteraction) {
   await ack(inter, { flags: MessageFlags.Ephemeral });
   const qs = [1, 2, 3, 4, 5]
@@ -167,13 +174,13 @@ export async function handleEditFormSubmit(inter: ModalSubmitInteraction) {
     .filter(Boolean);
 
   await recruitStore.updateSettings(inter.guildId!, {
-    questions: JSON.stringify(qs),
+    questions: qs,
   });
 
   await notice(inter, '✅ Perguntas atualizadas!', true);
 }
 
-async function openAppearanceModal(inter: ButtonInteraction) {
+export async function openAppearanceModal(inter: ButtonInteraction) {
   const s = await recruitStore.getSettings(inter.guildId!);
 
   const modal = new ModalBuilder()
@@ -229,11 +236,11 @@ export async function handleAppearanceSubmit(inter: ModalSubmitInteraction) {
   await notice(inter, '✅ Aparência atualizada!', true);
 }
 
-async function openDMTemplatesModal(inter: ButtonInteraction) {
+export async function openDMTemplatesModal(inter: ButtonInteraction) {
   const s = await recruitStore.getSettings(inter.guildId!);
 
   const modal = new ModalBuilder()
-    .setCustomId('recruit:settings:templates:modal')
+    .setCustomId('recruit:settings:dm:modal')
     .setTitle('Templates de DM');
 
   modal.addComponents(
@@ -271,10 +278,10 @@ export async function handleDMTemplatesSubmit(inter: ModalSubmitInteraction) {
   await notice(inter, '✅ Templates atualizados!', true);
 }
 
-async function openChannelSelect(inter: ButtonInteraction, kind: 'panel' | 'forms') {
+export async function openChannelSelect(inter: ButtonInteraction, kind: 'panel' | 'forms') {
   const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
     new ChannelSelectMenuBuilder()
-      .setCustomId(`recruit:settings:channel:${kind}`)
+      .setCustomId(`recruit:settings:select:${kind === 'panel' ? 'panel-channel' : 'forms-channel'}`) // ids.recruit.selectPanelChannel / selectFormsChannel
       .setPlaceholder('Selecione o canal')
       .setChannelTypes(ChannelType.GuildText),
   );
@@ -284,6 +291,14 @@ async function openChannelSelect(inter: ButtonInteraction, kind: 'panel' | 'form
     components: [row],
     flags: MessageFlags.Ephemeral,
   });
+}
+
+// Wrappers para exportação
+export async function openSelectPanelChannel(inter: ButtonInteraction) {
+  return openChannelSelect(inter, 'panel');
+}
+export async function openSelectFormsChannel(inter: ButtonInteraction) {
+  return openChannelSelect(inter, 'forms');
 }
 
 export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms') {
@@ -316,7 +331,7 @@ export async function handleDecisionClick(inter: ButtonInteraction, action: 'app
     if (action === 'reject') {
       // Abre modal de motivo
       const modal = new ModalBuilder()
-        .setCustomId(`recruit:decision:reject:${appId}`)
+        .setCustomId(`recruit:decision:reject:modal:${appId}`) // ids.recruit.modalRejectReason
         .setTitle('Motivo da Reprovação');
 
       modal.addComponents(
@@ -334,10 +349,6 @@ export async function handleDecisionClick(inter: ButtonInteraction, action: 'app
       // Aprovar direto
       await ack(inter, { flags: MessageFlags.Ephemeral });
 
-      const approverDisplay =
-        (inter.member && 'displayName' in inter.member ? (inter.member as any).displayName : null) ??
-        inter.user.username;
-
       await recruitStore.setStatus(appId, 'approved', inter.user.id);
 
       // Tentar enviar DM
@@ -349,9 +360,6 @@ export async function handleDecisionClick(inter: ButtonInteraction, action: 'app
           const msg = s.dmAcceptedTemplate || 'Parabéns! Você foi aprovado.';
           await user.send(`✅ **Sua candidatura foi aprovada!**\n\n${msg}`).catch(() => null);
         }
-
-        // Atualizar card se possível
-        // ... (lógica de atualizar card existente seria ideal aqui)
       }
 
       await notice(inter, '✅ Candidato aprovado!', true);
@@ -361,15 +369,19 @@ export async function handleDecisionClick(inter: ButtonInteraction, action: 'app
   }
 }
 
+export async function handleDecisionApprove(inter: ButtonInteraction, appId: string) {
+  return handleDecisionClick(inter, 'approve', appId);
+}
+
+export async function handleDecisionRejectOpen(inter: ButtonInteraction, appId: string) {
+  return handleDecisionClick(inter, 'reject', appId);
+}
+
 export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, appId: string) {
   await ack(inter, { flags: MessageFlags.Ephemeral });
 
   const reason =
     ((inter as any).fields.getTextInputValue('reason') || '').trim() || 'Sem motivo informado';
-
-  const approverDisplay =
-    (inter.member && 'displayName' in inter.member ? (inter.member as any).displayName : null) ??
-    inter.user.username;
 
   await recruitStore.setStatus(appId, 'rejected', inter.user.id);
 
@@ -385,4 +397,31 @@ export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, 
   }
 
   await notice(inter, '✅ Candidato reprovado.', true);
+}
+
+/* ---------------- Legacy / Stubs ---------------- */
+
+// Stubs para funções que não existiam no meu rewrite mas são chamadas pelo interactions.ts
+// Provavelmente referem-se ao fluxo antigo ou público.
+
+export async function openApplyModal(inter: ButtonInteraction) {
+  // Redireciona para o modal de nick (fluxo público V2)
+  return openNickModal(inter);
+}
+
+export async function handleApplyModalSubmit(inter: ModalSubmitInteraction) {
+  // Stub: não deve ser chamado se usarmos o fluxo V2 corretamente, mas se for, apenas ack.
+  await ack(inter, { flags: MessageFlags.Ephemeral });
+  await notice(inter, '⚠️ Fluxo antigo. Use o painel novo.', true);
+}
+
+export async function openApplyQuestionsModal(inter: ButtonInteraction, appId: string) {
+  // Stub
+  await notice(inter, '⚠️ Funcionalidade em manutenção.', true);
+}
+
+export async function handleApplyQuestionsSubmit(inter: ModalSubmitInteraction, appId: string) {
+  // Stub
+  await ack(inter, { flags: MessageFlags.Ephemeral });
+  await notice(inter, '✅ Recebido (Stub).', true);
 }

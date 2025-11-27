@@ -12,7 +12,7 @@ import {
 
 // ESM/NodeNext: imports relativos com .js
 import { pollStore } from '../modules/poll/store.js';
-import { buildPollPayload } from '../modules/poll/panel.js';
+import { buildPollPayload } from '../ui/poll/panel.js';
 
 export const data = new SlashCommandBuilder()
   .setName('poll')
@@ -134,7 +134,8 @@ export async function execute(inter: ChatInputCommandInteraction) {
       return;
     }
 
-    const payload = buildPollPayload(poll);
+    const counts = await pollStore.countVotes(pollId);
+    const payload = buildPollPayload(poll, counts);
     try {
       await msg.edit(payload as any);
     } catch {

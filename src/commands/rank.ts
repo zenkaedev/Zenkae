@@ -55,13 +55,13 @@ export async function execute(inter: ChatInputCommandInteraction) {
       // Mas vou tentar buscar logs se existirem no prisma.
       // Verificando schema mentalmente: VoiceLog existe?
       // Se não, fallback para total.
-      rows = await prisma.voiceRank.findMany({
+      rows = await prisma.voiceActivity.findMany({
         where: { guildId },
         orderBy: { totalSeconds: 'desc' },
         take: 15,
       });
     } else {
-      rows = await prisma.voiceRank.findMany({
+      rows = await prisma.voiceActivity.findMany({
         where: { guildId },
         orderBy: { totalSeconds: 'desc' },
         take: 15,

@@ -224,14 +224,16 @@ export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
 
 export async function handleRsvpClick(
   inter: ButtonInteraction,
-  customId: string,
+  action: string,
+  eventId: string,
 ) {
   if (!inter.inCachedGuild()) return;
 
   // customId: event:rsvp:<yes|maybe|no>:<eventId>
-  const parts = customId.split(':');
-  const action = parts[2];
-  const eventId = parts[3];
+  // Já vem parseado do listener
+  // const parts = customId.split(':');
+  // const action = parts[2];
+  // const eventId = parts[3];
 
   if (!eventId) return;
 

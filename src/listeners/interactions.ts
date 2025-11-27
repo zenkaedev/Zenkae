@@ -66,7 +66,7 @@ import { cancelEvent, notifyConfirmed } from '../modules/events/staff.js';
 import { publishActivityPanel, handleActivityCheck } from '../modules/activity/panel.js';
 
 // === POLL (NOVO) ===
-import { executePoll } from '../commands/poll.js';
+import { execute as executePoll } from '../commands/poll.js';
 import { handlePollButton, handleCreatePollSubmit } from '../ui/poll/panel.js';
 import { pollIds } from '../ui/poll/ids.js';
 

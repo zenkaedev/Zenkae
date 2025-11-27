@@ -70,4 +70,17 @@ export const pollStore = {
   async updateEndsAt(pollId: string, endsAt: Date) {
     return prisma.poll.update({ where: { id: pollId }, data: { endsAt } });
   },
+
+  async getIdByMessage(messageId: string) {
+    const poll = await prisma.poll.findFirst({ where: { messageId }, select: { id: true } });
+    return poll?.id || null;
+  },
+
+  async close(pollId: string) {
+    return prisma.poll.update({ where: { id: pollId }, data: { endsAt: new Date() } });
+  },
+
+  async get(id: string) {
+    return this.getById(id);
+  },
 };

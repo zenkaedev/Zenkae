@@ -140,6 +140,7 @@ export const recruitStore = {
       appearanceTitle: string | null;
       appearanceDescription: string | null;
       appearanceImageUrl: string | null;
+      appearanceThumbUrl: string | null;
       questions: string[]; // UI usa array; persistência usa string JSON
       dmAcceptedTemplate: string;
       dmRejectedTemplate: string;
@@ -250,6 +251,16 @@ export const recruitStore = {
 
   async getById(id: string) {
     return prisma.application.findUnique({ where: { id } });
+  },
+
+  // Alias para compatibilidade com UI
+  async setStatus(
+    id: string,
+    status: ApplicationStatus,
+    moderatedById?: string,
+    reason?: string,
+  ) {
+    return this.updateStatus(id, status, reason, moderatedById);
   },
 
   /** Atualiza status + metadados de moderação (compatível com UI atual) */
