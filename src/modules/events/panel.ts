@@ -145,6 +145,9 @@ export async function openNewEventModal(inter: ButtonInteraction) {
 export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
   if (!inter.inCachedGuild()) return;
 
+  // Defer immediately to avoid timeout/double reply issues
+  await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
   const title = inter.fields.getTextInputValue('title').trim();
   const date = inter.fields.getTextInputValue('date').trim();
   const time = inter.fields.getTextInputValue('time').trim();
@@ -154,7 +157,7 @@ export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
   // Validação básica de data
   const startsAt = new Date(`${date}T${time}:00`);
   if (Number.isNaN(startsAt.getTime())) {
-    await inter.reply({ flags: MessageFlags.Ephemeral, content: '❌ Data/hora inválida.' });
+    await inter.editReply({ content: '❌ Data/hora inválida.' });
     return;
   }
 
@@ -166,7 +169,7 @@ export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
 
   const channel = inter.channel;
   if (!channel || !channel.isTextBased()) {
-    await inter.reply({ flags: MessageFlags.Ephemeral, content: '❌ Canal inválido.' });
+    await inter.editReply({ content: '❌ Canal inválido.' });
     return;
   }
 
@@ -214,8 +217,7 @@ export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
     console.warn('⚠️ eventsStore.update não encontrado. MessageID pode ficar desatualizado.');
   }
 
-  await inter.reply({
-    flags: MessageFlags.Ephemeral,
+  await inter.editReply({
     content: '✅ Evento criado com sucesso!',
   });
 }

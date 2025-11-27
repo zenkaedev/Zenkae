@@ -306,15 +306,14 @@ export async function handleStartClick(inter: ButtonInteraction) {
     );
   });
 
-  // NOVO: File Upload (Anexo)
-  const fileUpload = new FileUploadBuilder()
-    .setCustomId('attachment')
-    .setRequired(false);
-  // .setMaxFiles(1);
-
-  modal.addComponents(
-    new ActionRowBuilder<any>().addComponents(fileUpload)
-  );
+  // NOVO: File Upload (Anexo) - REMOVIDO (API Error 50035)
+  // const fileUpload = new FileUploadBuilder()
+  //   .setCustomId('attachment')
+  //   .setRequired(false);
+  //
+  // modal.addComponents(
+  //   new ActionRowBuilder<any>().addComponents(fileUpload)
+  // );
 
   await inter.showModal(modal);
   return true;
@@ -349,10 +348,11 @@ export async function handleApplyQuestionsSubmit(inter: ModalSubmitInteraction) 
     if (v) answers.push(v);
   }
 
-  // Recuperar arquivo
+  // Recuperar arquivo - REMOVIDO
   // @ts-ignore
-  const files = inter.fields.getUploadedFiles ? inter.fields.getUploadedFiles('attachment') : null;
-  const attachment = files && files.size > 0 ? files.first() : null;
+  // const files = inter.fields.getUploadedFiles ? inter.fields.getUploadedFiles('attachment') : null;
+  // const attachment = files && files.size > 0 ? files.first() : null;
+  const attachment = null;
 
   await recruitStore.setAnswers(appId, answers);
   await publishApplication(inter, appId, attachment);

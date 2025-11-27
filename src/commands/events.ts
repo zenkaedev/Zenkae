@@ -1,6 +1,10 @@
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  MessageFlags,
   ButtonInteraction,
 } from 'discord.js';
 import { ids } from '../ui/ids.js';
@@ -38,7 +42,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         ],
       },
     ],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 

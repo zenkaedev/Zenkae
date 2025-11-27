@@ -1,5 +1,5 @@
 // src/commands/ping.ts
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction, MessageFlags } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ping')
@@ -11,7 +11,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const start = Date.now();
 
     // Resposta inicial (efêmera)
-    await interaction.reply({ content: '⏱️ Calculando...', ephemeral: true });
+    await interaction.reply({ content: '⏱️ Calculando...', flags: MessageFlags.Ephemeral });
 
     const apiLatency = Date.now() - start;
     const ws = Math.round(interaction.client.ws.ping ?? 0);
@@ -25,7 +25,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       } else {
         await interaction.reply({
           content: '❌ Ocorreu um erro ao medir a latência.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } catch {

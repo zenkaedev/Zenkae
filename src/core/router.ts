@@ -8,6 +8,7 @@ import {
   type ChatInputCommandInteraction,
   type MessageComponentInteraction,
   type ModalSubmitInteraction,
+  MessageFlags,
 } from 'discord.js';
 import * as Sentry from '@sentry/node';
 import type { AppCtx } from './ctx.js';
@@ -33,7 +34,7 @@ import type { AppCtx } from './ctx.js';
 const handleRecruitSlash = async (ix: ChatInputCommandInteraction, ctx: AppCtx) => {
   await ix.reply({
     content: '⚠️ Comando recruit em desenvolvimento.',
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 };
 
@@ -55,13 +56,13 @@ const dashboardRouter = {
     if ('execute' in dashboard && typeof dashboard.execute === 'function') {
       await dashboard.execute(ix as any);
     } else {
-      await ix.reply({ content: 'Dashboard em manutenção.', ephemeral: true });
+      await ix.reply({ content: 'Dashboard em manutenção.', flags: MessageFlags.Ephemeral });
     }
   },
 };
 
 // Poll: slash + botões + modal
-import { executePoll } from '../commands/poll.js';
+import { execute as executePoll } from '../commands/poll.js';
 import { handlePollButton, handleCreatePollSubmit } from '../ui/poll/panel.js';
 import { pollIds } from '../ui/poll/ids.js';
 
@@ -166,9 +167,9 @@ async function replyError(ix: Interaction) {
   const msg = 'Deu ruim aqui do nosso lado. Tenta de novo em alguns segundos 😉';
   if (!('isRepliable' in ix) || !ix.isRepliable()) return;
   if ((ix as any).deferred || (ix as any).replied) {
-    await (ix as any).followUp({ content: msg, flags: 64 }).catch(() => {});
+    await (ix as any).followUp({ content: msg, flags: 64 }).catch(() => { });
   } else {
-    await (ix as any).reply({ content: msg, flags: 64 }).catch(() => {});
+    await (ix as any).reply({ content: msg, flags: 64 }).catch(() => { });
   }
 }
 
@@ -177,8 +178,8 @@ async function safeReply(
   content: string,
 ) {
   if ((ix as any).deferred || (ix as any).replied) {
-    await (ix as any).followUp({ content, flags: 64 }).catch(() => {});
+    await (ix as any).followUp({ content, flags: 64 }).catch(() => { });
   } else {
-    await (ix as any).reply({ content, flags: 64 }).catch(() => {});
+    await (ix as any).reply({ content, flags: 64 }).catch(() => { });
   }
 }
