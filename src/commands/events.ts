@@ -3,6 +3,7 @@ import {
   type ChatInputCommandInteraction,
   ButtonInteraction,
 } from 'discord.js';
+import { ids } from '../ui/ids.js';
 import { openNewEventModal } from '../modules/events/panel.js';
 
 export const data = new SlashCommandBuilder()
@@ -31,7 +32,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             type: 2, // Button
             style: 1, // Primary
             label: 'Criar Evento',
-            custom_id: 'events:start_creation',
+            custom_id: ids.events.new,
             emoji: { name: '📅' },
           },
         ],
