@@ -14,13 +14,31 @@ async function main() {
   await prisma.application.deleteMany({ where: { guildId } });
 
   const data = [
-    { userId: '100000000000000001', username: 'player_one',   nick: 'PlayerOne',   className: 'Guerreiro', status: 'pending' },
-    { userId: '100000000000000002', username: 'mage_two',     nick: 'ArcanoX',     className: 'Mago',      status: 'pending' },
-    { userId: '100000000000000003', username: 'archer_three', nick: 'FlechaViva',  className: 'Arqueiro',  status: 'approved' },
+    {
+      userId: '100000000000000001',
+      username: 'player_one',
+      nick: 'PlayerOne',
+      className: 'Guerreiro',
+      status: 'pending',
+    },
+    {
+      userId: '100000000000000002',
+      username: 'mage_two',
+      nick: 'ArcanoX',
+      className: 'Mago',
+      status: 'pending',
+    },
+    {
+      userId: '100000000000000003',
+      username: 'archer_three',
+      nick: 'FlechaViva',
+      className: 'Arqueiro',
+      status: 'approved',
+    },
   ];
 
   await prisma.application.createMany({
-    data: data.map(d => ({
+    data: data.map((d) => ({
       guildId,
       ...d,
     })),

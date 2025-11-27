@@ -88,7 +88,9 @@ async function notice(
             flags: ephemeral ? MessageFlags.Ephemeral : undefined,
           })
           .catch(() => null);
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }
 }
@@ -173,16 +175,26 @@ async function ensureClassRoleWithStyle(
       // nome/hoist/mentionable
       try {
         await byId.edit({ name: targetName, hoist: true, mentionable: true });
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       // cor — API nova
       if (typeof color !== 'undefined') {
-        try { await (byId as any).setColors({ primaryColor: color }); } catch {}
+        try {
+          await (byId as any).setColors({ primaryColor: color });
+        } catch {
+          // ignore
+        }
       }
 
       // emoji unicode
       if (uni) {
-        try { await (byId as any).setUnicodeEmoji(uni); } catch {}
+        try {
+          await (byId as any).setUnicodeEmoji(uni);
+        } catch {
+          // ignore
+        }
       }
       return byId;
     }
@@ -200,7 +212,12 @@ async function ensureClassRoleWithStyle(
   // 2) cria se não existir
   if (!role) {
     role = await guild.roles
-      .create({ name: targetName, hoist: true, mentionable: true, reason: `[recruit] auto-create class role ${className}` })
+      .create({
+        name: targetName,
+        hoist: true,
+        mentionable: true,
+        reason: `[recruit] auto-create class role ${className}`,
+      })
       .catch(() => null as any);
     await sleep(300); // evita race entre criar e editar
     if (!role) throw new Error('Falha ao criar cargo de classe');
@@ -213,17 +230,29 @@ async function ensureClassRoleWithStyle(
 
   // 4) nome/hoist/mentionable
   if (role.name !== targetName || !role.hoist || !role.mentionable) {
-    try { await role.edit({ name: targetName, hoist: true, mentionable: true }); } catch {}
+    try {
+      await role.edit({ name: targetName, hoist: true, mentionable: true });
+    } catch {
+      // ignore
+    }
   }
 
   // 5) cor — API nova
   if (typeof color !== 'undefined') {
-    try { await (role as any).setColors({ primaryColor: color }); } catch {}
+    try {
+      await (role as any).setColors({ primaryColor: color });
+    } catch {
+      // ignore
+    }
   }
 
   // 6) emoji unicode (se permitido no servidor)
   if (uni) {
-    try { await (role as any).setUnicodeEmoji(uni); } catch {}
+    try {
+      await (role as any).setUnicodeEmoji(uni);
+    } catch {
+      // ignore
+    }
   }
 
   return role;
@@ -240,8 +269,8 @@ function toArraySafe(value: any): any[] {
       return Array.isArray(parsed)
         ? parsed
         : typeof parsed === 'object'
-        ? Object.values(parsed)
-        : [];
+          ? Object.values(parsed)
+          : [];
     } catch {
       return [];
     }
@@ -418,7 +447,10 @@ export async function openApplyQuestionsModal(inter: ButtonInteraction, appId: s
   await inter.showModal(qModal);
 }
 
-export async function handleApplyQuestionsSubmit(interaction: ModalSubmitInteraction, appId: string) {
+export async function handleApplyQuestionsSubmit(
+  interaction: ModalSubmitInteraction,
+  appId: string,
+) {
   await ack(interaction, { ephemeral: true });
   try {
     const answers: string[] = [];
@@ -488,7 +520,9 @@ async function publishApplicationCard(
       channelId: (sent.channel as any).id,
       messageId: sent.id,
     });
-  } catch {}
+  } catch {
+    // ignore
+  }
 
   await notice(interaction, '✅ Sua candidatura foi registrada! Aguarde retorno da staff.', true);
 }
@@ -496,9 +530,7 @@ async function publishApplicationCard(
 /* -------------------------------------------------------
  * Configurações (Dashboard → Recruit)
  * ----------------------------------------------------- */
-export function renderRecruitSettingsUI(
-  s: Awaited<ReturnType<typeof recruitStore.getSettings>>,
-) {
+export function renderRecruitSettingsUI(s: Awaited<ReturnType<typeof recruitStore.getSettings>>) {
   const body =
     `**Editar formulário** → defina até 4 perguntas.\n` +
     `**Canal de Recrutamento** → canal fixo onde fica o painel público.\n` +
@@ -533,7 +565,9 @@ export async function openEditFormModal(inter: ButtonInteraction) {
   const s = await recruitStore.getSettings(inter.guildId!);
   const qs: string[] = recruitStore.parseQuestions(s.questions);
 
-  const modal = new ModalBuilder().setCustomId(ids.recruit.modalForm).setTitle('Editar formulário (4 perguntas)');
+  const modal = new ModalBuilder()
+    .setCustomId(ids.recruit.modalForm)
+    .setTitle('Editar formulário (4 perguntas)');
 
   for (let i = 0; i < 4; i++) {
     modal.addComponents(
@@ -641,7 +675,8 @@ export async function handleDMTemplatesSubmit(inter: ModalSubmitInteraction) {
   await ack(inter, { ephemeral: true });
   await recruitStore.updateSettings(inter.guildId!, {
     dmAcceptedTemplate:
-      ((inter as any).fields.getTextInputValue('ok') || '').trim() || 'Parabéns! Você foi aprovado 🎉',
+      ((inter as any).fields.getTextInputValue('ok') || '').trim() ||
+      'Parabéns! Você foi aprovado 🎉',
     dmRejectedTemplate:
       ((inter as any).fields.getTextInputValue('no') || '').trim() ||
       'Obrigado por se inscrever. Infelizmente sua candidatura foi recusada. Motivo: {reason}',
@@ -731,11 +766,21 @@ export async function handleDecisionApprove(inter: ButtonInteraction, appId: str
       inter.user.globalName ??
       inter.user.username;
 
-    const app = await recruitStore.updateStatus(appId, 'approved', null, inter.user.id, approverDisplay);
+    const app = await recruitStore.updateStatus(
+      appId,
+      'approved',
+      null,
+      inter.user.id,
+      approverDisplay,
+    );
 
     // ====== DISCORD: nick + cargos (cor/emoji/hoist para classe) ======
     const guild =
-      inter.guild ?? (await inter.client.guilds.fetch(app.guildId).then((g) => g.fetch()).catch(() => null));
+      inter.guild ??
+      (await inter.client.guilds
+        .fetch(app.guildId)
+        .then((g) => g.fetch())
+        .catch(() => null));
 
     if (guild) {
       // 1) Nick do formulário
@@ -752,7 +797,9 @@ export async function handleDecisionApprove(inter: ButtonInteraction, appId: str
         generalRoleId = role.id;
         try {
           await recruitStore.updateSettings(app.guildId, { defaultApprovedRoleId: role.id });
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
 
       // 3) Cargo de classe com estilo (cor/emoji/hoist)
@@ -764,7 +811,9 @@ export async function handleDecisionApprove(inter: ButtonInteraction, appId: str
         // compat: usa mapeamento do store se existir; senão, usa meta?.id
         const getClassRoleId = (recruitStore as any).getClassRoleId?.bind(recruitStore);
         const setClassRoleId = (recruitStore as any).setClassRoleId?.bind(recruitStore);
-        const savedId = getClassRoleId ? await getClassRoleId(app.guildId, className) : meta?.id ?? undefined;
+        const savedId = getClassRoleId
+          ? await getClassRoleId(app.guildId, className)
+          : (meta?.id ?? undefined);
 
         const role = await ensureClassRoleWithStyle(
           guild,
@@ -777,7 +826,9 @@ export async function handleDecisionApprove(inter: ButtonInteraction, appId: str
 
         try {
           if (setClassRoleId) await setClassRoleId(app.guildId, className, role.id);
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
 
       // 4) Atribui cargos
@@ -794,7 +845,9 @@ export async function handleDecisionApprove(inter: ButtonInteraction, appId: str
     try {
       const u = await inter.client.users.fetch(app.userId);
       await u.send(templ);
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     await notice(inter, '✅ Aplicação aprovada. Nick atualizado e cargos atribuídos.', true);
   } finally {
@@ -823,7 +876,8 @@ export async function handleDecisionRejectOpen(inter: ButtonInteraction, appId: 
 export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, appId: string) {
   await ack(inter, { ephemeral: true });
 
-  const reason = ((inter as any).fields.getTextInputValue('reason') || '').trim() || 'Sem motivo informado';
+  const reason =
+    ((inter as any).fields.getTextInputValue('reason') || '').trim() || 'Sem motivo informado';
 
   const moderatorDisplay =
     ((inter as any).member && 'displayName' in (inter as any).member
@@ -832,17 +886,27 @@ export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, 
     (inter as any).user.globalName ??
     (inter as any).user.username;
 
-  const app = await recruitStore.updateStatus(appId, 'rejected', reason, (inter as any).user.id, moderatorDisplay);
+  const app = await recruitStore.updateStatus(
+    appId,
+    'rejected',
+    reason,
+    (inter as any).user.id,
+    moderatorDisplay,
+  );
 
   await refreshCard(inter as any, appId);
 
   const s = await recruitStore.getSettings((app as any).guildId);
-  const templ = (s.dmRejectedTemplate ?? 'Sua candidatura foi recusada. Motivo: {reason}').replaceAll('{reason}', reason);
+  const templ = (
+    s.dmRejectedTemplate ?? 'Sua candidatura foi recusada. Motivo: {reason}'
+  ).replaceAll('{reason}', reason);
 
   try {
     const u = await (inter as any).client.users.fetch((app as any).userId);
     await u.send(templ);
-  } catch {}
+  } catch {
+    // ignore
+  }
   await notice(inter as any, '✅ Aplicação recusada.', true);
 }
 

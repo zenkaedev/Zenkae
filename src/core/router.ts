@@ -8,9 +8,9 @@ import {
   type ChatInputCommandInteraction,
   type MessageComponentInteraction,
   type ModalSubmitInteraction,
-} from "discord.js";
-import * as Sentry from "@sentry/node";
-import type { AppCtx } from "./ctx.js";
+} from 'discord.js';
+import * as Sentry from '@sentry/node';
+import type { AppCtx } from './ctx.js';
 
 // ============================================================
 // OPÇÃO 1: Se o arquivo recruit existe mas com nome diferente
@@ -31,9 +31,9 @@ import type { AppCtx } from "./ctx.js";
 // ============================================================
 // Comente a linha de importação problemática e use esta função temporária:
 const handleRecruitSlash = async (ix: ChatInputCommandInteraction, ctx: AppCtx) => {
-  await ix.reply({ 
-    content: "⚠️ Comando recruit em desenvolvimento.", 
-    ephemeral: true 
+  await ix.reply({
+    content: '⚠️ Comando recruit em desenvolvimento.',
+    ephemeral: true,
   });
 };
 
@@ -41,7 +41,7 @@ const handleRecruitSlash = async (ix: ChatInputCommandInteraction, ctx: AppCtx) 
 // CORREÇÃO DO DASHBOARD
 // ============================================================
 // Opção A: Se dashboardRouter está dentro do objeto default
-import dashboard from "../commands/dashboard.js";
+import dashboard from '../commands/dashboard.js';
 // E então acesse como: dashboard.router (veja linha 94)
 
 // Opção B: Se dashboardRouter é uma exportação separada mas com outro nome
@@ -49,21 +49,21 @@ import dashboard from "../commands/dashboard.js";
 
 // Opção C: Se não existe dashboardRouter, crie um objeto temporário
 const dashboardRouter = {
-  match: (id: string) => id.startsWith("dashboard:"),
+  match: (id: string) => id.startsWith('dashboard:'),
   handle: async (ix: MessageComponentInteraction | ModalSubmitInteraction, ctx: AppCtx) => {
     // Delegar para o dashboard
     if ('execute' in dashboard && typeof dashboard.execute === 'function') {
       await dashboard.execute(ix as any);
     } else {
-      await ix.reply({ content: "Dashboard em manutenção.", ephemeral: true });
+      await ix.reply({ content: 'Dashboard em manutenção.', ephemeral: true });
     }
-  }
+  },
 };
 
 // Poll: slash + botões + modal
-import { executePoll } from "../commands/poll.js";
-import { handlePollButton, handleCreatePollSubmit } from "../ui/poll/panel.js";
-import { pollIds } from "../ui/poll/ids.js";
+import { executePoll } from '../commands/poll.js';
+import { handlePollButton, handleCreatePollSubmit } from '../ui/poll/panel.js';
+import { pollIds } from '../ui/poll/ids.js';
 
 export function registerRouter(client: Client, _ctx: AppCtx) {
   const log = (_ctx.logger ?? console) as any;
@@ -73,26 +73,26 @@ export function registerRouter(client: Client, _ctx: AppCtx) {
       /* ----------------------------- Slash ----------------------------- */
       if (ix.isChatInputCommand()) {
         const cmd = ix.commandName;
-        log.info?.({ kind: "slash", cmd, gid: ix.guildId, uid: ix.user.id }, "recv");
+        log.info?.({ kind: 'slash', cmd, gid: ix.guildId, uid: ix.user.id }, 'recv');
 
         // OBS: não fazemos defer aqui para não conflitar com os handlers
-        if (cmd === "dashboard") {
+        if (cmd === 'dashboard') {
           await dashboard.execute(ix as ChatInputCommandInteraction);
           return;
         }
 
-        if (cmd === "recruit") {
+        if (cmd === 'recruit') {
           await handleRecruitSlash(ix as ChatInputCommandInteraction, _ctx);
           return;
         }
 
-        if (cmd === "poll") {
+        if (cmd === 'poll') {
           await executePoll(ix as ChatInputCommandInteraction);
           return;
         }
 
         if (ix.isRepliable()) {
-          await ix.reply({ content: "Comando não reconhecido.", flags: 64 });
+          await ix.reply({ content: 'Comando não reconhecido.', flags: 64 });
         }
         return;
       }
@@ -100,15 +100,15 @@ export function registerRouter(client: Client, _ctx: AppCtx) {
       /* -------------------------- Components -------------------------- */
       if (ix.isMessageComponent()) {
         const mix = ix as MessageComponentInteraction;
-        const id = mix.customId ?? "";
-        log.info?.({ kind: "component", id, gid: mix.guildId, uid: mix.user.id }, "recv");
+        const id = mix.customId ?? '';
+        log.info?.({ kind: 'component', id, gid: mix.guildId, uid: mix.user.id }, 'recv');
 
         // Enquete (vote/result/close)
-        if (id.startsWith("poll:")) {
+        if (id.startsWith('poll:')) {
           try {
             await handlePollButton(mix as any);
           } catch {
-            await safeReply(mix, "❌ Erro ao processar ação da enquete.");
+            await safeReply(mix, '❌ Erro ao processar ação da enquete.');
           }
           return;
         }
@@ -119,22 +119,22 @@ export function registerRouter(client: Client, _ctx: AppCtx) {
           return;
         }
 
-        await safeReply(mix, "Ação não reconhecida.");
+        await safeReply(mix, 'Ação não reconhecida.');
         return;
       }
 
       /* ----------------------------- Modals ---------------------------- */
       if (ix.isModalSubmit()) {
         const ms = ix as ModalSubmitInteraction;
-        const id = ms.customId ?? "";
-        log.info?.({ kind: "modal", id, gid: ms.guildId, uid: ms.user.id }, "recv");
+        const id = ms.customId ?? '';
+        log.info?.({ kind: 'modal', id, gid: ms.guildId, uid: ms.user.id }, 'recv');
 
         // Modal de criação de enquete
         if (id === pollIds.createModal) {
           try {
             await handleCreatePollSubmit(ms as any);
           } catch {
-            await safeReply(ms as any, "❌ Erro ao processar formulário de enquete.");
+            await safeReply(ms as any, '❌ Erro ao processar formulário de enquete.');
           }
           return;
         }
@@ -144,25 +144,27 @@ export function registerRouter(client: Client, _ctx: AppCtx) {
           return;
         }
 
-        await safeReply(ms, "Formulário não reconhecido.");
+        await safeReply(ms, 'Formulário não reconhecido.');
         return;
       }
     } catch (err) {
-      log.error?.({ err }, "Erro ao processar interação");
+      log.error?.({ err }, 'Erro ao processar interação');
       try {
         Sentry.captureException?.(err);
-      } catch {}
+      } catch {
+        // ignore
+      }
       await replyError(ix);
     }
   });
 
-  log.info?.("Router registrado");
+  log.info?.('Router registrado');
 }
 
 /* ------------------------------ helpers ------------------------------ */
 async function replyError(ix: Interaction) {
-  const msg = "Deu ruim aqui do nosso lado. Tenta de novo em alguns segundos 😉";
-  if (!("isRepliable" in ix) || !ix.isRepliable()) return;
+  const msg = 'Deu ruim aqui do nosso lado. Tenta de novo em alguns segundos 😉';
+  if (!('isRepliable' in ix) || !ix.isRepliable()) return;
   if ((ix as any).deferred || (ix as any).replied) {
     await (ix as any).followUp({ content: msg, flags: 64 }).catch(() => {});
   } else {
@@ -170,7 +172,10 @@ async function replyError(ix: Interaction) {
   }
 }
 
-async function safeReply(ix: MessageComponentInteraction | ModalSubmitInteraction, content: string) {
+async function safeReply(
+  ix: MessageComponentInteraction | ModalSubmitInteraction,
+  content: string,
+) {
   if ((ix as any).deferred || (ix as any).replied) {
     await (ix as any).followUp({ content, flags: 64 }).catch(() => {});
   } else {

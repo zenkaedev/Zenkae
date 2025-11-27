@@ -14,7 +14,7 @@ export type GuildConfigLike = {
 
 export function buildRecruitPanel(cfg: GuildConfigLike = {}) {
   const title = cfg.panelTitle?.trim() || 'Recrutamento';
-  const desc  = cfg.panelDesc?.trim()  || 'Clique para começar sua candidatura.';
+  const desc = cfg.panelDesc?.trim() || 'Clique para começar sua candidatura.';
 
   // Botão principal — com label (fica mais claro pro público)
   const applyEmoji = EMOJI.actions.action_check;
@@ -32,7 +32,7 @@ export function buildRecruitPanel(cfg: GuildConfigLike = {}) {
   // Sem embed: usamos texto formatado e componentes
   // (a cor do container não é customizável nativamente; cor de marca fica nos ícones/imagens e no Success/Danger)
   const header = `**${title}**`;
-  const sub    = desc;
+  const sub = desc;
 
   return {
     content: `${header}\n${sub}`,

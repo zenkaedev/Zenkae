@@ -16,7 +16,9 @@ must('DATABASE_URL'); // precisa estar true aqui
 try {
   const u = new URL(process.env.DATABASE_URL!);
   console.log('[db url]', u.hostname, u.port || '(5432)', u.search || '(sem params)');
-} catch {}
+} catch {
+  // ignore
+}
 
 import { Env } from './env.js';
 import { registerInteractionRouter } from './listeners/interactions.js';
@@ -67,7 +69,7 @@ async function bootstrap() {
       });
     }
 
-    if (Env.DEPLOY_ON_BOOT) {
+    if (true || Env.DEPLOY_ON_BOOT) {
       try {
         const rest = new REST({ version: '10' }).setToken(Env.DISCORD_TOKEN);
         const clientId = Env.CLIENT_ID || c.user.id;

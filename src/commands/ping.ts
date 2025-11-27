@@ -1,8 +1,5 @@
 // src/commands/ping.ts
-import {
-  SlashCommandBuilder,
-  type ChatInputCommandInteraction,
-} from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('ping')
@@ -19,9 +16,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const apiLatency = Date.now() - start;
     const ws = Math.round(interaction.client.ws.ping ?? 0);
 
-    await interaction.editReply(
-      `🏓 **Pong!**\n• API: ~${apiLatency}ms\n• WS: ${ws}ms`,
-    );
+    await interaction.editReply(`🏓 **Pong!**\n• API: ~${apiLatency}ms\n• WS: ${ws}ms`);
   } catch (err) {
     // fallback silencioso para não quebrar a UX
     try {
@@ -33,7 +28,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           ephemeral: true,
         });
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     // Logue no seu logger/Sentry se desejar
     // console.error('ping command error:', err);
   }

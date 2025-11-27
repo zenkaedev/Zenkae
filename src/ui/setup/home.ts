@@ -10,9 +10,7 @@ import { iconButton } from '../common/icon-kit.js';
 export function buildSetupHome() {
   // Header estilizado (título forte + ícone de engrenagem)
   const gear = EMOJI.others.other_gear.markup;
-  const header =
-    `${gear} **Configurações**\n` +
-    monoDivider(COLORS.primary) + '\n';
+  const header = `${gear} **Configurações**\n` + monoDivider(COLORS.primary) + '\n';
 
   // Subtexto orientativo (respira entre blocos)
   const lead =

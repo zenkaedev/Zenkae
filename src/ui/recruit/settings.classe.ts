@@ -42,7 +42,9 @@ const V2 = {
 /* ----------------------- helpers ----------------------- */
 
 /** Converte string em objeto de emoji aceito pelo Discord. */
-function toEmoji(input?: string | null): { id?: string; name?: string; animated?: boolean } | undefined {
+function toEmoji(
+  input?: string | null,
+): { id?: string; name?: string; animated?: boolean } | undefined {
   const s = (typeof input === 'string' ? input : '').trim();
   if (!s) return undefined;
 
@@ -87,7 +89,11 @@ function buildClassesRowsV2(classes: Class[], selectedId?: string) {
   const options = (classes ?? []).slice(0, 25).map((c) => ({
     label: c.name,
     value: String(c.id),
-    description: (c as any).roleId ? 'Vinculado a cargo' : ((c as any).color ? `cor ${(c as any).color}` : undefined),
+    description: (c as any).roleId
+      ? 'Vinculado a cargo'
+      : (c as any).color
+        ? `cor ${(c as any).color}`
+        : undefined,
     emoji: toEmoji((c as any).emoji ?? undefined),
   }));
 
@@ -102,7 +108,13 @@ function buildClassesRowsV2(classes: Class[], selectedId?: string) {
         max_values: 1,
         options: options.length
           ? options
-          : [{ label: 'Nenhuma classe configurada', value: 'void', description: 'Peça a um admin para configurar' }],
+          : [
+              {
+                label: 'Nenhuma classe configurada',
+                value: 'void',
+                description: 'Peça a um admin para configurar',
+              },
+            ],
         disabled: !options.length,
       },
     ],
@@ -111,9 +123,33 @@ function buildClassesRowsV2(classes: Class[], selectedId?: string) {
   const rowButtons = {
     type: V2.ActionRow,
     components: [
-      { type: V2.Button, style: ButtonStyle.Secondary, custom_id: ids.recruit.classCreate, label: 'Adicionar Classe', emoji: { name: '➕' } },
-      { type: V2.Button, style: ButtonStyle.Primary,   custom_id: selectedId ? ids.recruit.classEdit(selectedId)   : ids.recruit.classEdit('__selected__'),   label: 'Editar Selecionada',  emoji: { name: '✏️' }, disabled: !selectedId },
-      { type: V2.Button, style: ButtonStyle.Danger,    custom_id: selectedId ? ids.recruit.classRemove(selectedId) : ids.recruit.classRemove('__selected__'), label: 'Remover Selecionada', emoji: { name: '🗑️' }, disabled: !selectedId },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Secondary,
+        custom_id: ids.recruit.classCreate,
+        label: 'Adicionar Classe',
+        emoji: { name: '➕' },
+      },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Primary,
+        custom_id: selectedId
+          ? ids.recruit.classEdit(selectedId)
+          : ids.recruit.classEdit('__selected__'),
+        label: 'Editar Selecionada',
+        emoji: { name: '✏️' },
+        disabled: !selectedId,
+      },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Danger,
+        custom_id: selectedId
+          ? ids.recruit.classRemove(selectedId)
+          : ids.recruit.classRemove('__selected__'),
+        label: 'Remover Selecionada',
+        emoji: { name: '🗑️' },
+        disabled: !selectedId,
+      },
     ],
   } as const;
 
@@ -127,13 +163,19 @@ async function renderClassesSettingsV2(guildId: string, selectedId?: string) {
 
   const lines = classes.length
     ? classes
-        .map((c: any) => `• ${c.emoji ?? '▫️'} **${esc(c.name)}** ${c.roleId ? `(<@&${c.roleId}>)` : ''}${c.color ? ` — cor: \`${c.color}\`` : ''}`)
+        .map(
+          (c: any) =>
+            `• ${c.emoji ?? '▫️'} **${esc(c.name)}** ${c.roleId ? `(<@&${c.roleId}>)` : ''}${c.color ? ` — cor: \`${c.color}\`` : ''}`,
+        )
         .join('\n')
     : '_Nenhuma classe configurada ainda._';
 
   const children: any[] = [];
   children.push({ type: V2.TextDisplay, content: '# Recrutamento — Gestão de Classes' });
-  children.push({ type: V2.TextDisplay, content: 'Adicione, edite ou remova classes. Cada classe pode ter cor e cargo vinculado.' });
+  children.push({
+    type: V2.TextDisplay,
+    content: 'Adicione, edite ou remova classes. Cada classe pode ter cor e cargo vinculado.',
+  });
   children.push({ type: V2.TextDisplay, content: lines });
   children.push({ type: V2.Separator, divider: true, spacing: 1 });
 
@@ -145,13 +187,19 @@ async function renderClassesSettingsV2(guildId: string, selectedId?: string) {
   children.push({
     type: V2.ActionRow,
     components: [
-      { type: V2.Button, style: ButtonStyle.Secondary, custom_id: 'recruit:settings', label: 'Voltar', emoji: { name: '↩️' } },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Secondary,
+        custom_id: 'recruit:settings',
+        label: 'Voltar',
+        emoji: { name: '↩️' },
+      },
     ],
   });
 
   return {
     flags: 1 << 15, // MessageFlags.IsComponentsV2
-    components: [ { type: V2.Container, components: children } ],
+    components: [{ type: V2.Container, components: children }],
   } as const;
 }
 
@@ -168,7 +216,11 @@ export async function openRecruitClassesSettings(inter: ButtonInteraction) {
     }
   } catch {
     // fallback seguro
-    try { await inter.reply({ ...(payload as any), flags: MessageFlags.Ephemeral } as any); } catch {}
+    try {
+      await inter.reply({ ...(payload as any), flags: MessageFlags.Ephemeral } as any);
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -195,16 +247,40 @@ export async function openClassModal(inter: ButtonInteraction, classId?: string)
 
   modal.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('name').setLabel('Nome da Classe').setRequired(true).setStyle(TextInputStyle.Short).setMaxLength(60).setValue(toEdit?.name ?? ''),
+      new TextInputBuilder()
+        .setCustomId('name')
+        .setLabel('Nome da Classe')
+        .setRequired(true)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(60)
+        .setValue(toEdit?.name ?? ''),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('emoji').setLabel('Emoji (unicode ou <:nome:id>)').setRequired(false).setStyle(TextInputStyle.Short).setMaxLength(64).setValue(toEdit?.emoji ?? ''),
+      new TextInputBuilder()
+        .setCustomId('emoji')
+        .setLabel('Emoji (unicode ou <:nome:id>)')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(64)
+        .setValue(toEdit?.emoji ?? ''),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('roleId').setLabel('ID do Cargo (opcional)').setRequired(false).setStyle(TextInputStyle.Short).setMaxLength(25).setValue(toEdit?.roleId ?? ''),
+      new TextInputBuilder()
+        .setCustomId('roleId')
+        .setLabel('ID do Cargo (opcional)')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(25)
+        .setValue(toEdit?.roleId ?? ''),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('color').setLabel('Cor da Classe (#RRGGBB opcional)').setRequired(false).setStyle(TextInputStyle.Short).setMaxLength(7).setValue((toEdit?.color as string | undefined) ?? ''),
+      new TextInputBuilder()
+        .setCustomId('color')
+        .setLabel('Cor da Classe (#RRGGBB opcional)')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(7)
+        .setValue((toEdit?.color as string | undefined) ?? ''),
     ),
   );
 
@@ -217,9 +293,9 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   const isUpdate = ids.recruit.isModalClassUpdate(inter.customId);
   const classId = isUpdate ? inter.customId.split(':').pop()! : undefined;
 
-  const nameRaw  = (inter.fields.getTextInputValue('name')  || '').trim();
+  const nameRaw = (inter.fields.getTextInputValue('name') || '').trim();
   const emojiRaw = (inter.fields.getTextInputValue('emoji') || '').trim();
-  const roleRaw  = (inter.fields.getTextInputValue('roleId')|| '').trim();
+  const roleRaw = (inter.fields.getTextInputValue('roleId') || '').trim();
   const colorRaw = (inter.fields.getTextInputValue('color') || '').trim();
 
   if (!nameRaw) {
@@ -239,10 +315,22 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   if (isUpdate && classId) {
     const idx = classes.findIndex((c) => c.id === classId);
     if (idx >= 0) {
-      classes[idx] = { id: classes[idx].id, name: nameRaw, emoji: emojiRaw || undefined, roleId: roleRaw || undefined, color: color || undefined };
+      classes[idx] = {
+        id: classes[idx].id,
+        name: nameRaw,
+        emoji: emojiRaw || undefined,
+        roleId: roleRaw || undefined,
+        color: color || undefined,
+      };
     }
   } else {
-    classes.push({ id: randomUUID(), name: nameRaw, emoji: emojiRaw || undefined, roleId: roleRaw || undefined, color: color || undefined });
+    classes.push({
+      id: randomUUID(),
+      name: nameRaw,
+      emoji: emojiRaw || undefined,
+      roleId: roleRaw || undefined,
+      color: color || undefined,
+    });
   }
 
   await recruitStore.updateSettings(inter.guildId, { classes });
@@ -250,14 +338,20 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   // Aplica cor no cargo, se possível (API nova)
   if (roleRaw && color) {
     try {
-      const role = inter.guild?.roles?.cache?.get(roleRaw) ?? (await inter.guild?.roles?.fetch(roleRaw).catch(() => null));
+      const role =
+        inter.guild?.roles?.cache?.get(roleRaw) ??
+        (await inter.guild?.roles?.fetch(roleRaw).catch(() => null));
       const managed = (role as any)?.managed;
       const editable = (role as any)?.editable;
       if (role && !managed && editable) {
         const c = hexToInt(color);
-        await (role as any).setColors({ primaryColor: c }, 'Atualizado via Gestão de Classes').catch(() => {});
+        await (role as any)
+          .setColors({ primaryColor: c }, 'Atualizado via Gestão de Classes')
+          .catch(() => {});
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   // Atualiza painel público
@@ -268,7 +362,9 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   if (!inter.deferred && !inter.replied) await inter.deferReply({ flags: MessageFlags.Ephemeral });
   await inter.editReply(payload);
 
-  await inter.followUp({ content: '✅ Classe salva.', flags: MessageFlags.Ephemeral }).catch(() => {});
+  await inter
+    .followUp({ content: '✅ Classe salva.', flags: MessageFlags.Ephemeral })
+    .catch(() => {});
 }
 
 /* ----------------------- Remoção ----------------------- */

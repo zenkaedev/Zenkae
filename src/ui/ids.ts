@@ -2,21 +2,21 @@ export type DashTab = 'home' | 'recruit' | 'events' | 'admin';
 export type RsvpChoice = 'yes' | 'maybe' | 'no';
 
 function isDashTab(x: any): x is DashTab {
-  return x === 'home' || x === 'recruit' || x === 'events' || x === 'admin';
+  return x === 'home' || x === 'recruit' || x === 'events' || x === 'admin';
 }
 
 export const ids = {
-  dash: {
-    tab: (tab: DashTab) => `dash:${tab}` as const,
-    is: (id: string) => id.startsWith('dash:'),
-    parse: (id: string): { tab: DashTab } | null => {
-      const parts = id.split(':');
-      const tab = parts[1];
-      return isDashTab(tab) ? { tab } : null;
-    },
-  },
+  dash: {
+    tab: (tab: DashTab) => `dash:${tab}` as const,
+    is: (id: string) => id.startsWith('dash:'),
+    parse: (id: string): { tab: DashTab } | null => {
+      const parts = id.split(':');
+      const tab = parts[1];
+      return isDashTab(tab) ? { tab } : null;
+    },
+  },
 
-  recruit: {
+  recruit: {
     filter: 'recruit:filter' as const,
     publish: 'recruit:publish' as const,
 
@@ -41,7 +41,9 @@ export const ids = {
     // *** NOVO: Gestão de classes no dashboard ***
     settingsClasses: 'recruit:settings:classes' as const,
     // alias para compat (códigos antigos usavam "classesOpen")
-    get classesOpen() { return this.settingsClasses },
+    get classesOpen() {
+      return this.settingsClasses;
+    },
 
     classCreate: 'recruit:settings:class:create' as const,
     modalClassSave: 'recruit:settings:class:save' as const,
@@ -64,29 +66,35 @@ export const ids = {
     modalRejectReason: (appId: string) => `recruit:decision:reject:modal:${appId}` as const,
 
     isApprove: (id: string) => id.startsWith('recruit:decision:approve:'),
-    isReject:  (id: string) => id.startsWith('recruit:decision:reject:'),
+    isReject: (id: string) => id.startsWith('recruit:decision:reject:'),
   },
 
-  events: {
-    new: 'events:new' as const,
-    notify: (eventId: string) => `events:notify:${eventId}` as const,
-    cancel: (eventId: string) => `events:cancel:${eventId}` as const,
-    rsvp: (choice: RsvpChoice, eventId: string) => `events:rsvp:${choice}:${eventId}` as const,
+  events: {
+    new: 'events:new' as const,
+    notify: (eventId: string) => `events:notify:${eventId}` as const,
+    cancel: (eventId: string) => `events:cancel:${eventId}` as const,
+    rsvp: (choice: RsvpChoice, eventId: string) => `events:rsvp:${choice}:${eventId}` as const,
 
-    isNotify: (id: string) => id.startsWith('events:notify:'),
-    isCancel: (id: string) => id.startsWith('events:cancel:'),
-    isRsvp: (id: string) => id.startsWith('events:rsvp:'),
-    parseNotify: (id: string) => { const p = id.split(':'); return p.length === 3 ? { eventId: p[2] } : null; },
-    parseCancel: (id: string) => { const p = id.split(':'); return p.length === 3 ? { eventId: p[2] } : null; },
-    parseRsvp: (id: string) => {
-      const p = id.split(':'); // events:rsvp:{choice}:{id}
-      if (p.length !== 4) return null;
-      const choice = p[2] as RsvpChoice;
-      if (choice !== 'yes' && choice !== 'maybe' && choice !== 'no') return null;
-      return { choice, eventId: p[3] };
-    },
-  },
+    isNotify: (id: string) => id.startsWith('events:notify:'),
+    isCancel: (id: string) => id.startsWith('events:cancel:'),
+    isRsvp: (id: string) => id.startsWith('events:rsvp:'),
+    parseNotify: (id: string) => {
+      const p = id.split(':');
+      return p.length === 3 ? { eventId: p[2] } : null;
+    },
+    parseCancel: (id: string) => {
+      const p = id.split(':');
+      return p.length === 3 ? { eventId: p[2] } : null;
+    },
+    parseRsvp: (id: string) => {
+      const p = id.split(':'); // events:rsvp:{choice}:{id}
+      if (p.length !== 4) return null;
+      const choice = p[2] as RsvpChoice;
+      if (choice !== 'yes' && choice !== 'maybe' && choice !== 'no') return null;
+      return { choice, eventId: p[3] };
+    },
+  },
 
-  activity: { publish: 'activity:publish' as const, check: 'activity:check' as const },
-  admin: { clean: 'admin:clean' as const },
+  activity: { publish: 'activity:publish' as const, check: 'activity:check' as const },
+  admin: { clean: 'admin:clean' as const },
 } as const;

@@ -3,7 +3,11 @@ const prisma = new PrismaClient();
 
 function safeParse<T = any>(s?: string | null, fallback: T = [] as any) {
   if (!s) return fallback;
-  try { return JSON.parse(s) as T; } catch { return fallback; }
+  try {
+    return JSON.parse(s) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 export default class ApplicationRepo {
@@ -24,7 +28,14 @@ export default class ApplicationRepo {
   }) {
     const qAnswers = data.answers ? JSON.stringify(data.answers) : undefined;
     const app = await prisma.application.create({
-      data: { guildId: data.guildId, userId: data.userId, username: data.username, nick: data.nick, className: data.className, qAnswers },
+      data: {
+        guildId: data.guildId,
+        userId: data.userId,
+        username: data.username,
+        nick: data.nick,
+        className: data.className,
+        qAnswers,
+      },
     });
     return { ok: true as const, app: { ...app, answers: safeParse<string[]>(app.qAnswers) } };
   }
@@ -38,7 +49,10 @@ export default class ApplicationRepo {
   }
 
   async setStatus(id: string, status: 'approved' | 'rejected', reason?: string | null) {
-    const app = await prisma.application.update({ where: { id }, data: { status, reason: reason ?? null } });
+    const app = await prisma.application.update({
+      where: { id },
+      data: { status, reason: reason ?? null },
+    });
     return { ...app, answers: safeParse<string[]>(app.qAnswers) };
   }
 }

@@ -24,10 +24,13 @@ export type DashboardView = {
 // tenta achar banner por aba; se não achar, usa o de dashboard
 function bannerFor(tab: DashTab) {
   const dir =
-    tab === 'home'    ? 'dashboard' :
-    tab === 'recruit' ? 'recruit'   :
-    tab === 'events'  ? 'events'    :
-                        'admin';
+    tab === 'home'
+      ? 'dashboard'
+      : tab === 'recruit'
+        ? 'recruit'
+        : tab === 'events'
+          ? 'events'
+          : 'admin';
 
   return loadBannerFrom(dir) ?? loadDefaultBanner();
 }
@@ -44,8 +47,8 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       .setCustomId(ids.recruit.filter)
       .setPlaceholder('Filtrar candidaturas')
       .addOptions(
-        { label: 'Todas',     value: 'all',      default: filter === 'all' },
-        { label: 'Pendentes', value: 'pending',  default: filter === 'pending' },
+        { label: 'Todas', value: 'all', default: filter === 'all' },
+        { label: 'Pendentes', value: 'pending', default: filter === 'pending' },
         { label: 'Aprovadas', value: 'approved', default: filter === 'approved' },
         { label: 'Recusadas', value: 'rejected', default: filter === 'rejected' },
       );
@@ -58,7 +61,7 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       selects: [select],
       buttons: [
         { id: ids.recruit.publish, label: 'Publicar Painel' },
-        { id: 'recruit:settings',  label: '⚙️ Configurar' }, // atalho para tela de config
+        { id: 'recruit:settings', label: '⚙️ Configurar' }, // atalho para tela de config
       ],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;
@@ -98,7 +101,7 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
         `- **Limpar**: remove componentes desta mensagem.\n`,
       buttons: [
         { id: ids.activity.publish, label: 'Ativar Check-in Semanal' },
-        { id: ids.admin.clean,      label: 'Limpar esta mensagem'   },
+        { id: ids.admin.clean, label: 'Limpar esta mensagem' },
       ],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;
@@ -115,8 +118,8 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       `**Admin** → check-in e utilidades`,
     buttons: [
       { id: 'dash:recruit', label: 'Recrutamento' },
-      { id: 'dash:events',  label: 'Eventos' },
-      { id: 'dash:admin',   label: 'Admin'   },
+      { id: 'dash:events', label: 'Eventos' },
+      { id: 'dash:admin', label: 'Admin' },
     ],
   }) as DashboardView;
 }

@@ -27,7 +27,7 @@ const RawEnvSchema = z.object({
   // strings "true"/"false" -> boolean
   DEPLOY_ON_BOOT: z.preprocess(
     (v) => (typeof v === 'string' ? v.toLowerCase() === 'true' : !!v),
-    z.boolean().default(false)
+    z.boolean().default(false),
   ),
 
   // legado / configs extras

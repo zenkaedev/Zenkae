@@ -41,7 +41,11 @@ export const eventsStore = {
   async listUpcoming(guildId: string, limit = 10): Promise<EventDTO[]> {
     const now = new Date();
     const rows = await prisma.event.findMany({
-      where: { guildId, status: 'scheduled', startsAt: { gte: new Date(now.getTime() - 15 * 60_000) } },
+      where: {
+        guildId,
+        status: 'scheduled',
+        startsAt: { gte: new Date(now.getTime() - 15 * 60_000) },
+      },
       orderBy: { startsAt: 'asc' },
       take: limit,
     });

@@ -50,7 +50,9 @@ type MapOut = Record<string, Record<string, { id: string; name: string }>>;
     }
 
     const image = toDataURI(file);
-    const created = (await rest.post(Routes.guildEmojis(guildId), { body: { name, image } })) as any;
+    const created = (await rest.post(Routes.guildEmojis(guildId), {
+      body: { name, image },
+    })) as any;
     out[group][key] = { id: String(created.id), name };
     console.log(`+ ${name} -> ${created.id}`);
   }
@@ -78,7 +80,9 @@ function readPrefix(): string | null {
   try {
     const j = JSON.parse(fs.readFileSync(mf, 'utf8'));
     return typeof j.prefix === 'string' ? j.prefix : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 function scanAssets(base: string) {
   // varre somente 1º nível: assets/<grupo>/*.png
@@ -96,10 +100,17 @@ function scanAssets(base: string) {
   return out.sort((a, b) => a.group.localeCompare(b.group) || a.key.localeCompare(b.key));
 }
 function slug(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24);
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 24);
 }
 function sanitize(name: string) {
-  const s = name.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  const s = name
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '');
   return s.slice(0, 32) || `ic_${Math.random().toString(36).slice(2, 8)}`;
 }
 function toDataURI(file: string) {

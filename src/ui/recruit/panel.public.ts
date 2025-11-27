@@ -102,7 +102,13 @@ export async function renderPublicRecruitPanelV2(guildId: string) {
         max_values: 1,
         options: options.length
           ? options
-          : [{ label: 'Nenhuma classe configurada', value: 'void', description: 'Peça a um admin para configurar' }],
+          : [
+              {
+                label: 'Nenhuma classe configurada',
+                value: 'void',
+                description: 'Peça a um admin para configurar',
+              },
+            ],
         disabled: !options.length,
       },
     ],
@@ -112,8 +118,18 @@ export async function renderPublicRecruitPanelV2(guildId: string) {
   const rowButtons = {
     type: V2.ActionRow,
     components: [
-      { type: V2.Button, style: ButtonStyle.Primary, custom_id: PUB_IDS.nickOpen, label: 'Definir Nick' },
-      { type: V2.Button, style: ButtonStyle.Success, custom_id: PUB_IDS.start, label: 'Iniciar Recrutamento' },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Primary,
+        custom_id: PUB_IDS.nickOpen,
+        label: 'Definir Nick',
+      },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Success,
+        custom_id: PUB_IDS.start,
+        label: 'Iniciar Recrutamento',
+      },
     ],
   };
   containerChildren.push(rowButtons);
@@ -121,7 +137,11 @@ export async function renderPublicRecruitPanelV2(guildId: string) {
   return {
     flags: 1 << 15, // MessageFlags.IsComponentsV2
     components: [
-      { type: V2.Container, accent_color: (s as any).appearanceAccent ?? 0x3d348b, components: containerChildren },
+      {
+        type: V2.Container,
+        accent_color: (s as any).appearanceAccent ?? 0x3d348b,
+        components: containerChildren,
+      },
     ],
   } as const;
 }
@@ -134,17 +154,22 @@ export async function publishPublicRecruitPanelV2(
   const payload = await renderPublicRecruitPanelV2(guildId);
 
   const settings = await recruitStore.getSettings(guildId);
-  const fallbackChannelId: string | undefined = interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? undefined;
-  let targetId: string | undefined = settings.panelChannelId ?? fallbackChannelId; // <-- string | undefined
+  const fallbackChannelId: string | undefined =
+    interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? undefined;
+  const targetId: string | undefined = settings.panelChannelId ?? fallbackChannelId; // <-- string | undefined
 
   if (!targetId) {
-    await (interaction as any).reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Canal inválido para painel.' }).catch(() => null);
+    await (interaction as any)
+      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Canal inválido para painel.' })
+      .catch(() => null);
     return;
   }
 
   const target = await interaction.client.channels.fetch(targetId).catch(() => null);
   if (!target || !target.isTextBased()) {
-    await (interaction as any).reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Canal inválido para painel.' }).catch(() => null);
+    await (interaction as any)
+      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Canal inválido para painel.' })
+      .catch(() => null);
     return;
   }
 
@@ -152,7 +177,9 @@ export async function publishPublicRecruitPanelV2(
   if (saved?.channelId && saved?.messageId) {
     const ch = await interaction.client.channels.fetch(saved.channelId).catch(() => null);
     if (ch?.isTextBased()) {
-      const msg = await (ch as GuildTextBasedChannel).messages.fetch(saved.messageId).catch(() => null);
+      const msg = await (ch as GuildTextBasedChannel).messages
+        .fetch(saved.messageId)
+        .catch(() => null);
       if (msg) {
         await msg.edit(payload);
         return;
@@ -161,7 +188,10 @@ export async function publishPublicRecruitPanelV2(
   }
 
   const sent = await (target as GuildTextBasedChannel).send(payload);
-  await (recruitStore as any).setPanel?.(guildId, { channelId: (sent.channel as any).id, messageId: sent.id });
+  await (recruitStore as any).setPanel?.(guildId, {
+    channelId: (sent.channel as any).id,
+    messageId: sent.id,
+  });
 }
 
 /* ---------------- Interações públicas ---------------- */
@@ -222,7 +252,10 @@ export async function handleStartClick(inter: ButtonInteraction) {
     return true;
   }
   if (!draft.classId) {
-    await inter.reply({ flags: MessageFlags.Ephemeral, content: '⚠️ Selecione sua classe antes de iniciar.' });
+    await inter.reply({
+      flags: MessageFlags.Ephemeral,
+      content: '⚠️ Selecione sua classe antes de iniciar.',
+    });
     return true;
   }
 
@@ -233,7 +266,9 @@ export async function handleStartClick(inter: ButtonInteraction) {
   const cls = classes.find((c) => String(c.id) === String(draft.classId));
   const className = cls?.name ?? '—';
 
-  const activityCount = await (recruitStore as any).getMessageCount?.(guildId, userId).catch(() => 0);
+  const activityCount = await (recruitStore as any)
+    .getMessageCount?.(guildId, userId)
+    .catch(() => 0);
 
   const app = await recruitStore.create({
     guildId,
@@ -312,20 +347,30 @@ export async function handleApplyQuestionsSubmit(inter: ModalSubmitInteraction) 
 
 /* ---------------- helpers ---------------- */
 
-async function publishApplication(interaction: ModalSubmitInteraction | ButtonInteraction, appId: string) {
+async function publishApplication(
+  interaction: ModalSubmitInteraction | ButtonInteraction,
+  appId: string,
+) {
   const app = await recruitStore.getById(appId);
   if (!app || !app.id) {
-    await (interaction as any).reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Aplicação não encontrada.' }).catch(() => null);
+    await (interaction as any)
+      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Aplicação não encontrada.' })
+      .catch(() => null);
     return;
   }
 
   const s = await recruitStore.getSettings(app.guildId);
-  const fallbackChannelId: string | undefined = interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? undefined;
-  let targetId: string | undefined = s.formsChannelId ?? fallbackChannelId; // <-- narrowing com undefined
+  const fallbackChannelId: string | undefined =
+    interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? undefined;
+  const targetId: string | undefined = s.formsChannelId ?? fallbackChannelId; // <-- narrowing com undefined
 
   if (!targetId) {
     await (interaction as any)
-      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Configure o **Canal de formulário** em Recrutamento (ou execute em um canal de texto)."' })
+      .reply?.({
+        flags: MessageFlags.Ephemeral,
+        content:
+          '❌ Configure o **Canal de formulário** em Recrutamento (ou execute em um canal de texto)."',
+      })
       .catch(() => null);
     return;
   }
@@ -333,7 +378,10 @@ async function publishApplication(interaction: ModalSubmitInteraction | ButtonIn
   const target = await interaction.client.channels.fetch(targetId).catch(() => null);
   if (!target || !target.isTextBased()) {
     await (interaction as any)
-      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Canal alvo inválido para publicar o formulário.' })
+      .reply?.({
+        flags: MessageFlags.Ephemeral,
+        content: '❌ Canal alvo inválido para publicar o formulário.',
+      })
       .catch(() => null);
     return;
   }
@@ -345,7 +393,10 @@ async function publishApplication(interaction: ModalSubmitInteraction | ButtonIn
   });
 
   const sent = await (target as GuildTextBasedChannel).send(payload);
-  await recruitStore.setCardRef(app.id as string, { channelId: (sent.channel as any).id, messageId: sent.id });
+  await recruitStore.setCardRef(app.id as string, {
+    channelId: (sent.channel as any).id,
+    messageId: sent.id,
+  });
 
   if ('reply' in interaction) {
     await (interaction as any)

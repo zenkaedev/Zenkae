@@ -31,7 +31,9 @@ export async function applyApprovalAutomation(ctx: ApprovalContext) {
   if (nick && member.manageable) {
     try {
       await member.setNickname(nick, 'Recruit approved: set nick');
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   // Cargos (padrão + classe)
@@ -45,6 +47,8 @@ export async function applyApprovalAutomation(ctx: ApprovalContext) {
   if (toAdd.length) {
     try {
       await member.roles.add(toAdd, 'Recruit approved: assign roles');
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 }

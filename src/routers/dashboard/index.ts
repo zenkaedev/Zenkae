@@ -1,9 +1,5 @@
-import type {
-  Interaction,
-  MessageComponentInteraction,
-  ModalSubmitInteraction,
-} from "discord.js";
-import type { AppCtx } from "../../core/ctx.js";
+import type { Interaction, MessageComponentInteraction, ModalSubmitInteraction } from 'discord.js';
+import type { AppCtx } from '../../core/ctx.js';
 import {
   DASH,
   renderDashHome,
@@ -11,7 +7,7 @@ import {
   renderEventsMenu,
   renderEngageMenu,
   renderAdminMenu,
-} from "../../ui/dashboard/home.js";
+} from '../../ui/dashboard/home.js';
 
 /**
  * Regras:
@@ -22,18 +18,18 @@ import {
 
 export const dashboardRouter = {
   match(id: string) {
-    return id.startsWith("dash:");
+    return id.startsWith('dash:');
   },
 
   async handle(
     ix: Interaction | MessageComponentInteraction | ModalSubmitInteraction,
-    _ctx: AppCtx
+    _ctx: AppCtx,
   ) {
     // Só tratamos componentes/modais aqui.
     if (ix.isChatInputCommand?.()) return;
 
     // ---------- HOME ----------
-    if (ix.isButton() && (ix.customId === DASH.NAV_HOME || ix.customId === "dash:open")) {
+    if (ix.isButton() && (ix.customId === DASH.NAV_HOME || ix.customId === 'dash:open')) {
       // Render leve: pode atualizar direto
       const view = renderDashHome();
       await ix.update(view).catch(async () => {
@@ -84,25 +80,29 @@ export const dashboardRouter = {
     // ---------- PLACEHOLDERS DAS AÇÕES (ATUALIZAM O MESMO CONTAINER) ----------
     if (ix.isButton()) {
       const label = {
-        [DASH.RECRUIT_EDIT_CLASSES]: "🛠️ [Recrutamento] Editor de Classes (em breve)",
-        [DASH.RECRUIT_EDIT_FORM]: "🛠️ [Recrutamento] Editor de Formulário (em breve)",
-        [DASH.RECRUIT_APPEARANCE]: "🛠️ [Recrutamento] Aparência do Painel (em breve)",
-        [DASH.EVENTS_CREATE]: "🛠️ [Eventos] Criar Evento (em breve)",
-        [DASH.EVENTS_EDIT]: "🛠️ [Eventos] Editar Evento (em breve)",
-        [DASH.EVENTS_LIST]: "🛠️ [Eventos] Listar Eventos (em breve)",
-        [DASH.ENGAGE_VOTES]: "🛠️ [Engajamento] Votações (em breve)",
-        [DASH.ENGAGE_SUGGESTIONS]: "🛠️ [Engajamento] Sugestões (em breve)",
-        [DASH.ENGAGE_RANKING]: "🛠️ [Engajamento] Ranking (em breve)",
-        [DASH.ADMIN_ROLES]: "🛠️ [Admin] Cargos (em breve)",
-        [DASH.ADMIN_ANNOUNCEMENTS]: "🛠️ [Admin] Anúncios (em breve)",
-        [DASH.ADMIN_INACTIVE]: "🛠️ [Admin] Inativos (em breve)",
+        [DASH.RECRUIT_EDIT_CLASSES]: '🛠️ [Recrutamento] Editor de Classes (em breve)',
+        [DASH.RECRUIT_EDIT_FORM]: '🛠️ [Recrutamento] Editor de Formulário (em breve)',
+        [DASH.RECRUIT_APPEARANCE]: '🛠️ [Recrutamento] Aparência do Painel (em breve)',
+        [DASH.EVENTS_CREATE]: '🛠️ [Eventos] Criar Evento (em breve)',
+        [DASH.EVENTS_EDIT]: '🛠️ [Eventos] Editar Evento (em breve)',
+        [DASH.EVENTS_LIST]: '🛠️ [Eventos] Listar Eventos (em breve)',
+        [DASH.ENGAGE_VOTES]: '🛠️ [Engajamento] Votações (em breve)',
+        [DASH.ENGAGE_SUGGESTIONS]: '🛠️ [Engajamento] Sugestões (em breve)',
+        [DASH.ENGAGE_RANKING]: '🛠️ [Engajamento] Ranking (em breve)',
+        [DASH.ADMIN_ROLES]: '🛠️ [Admin] Cargos (em breve)',
+        [DASH.ADMIN_ANNOUNCEMENTS]: '🛠️ [Admin] Anúncios (em breve)',
+        [DASH.ADMIN_INACTIVE]: '🛠️ [Admin] Inativos (em breve)',
       } as Record<string, string>;
 
       // Atualiza o container atual com uma mensagem curta
-      await ix.update({ content: label[ix.customId] ?? "🛠️ Em construção…", components: [] }).catch(async () => {
-        await ix.deferUpdate().catch(() => {});
-        await ix.editReply({ content: label[ix.customId] ?? "🛠️ Em construção…", components: [] }).catch(() => {});
-      });
+      await ix
+        .update({ content: label[ix.customId] ?? '🛠️ Em construção…', components: [] })
+        .catch(async () => {
+          await ix.deferUpdate().catch(() => {});
+          await ix
+            .editReply({ content: label[ix.customId] ?? '🛠️ Em construção…', components: [] })
+            .catch(() => {});
+        });
       return;
     }
 

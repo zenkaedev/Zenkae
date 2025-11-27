@@ -12,7 +12,7 @@ export async function loadCommands(): Promise<RESTPostAPIApplicationCommandsJSON
     .readdirSync(__dirname, { withFileTypes: true })
     .filter((d) => d.isFile())
     .map((d) => d.name)
-    .filter((f) => !f.startsWith('_')) 
+    .filter((f) => !f.startsWith('_'))
     .filter((f) => f !== 'index.ts' && f !== 'index.js')
     .filter((f) => f.endsWith('.ts') || f.endsWith('.js'));
 
@@ -58,7 +58,8 @@ export async function loadCommands(): Promise<RESTPostAPIApplicationCommandsJSON
           if (v?.toJSON instanceof Function) {
             const json = v.toJSON() as RESTPostAPIApplicationCommandsJSONBody;
             if (json?.name && !seen.has(json.name)) {
-              payload.push(json); seen.add(json.name);
+              payload.push(json);
+              seen.add(json.name);
             }
           }
         }
@@ -68,14 +69,16 @@ export async function loadCommands(): Promise<RESTPostAPIApplicationCommandsJSON
       if (value && (value as any).toJSON instanceof Function) {
         const json = (value as any).toJSON() as RESTPostAPIApplicationCommandsJSONBody;
         if (json?.name && !seen.has(json.name)) {
-          payload.push(json); seen.add(json.name);
+          payload.push(json);
+          seen.add(json.name);
         }
       }
       // objeto com .data.toJSON()
       if (value && (value as any).data?.toJSON instanceof Function) {
         const json = (value as any).data.toJSON() as RESTPostAPIApplicationCommandsJSONBody;
         if (json?.name && !seen.has(json.name)) {
-          payload.push(json); seen.add(json.name);
+          payload.push(json);
+          seen.add(json.name);
         }
       }
     }

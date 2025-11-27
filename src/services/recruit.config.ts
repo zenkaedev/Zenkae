@@ -8,7 +8,7 @@ export type ClassOption = { label: string; value: string };
 
 export type FormQuestion =
   | { kind: 'short'; key: string; label: string; required?: boolean; maxLength?: number }
-  | { kind: 'long';  key: string; label: string; required?: boolean; maxLength?: number };
+  | { kind: 'long'; key: string; label: string; required?: boolean; maxLength?: number };
 
 export interface FormConfig {
   classOptions: ClassOption[];
@@ -18,13 +18,13 @@ export interface FormConfig {
 // Defaults bonitinhos (não te deixam na mão se a guild não configurou ainda)
 const DEFAULT_CLASSES: ClassOption[] = [
   { label: 'Guerreiro', value: 'guerreiro' },
-  { label: 'Mago',      value: 'mago' },
-  { label: 'Arqueiro',  value: 'arqueiro' },
+  { label: 'Mago', value: 'mago' },
+  { label: 'Arqueiro', value: 'arqueiro' },
 ];
 
 const DEFAULT_QUESTIONS: FormQuestion[] = [
-  { kind: 'short', key: 'xp',     label: 'Experiência (resumo)', required: true, maxLength: 80 },
-  { kind: 'long',  key: 'motivo', label: 'Por que quer entrar?', required: true, maxLength: 300 },
+  { kind: 'short', key: 'xp', label: 'Experiência (resumo)', required: true, maxLength: 80 },
+  { kind: 'long', key: 'motivo', label: 'Por que quer entrar?', required: true, maxLength: 300 },
 ];
 
 // Tenta parsear quando vier string (SQLite). Se já for objeto/array (Postgres), só retorna.
@@ -32,7 +32,11 @@ function safeParseJson<T>(val: unknown, fallback: T): T {
   if (val == null) return fallback;
   if (Array.isArray(val) || typeof val === 'object') return val as T;
   if (typeof val === 'string') {
-    try { return JSON.parse(val) as T; } catch { return fallback; }
+    try {
+      return JSON.parse(val) as T;
+    } catch {
+      return fallback;
+    }
   }
   return fallback;
 }
@@ -45,17 +49,17 @@ function safeParseJson<T>(val: unknown, fallback: T): T {
 export async function loadFormConfig(ctx: AppCtx, guildId: string): Promise<FormConfig> {
   const row = await ctx.repos.guildConfig.getByGuildId(guildId);
   const classes = safeParseJson<ClassOption[]>(
-    (row && 'classOptions' in row ? (row as any).classOptions : undefined),
-    []
+    row && 'classOptions' in row ? (row as any).classOptions : undefined,
+    [],
   );
   const questions = safeParseJson<FormQuestion[]>(
-    (row && 'formQuestions' in row ? (row as any).formQuestions : undefined),
-    []
+    row && 'formQuestions' in row ? (row as any).formQuestions : undefined,
+    [],
   );
 
   return {
     classOptions: classes.length ? classes : DEFAULT_CLASSES,
-    questions:    questions.length ? questions : DEFAULT_QUESTIONS,
+    questions: questions.length ? questions : DEFAULT_QUESTIONS,
   };
 }
 
@@ -68,7 +72,9 @@ export function normalizeFormConfig(input: Partial<FormConfig>): FormConfig {
   const questions = Array.isArray(input.questions) ? input.questions : [];
 
   const normClasses = classes
-    .filter((c): c is ClassOption => !!c && typeof c.label === 'string' && typeof c.value === 'string')
+    .filter(
+      (c): c is ClassOption => !!c && typeof c.label === 'string' && typeof c.value === 'string',
+    )
     .map((c) => ({ label: c.label.trim(), value: c.value.trim() }))
     .filter((c) => c.label && c.value);
 
@@ -80,7 +86,9 @@ export function normalizeFormConfig(input: Partial<FormConfig>): FormConfig {
       const label = String(q.label ?? '').trim();
       const required = !!q.required;
       const maxLength =
-        typeof q.maxLength === 'number' && q.maxLength > 0 ? Math.min(q.maxLength, kind === 'short' ? 100 : 1000) : undefined;
+        typeof q.maxLength === 'number' && q.maxLength > 0
+          ? Math.min(q.maxLength, kind === 'short' ? 100 : 1000)
+          : undefined;
 
       return { kind, key, label, required, maxLength } as FormQuestion;
     })
@@ -88,6 +96,6 @@ export function normalizeFormConfig(input: Partial<FormConfig>): FormConfig {
 
   return {
     classOptions: normClasses.length ? normClasses : DEFAULT_CLASSES,
-    questions:    normQuestions.length ? normQuestions : DEFAULT_QUESTIONS,
+    questions: normQuestions.length ? normQuestions : DEFAULT_QUESTIONS,
   };
 }

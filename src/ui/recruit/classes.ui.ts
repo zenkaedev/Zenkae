@@ -60,7 +60,7 @@ export async function openClassesUI(inter: ButtonInteraction) {
     components: [
       {
         type: V2.Container,
-        accent_color: (s as any).appearanceAccent ?? 0x3D348B,
+        accent_color: (s as any).appearanceAccent ?? 0x3d348b,
         components: [
           { type: V2.TextDisplay, content: '# Gerenciar Classes' },
           { type: V2.TextDisplay, content: list },
@@ -70,7 +70,14 @@ export async function openClassesUI(inter: ButtonInteraction) {
       },
       {
         type: V2.ActionRow,
-        components: [{ type: 2, style: ButtonStyle.Success, custom_id: IDS.addOpen, label: 'Adicionar classe' }],
+        components: [
+          {
+            type: 2,
+            style: ButtonStyle.Success,
+            custom_id: IDS.addOpen,
+            label: 'Adicionar classe',
+          },
+        ],
       },
     ],
   } as any);
@@ -82,10 +89,18 @@ export async function openAddClassModal(inter: ButtonInteraction) {
   const m = new ModalBuilder().setCustomId(IDS.addModal).setTitle('Adicionar classe');
   m.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('name').setLabel('Nome*').setRequired(true).setStyle(TextInputStyle.Short),
+      new TextInputBuilder()
+        .setCustomId('name')
+        .setLabel('Nome*')
+        .setRequired(true)
+        .setStyle(TextInputStyle.Short),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('emoji').setLabel('Emoji (opcional)').setRequired(false).setStyle(TextInputStyle.Short),
+      new TextInputBuilder()
+        .setCustomId('emoji')
+        .setLabel('Emoji (opcional)')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
@@ -95,7 +110,11 @@ export async function openAddClassModal(inter: ButtonInteraction) {
         .setStyle(TextInputStyle.Short),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('roleId').setLabel('Role ID (opcional)').setRequired(false).setStyle(TextInputStyle.Short),
+      new TextInputBuilder()
+        .setCustomId('roleId')
+        .setLabel('Role ID (opcional)')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short),
     ),
   );
   await inter.showModal(m);
@@ -112,8 +131,7 @@ export async function handleAddClassModal(inter: ModalSubmitInteraction) {
   const roleId = (inter.fields.getTextInputValue('roleId') || '').trim() || null;
 
   if (!name) {
-    await inter.reply({ flags: MessageFlags.Ephemeral
-, content: '❌ Nome é obrigatório.' });
+    await inter.reply({ flags: MessageFlags.Ephemeral, content: '❌ Nome é obrigatório.' });
     return true;
   }
 
@@ -125,11 +143,16 @@ export async function handleAddClassModal(inter: ModalSubmitInteraction) {
   }
 
   const s = await recruitStore.getSettings(guildId);
-  const nextClasses = [...((s as any).classes ?? []), { id: cryptoRandom(), name, emoji, color, roleId }];
+  const nextClasses = [
+    ...((s as any).classes ?? []),
+    { id: cryptoRandom(), name, emoji, color, roleId },
+  ];
   await recruitStore.updateSettings(guildId, { ...(s as any), classes: nextClasses });
 
-  await inter.reply({ flags: MessageFlags.Ephemeral
-, content: `✅ Classe **${name}** adicionada.` });
+  await inter.reply({
+    flags: MessageFlags.Ephemeral,
+    content: `✅ Classe **${name}** adicionada.`,
+  });
   return true;
 }
 

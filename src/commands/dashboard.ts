@@ -6,9 +6,7 @@ export const data = new SlashCommandBuilder()
   .setName('dashboard')
   .setDescription('Abre o dashboard do Zenkae')
   .addBooleanOption((opt) =>
-    opt.setName('privado')
-      .setDescription('Responde só para você (efêmero)')
-      .setRequired(false),
+    opt.setName('privado').setDescription('Responde só para você (efêmero)').setRequired(false),
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {

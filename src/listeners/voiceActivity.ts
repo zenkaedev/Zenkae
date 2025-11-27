@@ -15,7 +15,12 @@ function startOfISOWeek(date: Date) {
   return d;
 }
 
-async function commitSeconds(prisma: PrismaClient, guildId: string, userId: string, seconds: number) {
+async function commitSeconds(
+  prisma: PrismaClient,
+  guildId: string,
+  userId: string,
+  seconds: number,
+) {
   if (seconds <= 0) return;
   // total
   await prisma.voiceActivity.upsert({
@@ -50,7 +55,11 @@ export function registerVoiceActivity(client: Client, prisma: PrismaClient) {
     const sess = sessions.get(key);
     if (sess) {
       const seconds = Math.floor((now - sess.startedAt) / 1000);
-      try { await commitSeconds(prisma, guildId, userId, seconds); } catch {}
+      try {
+        await commitSeconds(prisma, guildId, userId, seconds);
+      } catch {
+        // ignore
+      }
       sessions.delete(key);
     }
 
@@ -75,7 +84,9 @@ export function registerVoiceActivity(client: Client, prisma: PrismaClient) {
             if (!sessions.has(key)) sessions.set(key, { startedAt: Date.now(), channelId: ch.id });
           }
         });
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   });
 
@@ -91,7 +102,10 @@ export function registerVoiceActivity(client: Client, prisma: PrismaClient) {
     }
     return map;
   };
-  (registerVoiceActivity as any).getLiveSecondsForGuildSince = (guildId: string, sinceMs: number) => {
+  (registerVoiceActivity as any).getLiveSecondsForGuildSince = (
+    guildId: string,
+    sinceMs: number,
+  ) => {
     const now = Date.now();
     const map = new Map<string, number>();
     for (const [key, sess] of sessions) {
@@ -106,11 +120,15 @@ export function registerVoiceActivity(client: Client, prisma: PrismaClient) {
 }
 
 export function getLiveSecondsForGuild(guildId: string): Map<string, number> {
-  const f = (registerVoiceActivity as any).getLiveSecondsForGuild as ((g: string) => Map<string, number>) | undefined;
+  const f = (registerVoiceActivity as any).getLiveSecondsForGuild as
+    | ((g: string) => Map<string, number>)
+    | undefined;
   return f ? f(guildId) : new Map();
 }
 
 export function getLiveSecondsForGuildSince(guildId: string, since: Date): Map<string, number> {
-  const f = (registerVoiceActivity as any).getLiveSecondsForGuildSince as ((g: string, s: number) => Map<string, number>) | undefined;
+  const f = (registerVoiceActivity as any).getLiveSecondsForGuildSince as
+    | ((g: string, s: number) => Map<string, number>)
+    | undefined;
   return f ? f(guildId, since.getTime()) : new Map();
 }

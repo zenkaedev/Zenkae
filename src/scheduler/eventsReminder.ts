@@ -1,64 +1,100 @@
-import type { Client, GuildTextBasedChannel } from 'discord.js';
+import { Client, TextChannel } from 'discord.js';
 import { eventsStore } from '../modules/events/store.js';
 
-type ReminderKind = '24h' | '1h' | '15m';
-
-const WINDOWS: Record<ReminderKind, number> = {
-  '24h': 24 * 60 * 60 * 1000,
-  '1h':  60 * 60 * 1000,
-  '15m': 15 * 60 * 1000,
-};
-
+/**
+ * Scheduler robusto para lembretes de eventos.
+ * - Verifica idempotência (não envia duplicado).
+ * - Trata erros individualmente para não travar o loop.
+ * - Usa intervalo de 1 minuto.
+ */
 export function startEventReminders(client: Client) {
-  setInterval(async () => {
-    try {
+  // Executa imediatamente e depois a cada 60s
+  check(client);
+  setInterval(() => check(client), 60_000);
+}
+
+async function check(client: Client) {
+  try {
+    // Busca eventos agendados para as próximas 25 horas (cobre 24h, 1h e 15m)
+    const upcoming = await eventsStore.listScheduledInNext(25);
+
+    for (const ev of upcoming) {
       const now = Date.now();
-      const upcoming = await eventsStore.listScheduledInNext(26);
+      const diff = ev.startsAt - now;
 
-      for (const ev of upcoming) {
-        const timeTo = ev.startsAt - now;
-        if (timeTo <= 0 || ev.status !== 'scheduled') continue;
+      // Definição das janelas de tempo (em ms)
+      // Usamos uma margem de erro de ~2 minutos para garantir que o job pegue
+      const MIN_15 = 15 * 60 * 1000;
+      const HOUR_1 = 60 * 60 * 1000;
+      const HOUR_24 = 24 * 60 * 60 * 1000;
+      const MARGIN = 2 * 60 * 1000; // 2 minutos de tolerância
 
-        for (const kind of Object.keys(WINDOWS) as ReminderKind[]) {
-          const target = WINDOWS[kind];
-          if (timeTo <= target && timeTo > target - 65_000) {
-            const already = await eventsStore.hasReminder(ev.id, kind);
-            if (already) continue;
+      // Lógica de decisão: qual lembrete enviar?
+      let kind: '24h' | '1h' | '15m' | null = null;
 
-            const confirmed = await eventsStore.listConfirmedUsers(ev.id);
-            let ok = 0;
-            for (const r of confirmed) {
-              try {
-                const u = await client.users.fetch(r.userId);
-                await u.send(`🔔 Lembrete: evento **${ev.title}** em ${label(kind)} (${whenStr(ev.startsAt)}).`);
-                ok++;
-              } catch {}
-            }
+      if (Math.abs(diff - HOUR_24) < MARGIN) kind = '24h';
+      else if (Math.abs(diff - HOUR_1) < MARGIN) kind = '1h';
+      else if (Math.abs(diff - MIN_15) < MARGIN) kind = '15m';
 
-            try {
-              const ch = await client.channels.fetch(ev.channelId);
-              if (ch && ch.isTextBased()) {
-                await (ch as GuildTextBasedChannel).send(`🔔 **${ev.title}** começa ${label(kind)}. Confirmados notificados por DM.`);
-              }
-            } catch {}
+      if (!kind) continue;
 
-            await eventsStore.markReminder(ev.id, kind);
-            console.log(`[reminder] ${kind} -> ${ev.title} | DMs: ${ok}`);
-          }
-        }
+      // 1. Verificação de Idempotência (Check DB)
+      const alreadySent = await eventsStore.hasReminder(ev.id, kind);
+      if (alreadySent) continue;
+
+      // 2. Envio (com tratamento de erro isolado)
+      try {
+        await sendReminder(client, ev, kind);
+        // 3. Marca como enviado APENAS se sucesso (ou falha controlada)
+        await eventsStore.markReminder(ev.id, kind);
+        console.log(`[reminder] Enviado ${kind} para evento ${ev.id} (${ev.title})`);
+      } catch (err) {
+        console.error(`[reminder] Falha ao enviar ${kind} para evento ${ev.id}:`, err);
+        // Não marcamos como feito para tentar novamente no próximo tick (se ainda estiver na margem)
+        // Ou marcamos se for erro fatal (ex: canal deletado) para não spammar logs
       }
-    } catch (e) {
-      console.warn('[reminder] loop error:', e);
     }
-  }, 60_000);
+  } catch (err) {
+    console.error('[scheduler] Erro fatal no loop de lembretes:', err);
+  }
 }
 
-function label(kind: ReminderKind) {
-  if (kind === '24h') return 'em 24 horas';
-  if (kind === '1h') return 'em 1 hora';
-  return 'em 15 minutos';
-}
+async function sendReminder(client: Client, ev: any, kind: '24h' | '1h' | '15m') {
+  // Busca lista de confirmados
+  const rsvps = await eventsStore.listConfirmedUsers(ev.id);
+  if (!rsvps.length) return;
 
-function whenStr(ts: number) {
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(ts));
+  const timeStr = `<t:${Math.floor(ev.startsAt / 1000)}:R>`; // "em 15 minutos" dinâmico
+
+  let successCount = 0;
+
+  // Envia DM para cada confirmado
+  for (const rsvp of rsvps) {
+    try {
+      const user = await client.users.fetch(rsvp.userId);
+      await user.send(
+        `🔔 **Lembrete de Evento:**\n\n` +
+          `**${ev.title}**\n` +
+          `Começa ${timeStr}!\n\n` +
+          `Prepare-se! 🎮`,
+      );
+      successCount++;
+    } catch {
+      // DM fechada ou usuário saiu; ignoramos silenciosamente
+    }
+  }
+
+  // Opcional: Avisar no canal do evento que os lembretes foram enviados
+  if (successCount > 0 && kind !== '24h') {
+    try {
+      const channel = (await client.channels.fetch(ev.channelId)) as TextChannel;
+      if (channel) {
+        await channel.send({
+          content: `🔔 **Lembrete:** O evento **${ev.title}** começa ${timeStr}. Notifiquei ${successCount} membros confirmados via DM.`,
+        });
+      }
+    } catch {
+      // Canal pode ter sido deletado
+    }
+  }
 }

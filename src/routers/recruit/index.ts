@@ -42,7 +42,12 @@ async function readFormConfig(guildId: string): Promise<RecruitFormConfig> {
 
 async function writeFormConfig(guildId: string, form: RecruitFormConfig): Promise<void> {
   // update parcial — o store costuma aceitar patchs (ex.: { classes })
-  await recruitStore.updateSettings(guildId, { recruit: { ...(await (async () => (await recruitStore.getSettings(guildId) as any)?.recruit ?? {} )()), form } } as any);
+  await recruitStore.updateSettings(guildId, {
+    recruit: {
+      ...(await (async () => ((await recruitStore.getSettings(guildId)) as any)?.recruit ?? {})()),
+      form,
+    },
+  } as any);
 }
 
 /* Registro das rotas */

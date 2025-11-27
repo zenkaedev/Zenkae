@@ -1,9 +1,5 @@
 // src/commands/rank.ts
-import {
-  SlashCommandBuilder,
-  type ChatInputCommandInteraction,
-  EmbedBuilder,
-} from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { PrismaClient } from '@prisma/client';
 import { getLiveSecondsForGuild, getLiveSecondsForGuildSince } from '../listeners/voiceActivity.js';
 
@@ -21,7 +17,9 @@ export const data = new SlashCommandBuilder()
   .setName('rank')
   .setDescription('Ranking de atividade em call')
   .addSubcommand((s) => s.setName('all').setDescription('Ranking geral (tempo total)'))
-  .addSubcommand((s) => s.setName('week').setDescription('Ranking da semana (inicia na segunda-feira)'))
+  .addSubcommand((s) =>
+    s.setName('week').setDescription('Ranking da semana (inicia na segunda-feira)'),
+  )
   .setDMPermission(false);
 
 export async function execute(inter: ChatInputCommandInteraction) {
@@ -33,7 +31,9 @@ export async function execute(inter: ChatInputCommandInteraction) {
   // ✅ DEFER IMEDIATO para não estourar timeout
   try {
     if (!inter.deferred && !inter.replied) await inter.deferReply({ ephemeral: false });
-  } catch {}
+  } catch {
+    // ignore
+  }
 
   try {
     const sub = inter.options.getSubcommand(false) ?? 'all';
@@ -60,8 +60,9 @@ export async function execute(inter: ChatInputCommandInteraction) {
       const live = getLiveSecondsForGuildSince(guildId, weekStart);
       const applyLive = (userId: string, base: number) => base + (live.get(userId) ?? 0);
 
-      enriched = top.map((r) => ({ userId: r.userId, totalSeconds: applyLive(r.userId, r.totalSeconds) }))
-                    .sort((a, b) => b.totalSeconds - a.totalSeconds);
+      enriched = top
+        .map((r) => ({ userId: r.userId, totalSeconds: applyLive(r.userId, r.totalSeconds) }))
+        .sort((a, b) => b.totalSeconds - a.totalSeconds);
 
       mySeconds = applyLive(invokerId, me?.totalSeconds ?? 0);
     } else {
@@ -78,8 +79,9 @@ export async function execute(inter: ChatInputCommandInteraction) {
       const live = getLiveSecondsForGuild(guildId);
       const applyLive = (userId: string, base: number) => base + (live.get(userId) ?? 0);
 
-      enriched = top.map((r) => ({ userId: r.userId, totalSeconds: applyLive(r.userId, r.totalSeconds) }))
-                    .sort((a, b) => b.totalSeconds - a.totalSeconds);
+      enriched = top
+        .map((r) => ({ userId: r.userId, totalSeconds: applyLive(r.userId, r.totalSeconds) }))
+        .sort((a, b) => b.totalSeconds - a.totalSeconds);
 
       mySeconds = applyLive(invokerId, me?.totalSeconds ?? 0);
     }
@@ -88,9 +90,13 @@ export async function execute(inter: ChatInputCommandInteraction) {
     const names = new Map<string, string>();
     await Promise.all(
       enriched.map(async (r) => {
-        try { const m = await inter.guild!.members.fetch(r.userId); names.set(r.userId, m.displayName); }
-        catch { names.set(r.userId, `Usuário ${r.userId}`); }
-      })
+        try {
+          const m = await inter.guild!.members.fetch(r.userId);
+          names.set(r.userId, m.displayName);
+        } catch {
+          names.set(r.userId, `Usuário ${r.userId}`);
+        }
+      }),
     );
 
     // Montar linhas top 50
@@ -127,7 +133,9 @@ export async function execute(inter: ChatInputCommandInteraction) {
   } catch (err) {
     console.error('rank error:', err);
     if (!inter.replied && !inter.deferred) {
-      await inter.reply({ content: '❌ Falha ao gerar o ranking.', ephemeral: true }).catch(() => {});
+      await inter
+        .reply({ content: '❌ Falha ao gerar o ranking.', ephemeral: true })
+        .catch(() => {});
     } else {
       await inter.editReply({ content: '❌ Falha ao gerar o ranking.' }).catch(() => {});
     }

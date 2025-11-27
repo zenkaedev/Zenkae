@@ -10,7 +10,12 @@ function k(gid: string, uid: string): Key {
   return `${gid}:${uid}`;
 }
 
-export function setSelectedClass(guildId: string, userId: string, value: string, ttlMs = 2 * 60_000) {
+export function setSelectedClass(
+  guildId: string,
+  userId: string,
+  value: string,
+  ttlMs = 2 * 60_000,
+) {
   sweep();
   store.set(k(guildId, userId), { value, expiresAt: Date.now() + ttlMs });
 }

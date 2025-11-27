@@ -16,7 +16,7 @@ async function main() {
   // (Opcional) listar comandos atuais antes de limpar
   try {
     const current = (await rest.get(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID)
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
     )) as Array<{ name: string }>;
 
     console.log(`📋 Comandos atuais na guild ${GUILD_ID}: ${current.length}`);

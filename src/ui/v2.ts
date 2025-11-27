@@ -36,8 +36,8 @@ function getBuilders() {
     typeof c.addMediaGalleryComponents === 'function'
       ? c.addMediaGalleryComponents.bind(c)
       : typeof c.addGalleryComponents === 'function'
-      ? c.addGalleryComponents.bind(c)
-      : null;
+        ? c.addGalleryComponents.bind(c)
+        : null;
 
   return {
     ContainerBuilder,
@@ -94,10 +94,14 @@ export function buildScreen(opts: {
   } = getBuilders();
 
   if (!ContainerBuilder || !TextDisplayBuilder || !SeparatorBuilder) {
-    throw new Error('Sua versão de discord.js não possui Components V2 (Container/TextDisplay/Separator).');
+    throw new Error(
+      'Sua versão de discord.js não possui Components V2 (Container/TextDisplay/Separator).',
+    );
   }
 
-  const container = new (ContainerBuilder as any)().setAccentColor(opts.accentColor ?? Brand.purple);
+  const container = new (ContainerBuilder as any)().setAccentColor(
+    opts.accentColor ?? Brand.purple,
+  );
 
   // Banner (MediaGallery), se suportado
   if (opts.banner?.sources?.length && MediaGalleryBuilder && MediaGalleryItemBuilder) {
@@ -118,7 +122,9 @@ export function buildScreen(opts: {
       new (TextDisplayBuilder as any)().setContent(opts.subtitle),
     );
   if (opts.body)
-    (container as any).addTextDisplayComponents(new (TextDisplayBuilder as any)().setContent(opts.body));
+    (container as any).addTextDisplayComponents(
+      new (TextDisplayBuilder as any)().setContent(opts.body),
+    );
 
   // Divisor
   (container as any).addSeparatorComponents(
@@ -132,7 +138,7 @@ export function buildScreen(opts: {
 
   if (opts.selects?.length) {
     const row = new D.ActionRowBuilder<D.MessageActionRowComponentBuilder>();
-    // @ts-ignore
+
     row.setComponents(...opts.selects);
     rows.push(row);
   }
@@ -159,9 +165,10 @@ export function buildScreen(opts: {
     (container as any).addActionRowComponents(...rows);
   }
 
-  const components: (D.JSONEncodable<D.APIMessageTopLevelComponent> | D.APIMessageTopLevelComponent)[] = [
-    container as any,
-  ];
+  const components: (
+    | D.JSONEncodable<D.APIMessageTopLevelComponent>
+    | D.APIMessageTopLevelComponent
+  )[] = [container as any];
 
   return {
     components,

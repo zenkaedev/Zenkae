@@ -1,10 +1,6 @@
 // scripts/commands.ts
 import 'dotenv/config';
-import {
-  REST,
-  Routes,
-  type RESTPostAPIApplicationCommandsJSONBody,
-} from 'discord.js';
+import { REST, Routes, type RESTPostAPIApplicationCommandsJSONBody } from 'discord.js';
 import { loadCommands } from '../src/commands/index.js';
 
 type Action =
@@ -88,25 +84,24 @@ async function getCommands(): Promise<RESTPostAPIApplicationCommandsJSONBody[]> 
 }
 
 async function listGuild(guildId: string) {
-  const data = (await rest.get(
-    Routes.applicationGuildCommands(CLIENT_ID, guildId)
-  )) as Array<{ name: string; id: string }>;
+  const data = (await rest.get(Routes.applicationGuildCommands(CLIENT_ID, guildId))) as Array<{
+    name: string;
+    id: string;
+  }>;
   console.log(`📋 Guild (${guildId}) tem ${data.length} comandos:`);
   for (const c of data) console.log('-', c.name, `(${c.id})`);
 }
 
 async function listGlobal() {
-  const data = (await rest.get(
-    Routes.applicationCommands(CLIENT_ID)
-  )) as Array<{ name: string; id: string }>;
+  const data = (await rest.get(Routes.applicationCommands(CLIENT_ID))) as Array<{
+    name: string;
+    id: string;
+  }>;
   console.log(`🌍 Global tem ${data.length} comandos:`);
   for (const c of data) console.log('-', c.name, `(${c.id})`);
 }
 
-async function putGuild(
-  body: RESTPostAPIApplicationCommandsJSONBody[],
-  guildId: string
-) {
+async function putGuild(body: RESTPostAPIApplicationCommandsJSONBody[], guildId: string) {
   await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body });
 }
 

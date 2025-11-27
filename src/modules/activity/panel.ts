@@ -38,7 +38,11 @@ export async function publishActivityPanel(inter: ButtonInteraction | ChatInputC
   const payload = panel(count, week);
 
   const sent = await (ch as GuildTextBasedChannel).send(payload);
-  await activityStore.setPanel(inter.guildId!, { channelId: ch.id, messageId: sent.id, weekStart: week });
+  await activityStore.setPanel(inter.guildId!, {
+    channelId: ch.id,
+    messageId: sent.id,
+    weekStart: week,
+  });
 
   await replyV2Notice(inter, 'Painel de check-in publicado.', true);
 }
@@ -56,7 +60,9 @@ export async function handleActivityCheck(inter: ButtonInteraction) {
       const msg = await (ch as GuildTextBasedChannel).messages.fetch(panelRef.messageId);
       const count = await activityStore.countSince(guildId, week);
       await msg.edit(panel(count, week));
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   await replyV2Notice(inter, '✅ Check-in registrado para esta semana!', true);

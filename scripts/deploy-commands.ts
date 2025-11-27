@@ -1,10 +1,6 @@
 // scripts/deploy-commands.ts
 import 'dotenv/config';
-import {
-  REST,
-  Routes,
-  type RESTPostAPIApplicationCommandsJSONBody,
-} from 'discord.js';
+import { REST, Routes, type RESTPostAPIApplicationCommandsJSONBody } from 'discord.js';
 import { loadCommands } from '../src/commands/index.js';
 
 async function main() {

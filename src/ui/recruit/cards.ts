@@ -32,7 +32,9 @@ function parseAnswers(s?: string | null): string[] {
   try {
     const v = JSON.parse(s);
     return Array.isArray(v) ? (v as string[]).slice(0, 5) : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 async function getMessageCount(guildId: string, userId: string) {
@@ -60,9 +62,9 @@ export async function buildApplicationCard(
     questions: string[];
     /** infos opcionais passadas pela ação (para exibir no card após decisão) */
     review?: {
-      byUserId?: string;      // quem aprovou/rejeitou
-      at?: Date;              // quando
-      reason?: string;        // motivo (se vier do modal)
+      byUserId?: string; // quem aprovou/rejeitou
+      at?: Date; // quando
+      reason?: string; // motivo (se vier do modal)
     };
   },
 ) {
@@ -117,14 +119,16 @@ export async function buildApplicationCard(
   // 3) Q&A
   const qaLines = (opts.questions ?? []).map((q, i) => `**${q}**: ${answers[i] ?? '_—_'}`);
   if (qaLines.length) {
-    components.push({ type: ComponentType.TextDisplay, content: truncate(qaLines.join('\n'), 4000) });
+    components.push({
+      type: ComponentType.TextDisplay,
+      content: truncate(qaLines.join('\n'), 4000),
+    });
   }
 
   // 4) Feedback de decisão (se não for pending)
   if (app.status !== 'pending') {
     const statusLabel = app.status === 'approved' ? '✅ Aprovado' : '❌ Rejeitado';
-    const who =
-      opts.review?.byUserId ? `<@${opts.review.byUserId}>` : '—';
+    const who = opts.review?.byUserId ? `<@${opts.review.byUserId}>` : '—';
     const when = fmtDate(opts.review?.at ?? app.updatedAt ?? new Date());
     const why = truncate((opts.review?.reason ?? app.reason ?? '—').toString(), 1000);
 
@@ -173,15 +177,12 @@ export async function buildApplicationCard(
   }
 
   const accent =
-    app.status === 'approved' ? 0x57f287 :
-    app.status === 'rejected' ? 0xed4245 : 0x3d348b;
+    app.status === 'approved' ? 0x57f287 : app.status === 'rejected' ? 0xed4245 : 0x3d348b;
 
   // O objeto de retorno final é construído aqui
   const finalPayload: any = {
     flags: 1 << 15, // Components V2
-    components: [
-      { type: ComponentType.Container, accent_color: accent, components },
-    ],
+    components: [{ type: ComponentType.Container, accent_color: accent, components }],
   };
 
   // Não há 'files' aqui, então o banner padrão não será anexado

@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: zenkae
       POSTGRES_DB: zenkae
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
 volumes:

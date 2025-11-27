@@ -24,11 +24,19 @@ export function buildEventsTabContent(list: EventWithCounts[]): InteractionUpdat
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
   for (const e of list) {
-    lines.push(`- **${e.title}** — ${brDate(new Date(e.startsAt))} · ✅ ${e.yes} · ❔ ${e.maybe} · ❌ ${e.no}`);
+    lines.push(
+      `- **${e.title}** — ${brDate(new Date(e.startsAt))} · ✅ ${e.yes} · ❔ ${e.maybe} · ❌ ${e.no}`,
+    );
     rows.push(
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`events:notify:${e.id}`).setLabel('Notificar confirmados').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`events:cancel:${e.id}`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(`events:notify:${e.id}`)
+          .setLabel('Notificar confirmados')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(`events:cancel:${e.id}`)
+          .setLabel('Cancelar')
+          .setStyle(ButtonStyle.Secondary),
       ),
     );
   }
@@ -48,15 +56,24 @@ export async function notifyConfirmed(inter: ButtonInteraction, eventId: string)
     return;
   }
 
-  let ok = 0, fail = 0;
+  let ok = 0,
+    fail = 0;
   for (const r of list) {
     try {
       const u = await inter.client.users.fetch(r.userId);
-      await u.send(`🔔 Lembrete: você confirmou presença no evento de **${inter.guild?.name}**. Até lá!`);
+      await u.send(
+        `🔔 Lembrete: você confirmou presença no evento de **${inter.guild?.name}**. Até lá!`,
+      );
       ok++;
-    } catch { fail++; }
+    } catch {
+      fail++;
+    }
   }
-  await replyV2Notice(inter, `✅ Notifiquei ${ok} usuário(s).${fail ? ` Falhas: ${fail}.` : ''}`, true);
+  await replyV2Notice(
+    inter,
+    `✅ Notifiquei ${ok} usuário(s).${fail ? ` Falhas: ${fail}.` : ''}`,
+    true,
+  );
 }
 
 export async function cancelEvent(inter: ButtonInteraction, eventId: string) {
@@ -71,12 +88,16 @@ export async function cancelEvent(inter: ButtonInteraction, eventId: string) {
   try {
     const ch = inter.channel!;
     const msg = await (ch as GuildTextBasedChannel).messages.fetch(ev.messageId);
-    await msg.edit(buildScreen({
-      title: `❌ [CANCELADO] ${ev.title}`,
-      subtitle: `Era: ${brDate(new Date(ev.startsAt))}`,
-      body: '*Este evento foi cancelado.*',
-    }));
-  } catch {}
+    await msg.edit(
+      buildScreen({
+        title: `❌ [CANCELADO] ${ev.title}`,
+        subtitle: `Era: ${brDate(new Date(ev.startsAt))}`,
+        body: '*Este evento foi cancelado.*',
+      }),
+    );
+  } catch {
+    // ignore
+  }
 
   await replyV2Notice(inter, `✅ Evento **${ev.title}** cancelado.`, true);
 }

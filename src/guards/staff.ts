@@ -1,4 +1,9 @@
-import { PermissionsBitField, type GuildMember, type RepliableInteraction, MessageFlags } from 'discord.js';
+import {
+  PermissionsBitField,
+  type GuildMember,
+  type RepliableInteraction,
+  MessageFlags,
+} from 'discord.js';
 import { Env } from '../env.js';
 
 export function isStaffMember(member?: GuildMember | null) {
@@ -12,11 +17,22 @@ export function isStaffMember(member?: GuildMember | null) {
 
 export async function assertStaff(interaction: RepliableInteraction): Promise<boolean> {
   if (!interaction.inCachedGuild()) {
-    try { await interaction.reply({ content: '❌ Apenas em servidores.', flags: MessageFlags.Ephemeral }); } catch {}
+    try {
+      await interaction.reply({
+        content: '❌ Apenas em servidores.',
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch {
+      // ignore
+    }
     return false;
   }
   const member = interaction.member as GuildMember | null;
   if (isStaffMember(member)) return true;
-  try { await interaction.reply({ content: '⛔ Somente staff.', flags: MessageFlags.Ephemeral }); } catch {}
+  try {
+    await interaction.reply({ content: '⛔ Somente staff.', flags: MessageFlags.Ephemeral });
+  } catch {
+    // ignore
+  }
   return false;
 }

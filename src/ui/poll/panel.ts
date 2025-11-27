@@ -21,16 +21,25 @@ const V2 = { ActionRow: 1, Button: 2, TextDisplay: 10, Separator: 14, Container:
 const voteCache: Map<string, Map<number, Set<string>>> = new Map();
 const getOptMap = (pollId: string) => {
   let m = voteCache.get(pollId);
-  if (!m) { m = new Map(); voteCache.set(pollId, m); }
+  if (!m) {
+    m = new Map();
+    voteCache.set(pollId, m);
+  }
   return m;
 };
 const cacheAdd = (pollId: string, idx: number, uid: string) => {
   const m = getOptMap(pollId);
-  const s = m.get(idx) ?? new Set<string>(); s.add(uid); m.set(idx, s);
+  const s = m.get(idx) ?? new Set<string>();
+  s.add(uid);
+  m.set(idx, s);
 };
 const cacheRemove = (pollId: string, idx: number, uid: string) => {
   const m = getOptMap(pollId);
-  const s = m.get(idx); if (s) { s.delete(uid); if (!s.size) m.delete(idx); }
+  const s = m.get(idx);
+  if (s) {
+    s.delete(uid);
+    if (!s.size) m.delete(idx);
+  }
 };
 const cacheClearOther = (pollId: string, keepIdx: number, uid: string) => {
   const m = getOptMap(pollId);
@@ -73,19 +82,31 @@ function renderButtons(pollId: string, options: string[], disabled = false, mult
   return rows;
 }
 
-function unixTs(d: Date) { return Math.floor(d.getTime() / 1000); }
+function unixTs(d: Date) {
+  return Math.floor(d.getTime() / 1000);
+}
 
 /* ----------------------- payload ----------------------- */
 
 // Aceita { optionsJson } ou { options }
 type PollLike = {
-  id: string; question: string; multi?: boolean;
-  endsAt?: Date | string | null; optionsJson?: string; options?: string[];
+  id: string;
+  question: string;
+  multi?: boolean;
+  endsAt?: Date | string | null;
+  optionsJson?: string;
+  options?: string[];
 };
 
 function getOptionsArray(poll: PollLike): string[] {
   if (Array.isArray(poll.options)) return poll.options;
-  if (poll.optionsJson) { try { return JSON.parse(poll.optionsJson) as string[]; } catch { return []; } }
+  if (poll.optionsJson) {
+    try {
+      return JSON.parse(poll.optionsJson) as string[];
+    } catch {
+      return [];
+    }
+  }
   return [];
 }
 
@@ -93,13 +114,17 @@ export function buildPollPayload(poll: PollLike, counts: Record<number, number>)
   const options = getOptionsArray(poll);
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
-  const lines = options.map((o, i) => {
-    const c = counts[i] ?? 0;
-    const pct = total ? Math.round((c * 100) / total) : 0;
-    return `**${esc(o)}**\n${bar(c, total)}  ·  ${c} voto(s) — ${pct}%`;
-  }).join('\n\n');
+  const lines = options
+    .map((o, i) => {
+      const c = counts[i] ?? 0;
+      const pct = total ? Math.round((c * 100) / total) : 0;
+      return `**${esc(o)}**\n${bar(c, total)}  ·  ${c} voto(s) — ${pct}%`;
+    })
+    .join('\n\n');
 
-  const ends = poll.endsAt ? new Date(typeof poll.endsAt === 'string' ? poll.endsAt : poll.endsAt) : null;
+  const ends = poll.endsAt
+    ? new Date(typeof poll.endsAt === 'string' ? poll.endsAt : poll.endsAt)
+    : null;
   const expired = !!ends && ends.getTime() <= Date.now();
 
   const children: any[] = [];
@@ -112,12 +137,28 @@ export function buildPollPayload(poll: PollLike, counts: Record<number, number>)
   const adminRow = {
     type: V2.ActionRow,
     components: [
-      { type: V2.Button, style: ButtonStyle.Secondary, custom_id: pollIds.results(poll.id), label: 'Ver resultados', emoji: { name: '📈' } },
-      { type: V2.Button, style: ButtonStyle.Danger, custom_id: pollIds.close(poll.id),    label: 'Encerrar',       emoji: { name: '⛔' }, disabled: expired },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Secondary,
+        custom_id: pollIds.results(poll.id),
+        label: 'Ver resultados',
+        emoji: { name: '📈' },
+      },
+      {
+        type: V2.Button,
+        style: ButtonStyle.Danger,
+        custom_id: pollIds.close(poll.id),
+        label: 'Encerrar',
+        emoji: { name: '⛔' },
+        disabled: expired,
+      },
     ],
   } as const;
 
-  return { flags: 1 << 15, components: [{ type: V2.Container, components: [...children, ...btnRows, adminRow] }] } as const;
+  return {
+    flags: 1 << 15,
+    components: [{ type: V2.Container, components: [...children, ...btnRows, adminRow] }],
+  } as const;
 }
 
 /* ----------------------- criar enquete ----------------------- */
@@ -126,19 +167,38 @@ export async function openCreatePollModal(inter: ChatInputCommandInteraction | B
   const modal = new ModalBuilder().setCustomId(pollIds.createModal).setTitle('Nova Enquete');
   modal.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('q').setLabel('Pergunta').setRequired(true).setStyle(TextInputStyle.Short).setMaxLength(200),
+      new TextInputBuilder()
+        .setCustomId('q')
+        .setLabel('Pergunta')
+        .setRequired(true)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(200),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('o').setLabel('Opções')
+      new TextInputBuilder()
+        .setCustomId('o')
+        .setLabel('Opções')
         .setPlaceholder('Separe por ; — ex.: Sim; Não; Talvez')
-        .setRequired(true).setStyle(TextInputStyle.Paragraph).setMaxLength(400),
+        .setRequired(true)
+        .setStyle(TextInputStyle.Paragraph)
+        .setMaxLength(400),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('multi').setLabel('Múltipla escolha? (s/n)').setRequired(false).setStyle(TextInputStyle.Short).setMaxLength(1),
+      new TextInputBuilder()
+        .setCustomId('multi')
+        .setLabel('Múltipla escolha? (s/n)')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(1),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId('end').setLabel('Encerra quando?')
-        .setPlaceholder('Ex.: 2025-09-10 20:00 ou 2h/1d').setRequired(false).setStyle(TextInputStyle.Short).setMaxLength(32),
+      new TextInputBuilder()
+        .setCustomId('end')
+        .setLabel('Encerra quando?')
+        .setPlaceholder('Ex.: 2025-09-10 20:00 ou 2h/1d')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(32),
     ),
   );
   await inter.showModal(modal);
@@ -147,13 +207,17 @@ export async function openCreatePollModal(inter: ChatInputCommandInteraction | B
 /* ----------------------- submit do modal ----------------------- */
 
 function parseEndsAt(txt?: string | null): Date | null {
-  const s = (txt ?? '').trim(); if (!s) return null;
+  const s = (txt ?? '').trim();
+  if (!s) return null;
   if (/^\d+[smhd]$/.test(s)) {
-    const n = parseInt(s, 10); const ch = s.slice(-1);
-    const ms = ch === 's' ? n * 1000 : ch === 'm' ? n * 60_000 : ch === 'h' ? n * 3_600_000 : n * 86_400_000;
+    const n = parseInt(s, 10);
+    const ch = s.slice(-1);
+    const ms =
+      ch === 's' ? n * 1000 : ch === 'm' ? n * 60_000 : ch === 'h' ? n * 3_600_000 : n * 86_400_000;
     return new Date(Date.now() + ms);
   }
-  const dt = new Date(s.replace(' ', 'T')); return isNaN(+dt) ? null : dt;
+  const dt = new Date(s.replace(' ', 'T'));
+  return isNaN(+dt) ? null : dt;
 }
 
 export async function handleCreatePollSubmit(inter: ModalSubmitInteraction) {
@@ -165,12 +229,24 @@ export async function handleCreatePollSubmit(inter: ModalSubmitInteraction) {
   const multi = /^s$/i.test((inter.fields.getTextInputValue('multi') || '').trim());
   const end = parseEndsAt((inter.fields.getTextInputValue('end') || '').trim());
 
-  const options = (raw || '').split(';').map((s) => s.trim()).filter(Boolean).slice(0, 10);
-  if (!q || options.length < 2) { await inter.editReply('❌ Informe uma pergunta e pelo menos 2 opções.'); return; }
+  const options = (raw || '')
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+  if (!q || options.length < 2) {
+    await inter.editReply('❌ Informe uma pergunta e pelo menos 2 opções.');
+    return;
+  }
 
   const poll = await pollStore.create({
-    guildId: inter.guildId!, channelId: inter.channelId!,
-    question: q, options, multi, endsAt: end, createdById: inter.user.id,
+    guildId: inter.guildId!,
+    channelId: inter.channelId!,
+    question: q,
+    options,
+    multi,
+    endsAt: end,
+    createdById: inter.user.id,
   });
 
   const counts = await pollStore.countVotes(poll.id);
@@ -185,17 +261,24 @@ export async function handleCreatePollSubmit(inter: ModalSubmitInteraction) {
 
 async function safeReply(inter: ButtonInteraction, content: string | { content: string } | any) {
   const opts = typeof content === 'string' ? { content } : content;
-  if (inter.deferred || inter.replied) await inter.followUp({ ...opts, flags: MessageFlags.Ephemeral }).catch(() => {});
+  if (inter.deferred || inter.replied)
+    await inter.followUp({ ...opts, flags: MessageFlags.Ephemeral }).catch(() => {});
   else await inter.reply({ ...opts, flags: MessageFlags.Ephemeral }).catch(() => {});
 }
 
 // Busca nomes exibidos no servidor para uma lista de userIds
 async function fetchDisplayNames(guild: Guild, userIds: string[]) {
   const unique = Array.from(new Set(userIds)).slice(0, 200);
-  const entries = await Promise.all(unique.map(async (id) => {
-    try { const m = await guild.members.fetch(id); return [id, m.displayName] as const; }
-    catch { return [id, `@${id}`] as const; }
-  }));
+  const entries = await Promise.all(
+    unique.map(async (id) => {
+      try {
+        const m = await guild.members.fetch(id);
+        return [id, m.displayName] as const;
+      } catch {
+        return [id, `@${id}`] as const;
+      }
+    }),
+  );
   return Object.fromEntries(entries) as Record<string, string>;
 }
 
@@ -204,17 +287,28 @@ async function getVotesByOptionCompat(pollId: string) {
   const s: any = pollStore as any;
 
   if (typeof s.getVotesByOption === 'function') {
-    try { const r = await s.getVotesByOption(pollId); if (r && typeof r === 'object') return r as Record<number, string[]>; } catch {}
+    try {
+      const r = await s.getVotesByOption(pollId);
+      if (r && typeof r === 'object') return r as Record<number, string[]>;
+    } catch {
+      // ignore
+    }
   }
 
   if (typeof s.listVotes === 'function' || typeof s.getVotes === 'function') {
     try {
       const arr: Array<{ userId: string; optionIdx: number }> =
-        (typeof s.listVotes === 'function' ? await s.listVotes(pollId) : await s.getVotes(pollId)) || [];
+        (typeof s.listVotes === 'function'
+          ? await s.listVotes(pollId)
+          : await s.getVotes(pollId)) || [];
       const map: Record<number, string[]> = {};
-      for (const v of arr) { (map[v.optionIdx] ||= []).push(v.userId); }
+      for (const v of arr) {
+        (map[v.optionIdx] ||= []).push(v.userId);
+      }
       return map;
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   // Fallback: cache em memória
@@ -237,13 +331,21 @@ export async function handlePollButton(inter: ButtonInteraction) {
 
       try {
         const now = new Date();
-        if (typeof (pollStore as any).updateEndsAt === 'function') { await (pollStore as any).updateEndsAt(pollId, now); (poll as any).endsAt = now; }
-        else (poll as any).endsAt = now;
-      } catch {}
+        if (typeof (pollStore as any).updateEndsAt === 'function') {
+          await (pollStore as any).updateEndsAt(pollId, now);
+          (poll as any).endsAt = now;
+        } else (poll as any).endsAt = now;
+      } catch {
+        // ignore
+      }
 
       const counts = await pollStore.countVotes(pollId);
       const payload = buildPollPayload(poll as any, counts);
-      try { await inter.update(payload); } catch { await safeReply(inter, payload as any); }
+      try {
+        await inter.update(payload);
+      } catch {
+        await safeReply(inter, payload as any);
+      }
       return;
     }
 
@@ -269,7 +371,9 @@ export async function handlePollButton(inter: ButtonInteraction) {
         const list = names.length ? names.join(', ') : '_— sem votos —_';
         blocks.push(`${header}\n${list}`);
       }
-      const content = `**Resultados detalhados**\nPergunta: **${esc((poll as any).question)}**\n\n` + blocks.join('\n\n');
+      const content =
+        `**Resultados detalhados**\nPergunta: **${esc((poll as any).question)}**\n\n` +
+        blocks.join('\n\n');
       await inter.editReply({ content }).catch(() => {});
       return;
     }
@@ -282,7 +386,8 @@ export async function handlePollButton(inter: ButtonInteraction) {
       if (!poll) return safeReply(inter, '❌ Enquete não encontrada.');
 
       const ends = (poll as any).endsAt ? new Date((poll as any).endsAt) : null;
-      if (ends && ends.getTime() <= Date.now()) return safeReply(inter, '⛔ Esta enquete está encerrada.');
+      if (ends && ends.getTime() <= Date.now())
+        return safeReply(inter, '⛔ Esta enquete está encerrada.');
 
       const options = getOptionsArray(poll as any);
       if (idx < 0 || idx >= options.length) return safeReply(inter, '❌ Opção inválida.');
@@ -303,10 +408,18 @@ export async function handlePollButton(inter: ButtonInteraction) {
 
       const counts = await pollStore.countVotes(pollId);
       const payload = buildPollPayload(poll as any, counts);
-      try { await inter.update(payload); } catch { await safeReply(inter, payload as any); }
+      try {
+        await inter.update(payload);
+      } catch {
+        await safeReply(inter, payload as any);
+      }
     }
   } catch (err: any) {
     await safeReply(inter, { content: `❌ Erro: \`${err?.message ?? String(err)}\`` });
-    try { console.error('[poll:button] error', err); } catch {}
+    try {
+      console.error('[poll:button] error', err);
+    } catch {
+      // ignore
+    }
   }
 }

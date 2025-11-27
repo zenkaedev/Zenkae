@@ -24,7 +24,9 @@ export const EMOJI = {
 } as const;
 
 // Stub para “Components v2”: hoje só garantimos que não há embeds.
-export function asV2<T extends { content?: string; embeds?: any[]; components?: any; flags?: number }>(payload: T): T {
+export function asV2<
+  T extends { content?: string; embeds?: any[]; components?: any; flags?: number },
+>(payload: T): T {
   if (payload.embeds && payload.embeds.length) {
     throw new Error('Components v2: não use embeds neste payload.');
   }
@@ -36,7 +38,12 @@ export function actions(...buttons: ButtonBuilder[]) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 }
 
-export function button(id: string, label: string, style: 'primary'|'secondary'|'success'|'danger', emoji?: string) {
+export function button(
+  id: string,
+  label: string,
+  style: 'primary' | 'secondary' | 'success' | 'danger',
+  emoji?: string,
+) {
   const styleMap: Record<typeof style, ButtonStyle> = {
     primary: ButtonStyle.Primary,
     secondary: ButtonStyle.Secondary,
@@ -57,9 +64,7 @@ export function buildRecruitPanel(config?: {
   const title = (config?.panelTitle || 'Recrutamento').trim();
   const desc = (config?.panelDesc || 'Clique para começar sua candidatura.').trim();
 
-  const row = actions(
-    button('recruit:apply', 'Candidatar-se', 'success', EMOJI.apply),
-  );
+  const row = actions(button('recruit:apply', 'Candidatar-se', 'success', EMOJI.apply));
 
   // Mantemos content com título + descrição (sem embeds)
   const content = `**${title}**\n${desc}`;

@@ -8,5 +8,5 @@ export function td(raw?: string | null) {
 // Se quiser sempre mostrar algo, usa "—"
 export function tdOrDash(raw?: string | null) {
   const s = (raw ?? '').trim();
-  return { type: 10 as const, content: (s.length === 0 ? '—' : s.slice(0, 4000)) };
+  return { type: 10 as const, content: s.length === 0 ? '—' : s.slice(0, 4000) };
 }

@@ -52,7 +52,9 @@ function normalizeHexColor(input?: unknown): string | null {
   const short = /^([a-fA-F\d]{3})$/.exec(raw);
   if (short?.[1]) {
     const chars = short[1];
-    const r = chars[0], g = chars[1], b = chars[2];
+    const r = chars[0],
+      g = chars[1],
+      b = chars[2];
     return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
   }
 
@@ -67,7 +69,9 @@ function normalizeHexColor(input?: unknown): string | null {
 function normalizeClass(c: Partial<Class> | any): Class {
   return {
     id: String(c?.id ?? ''),
-    name: String(c?.name ?? '').slice(0, 60).trim(),
+    name: String(c?.name ?? '')
+      .slice(0, 60)
+      .trim(),
     emoji: c?.emoji != null ? String(c.emoji).slice(0, 16) : null,
     roleId: c?.roleId != null ? String(c.roleId) : null,
     color: normalizeHexColor(c?.color),

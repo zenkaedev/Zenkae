@@ -1,26 +1,23 @@
 // src/commands/recruit.ts
-import {
-  type ChatInputCommandInteraction,
-  MessageFlags,
-  SlashCommandBuilder,
-} from "discord.js";
-import type { AppCtx } from "../core/ctx.js";
-import { buildClassStep } from "../ui/recruit/form.js";
-import { loadFormConfig } from "../services/recruit.config.js"; // CORREÇÃO: A função se chama loadFormConfig
+import { type ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from 'discord.js';
+import type { AppCtx } from '../core/ctx.js';
+import { buildClassStep } from '../ui/recruit/form.js';
+import { loadFormConfig } from '../services/recruit.config.js'; // CORREÇÃO: A função se chama loadFormConfig
 
 // Exporta a definição do comando para o script de deploy
 export const recruitCommandData = new SlashCommandBuilder()
-  .setName("recruit")
-  .setDescription("Inicia seu processo de candidatura para se juntar ao time.");
+  .setName('recruit')
+  .setDescription('Inicia seu processo de candidatura para se juntar ao time.');
 
 // Exporta o handler da interação
-export async function handleRecruitSlash(ix: ChatInputCommandInteraction, ctx: AppCtx) { // CORREÇÃO: ctx é necessário para loadFormConfig
-  const log = ctx.logger.child({ scope: "recruit-slash" });
+export async function handleRecruitSlash(ix: ChatInputCommandInteraction, ctx: AppCtx) {
+  // CORREÇÃO: ctx é necessário para loadFormConfig
+  const log = ctx.logger.child({ scope: 'recruit-slash' });
 
   // Garante que o comando está sendo usado em um servidor
   if (!ix.guildId) {
     await ix.reply({
-      content: "Use este comando dentro de um servidor.",
+      content: 'Use este comando dentro de um servidor.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -39,11 +36,17 @@ export async function handleRecruitSlash(ix: ChatInputCommandInteraction, ctx: A
       flags: MessageFlags.Ephemeral, // Resposta visível apenas para o usuário
     });
   } catch (err) {
-    log.error({ err }, "Erro ao iniciar o processo de recrutamento");
+    log.error({ err }, 'Erro ao iniciar o processo de recrutamento');
     if (ix.replied || ix.deferred) {
-      await ix.followUp({ content: "❌ Ops! Não consegui iniciar o formulário. Tente novamente.", flags: MessageFlags.Ephemeral });
+      await ix.followUp({
+        content: '❌ Ops! Não consegui iniciar o formulário. Tente novamente.',
+        flags: MessageFlags.Ephemeral,
+      });
     } else {
-      await ix.reply({ content: "❌ Ops! Não consegui iniciar o formulário. Tente novamente.", flags: MessageFlags.Ephemeral });
+      await ix.reply({
+        content: '❌ Ops! Não consegui iniciar o formulário. Tente novamente.',
+        flags: MessageFlags.Ephemeral,
+      });
     }
   }
 }

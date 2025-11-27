@@ -66,8 +66,14 @@ export function buildClassStep(classes: SelectOption[]) {
   const rowSelect = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
   const rowActions = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(IDs.classNext).setStyle(ButtonStyle.Success).setLabel('Continuar'),
-    new ButtonBuilder().setCustomId(IDs.classCancel).setStyle(ButtonStyle.Secondary).setLabel('Cancelar'),
+    new ButtonBuilder()
+      .setCustomId(IDs.classNext)
+      .setStyle(ButtonStyle.Success)
+      .setLabel('Continuar'),
+    new ButtonBuilder()
+      .setCustomId(IDs.classCancel)
+      .setStyle(ButtonStyle.Secondary)
+      .setLabel('Cancelar'),
   );
 
   return {

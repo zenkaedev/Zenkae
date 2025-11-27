@@ -34,7 +34,9 @@ export const data = new SlashCommandBuilder()
 export async function execute(inter: ChatInputCommandInteraction) {
   if (!inter.inGuild()) {
     if (inter.isRepliable()) {
-      await inter.reply({ content: 'Use este comando dentro de um servidor.', ephemeral: true }).catch(() => {});
+      await inter
+        .reply({ content: 'Use este comando dentro de um servidor.', ephemeral: true })
+        .catch(() => {});
     }
     return;
   }
@@ -45,16 +47,21 @@ export async function execute(inter: ChatInputCommandInteraction) {
     try {
       const anyInter = inter as any;
       if (typeof anyInter.showModal !== 'function') {
-        await inter.reply({
-          content: '❌ Este ambiente não expõe `interaction.showModal`. Verifique a versão do discord.js (v14+) e intents.',
-          ephemeral: true,
-        }).catch(() => {});
+        await inter
+          .reply({
+            content:
+              '❌ Este ambiente não expõe `interaction.showModal`. Verifique a versão do discord.js (v14+) e intents.',
+            ephemeral: true,
+          })
+          .catch(() => {});
         return;
       }
       await openCreatePollModal(inter as any);
       return;
     } catch (err: any) {
-      const msg = (err?.message as string) || (typeof err === 'string' ? err : 'Erro desconhecido ao abrir o modal.');
+      const msg =
+        (err?.message as string) ||
+        (typeof err === 'string' ? err : 'Erro desconhecido ao abrir o modal.');
       if (inter.isRepliable()) {
         await inter
           .reply({ content: `❌ Falha ao abrir o modal:\n\`\`\`${msg}\`\`\``, ephemeral: true })
@@ -64,7 +71,11 @@ export async function execute(inter: ChatInputCommandInteraction) {
             }
           });
       }
-      try { console.error('[poll:create] showModal error:', err); } catch {}
+      try {
+        console.error('[poll:create] showModal error:', err);
+      } catch {
+        // ignore
+      }
       return;
     }
   }
@@ -75,7 +86,8 @@ export async function execute(inter: ChatInputCommandInteraction) {
     const link = inter.options.getString('mensagem', true);
     const parsed = parseMessageLink(link);
     if (!parsed) return inter.editReply('❌ Link de mensagem inválido.');
-    if (parsed.guildId !== inter.guildId) return inter.editReply('❌ Essa mensagem não é deste servidor.');
+    if (parsed.guildId !== inter.guildId)
+      return inter.editReply('❌ Essa mensagem não é deste servidor.');
 
     const ch = await inter.guild!.channels.fetch(parsed.channelId).catch(() => null);
     if (!ch || !('isTextBased' in ch) || !(ch as any).isTextBased())
