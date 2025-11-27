@@ -76,7 +76,7 @@ type RecruitFilter = 'all' | 'pending' | 'approved' | 'rejected';
 async function ensureDeferredModal(i: ModalSubmitInteraction) {
   if (!i.isRepliable()) return;
   if (!i.deferred && !i.replied) {
-    await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+    await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => { });
   }
 }
 
@@ -112,6 +112,10 @@ async function safeUpdate(interaction: any, base: InteractionReplyOptions | any)
 export function registerInteractionRouter(client: Client) {
   client.on(Events.InteractionCreate, async (interaction) => {
     try {
+      if (interaction.isButton()) {
+        console.log(`[DEBUG] Button click: ${interaction.customId} | User: ${interaction.user.tag}`);
+      }
+
       /* ==================== /dashboard ==================== */
       if (interaction.isChatInputCommand() && interaction.commandName === 'dashboard') {
         const privado = interaction.options.getBoolean('privado') ?? false;
@@ -343,7 +347,12 @@ export function registerInteractionRouter(client: Client) {
 
       /* ==================== Events ==================== */
       if (interaction.isButton() && interaction.customId === ids.events.new) {
-        if (!(await assertStaff(interaction))) return;
+        console.log('[DEBUG] Event creation button matched.');
+        if (!(await assertStaff(interaction))) {
+          console.log('[DEBUG] Staff check failed.');
+          return;
+        }
+        console.log('[DEBUG] Opening event modal...');
         await openNewEventModal(interaction);
         return;
       }
