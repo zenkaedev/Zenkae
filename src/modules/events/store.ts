@@ -110,4 +110,18 @@ export const eventsStore = {
   async markReminder(eventId: string, kind: '24h' | '1h' | '15m') {
     await prisma.eventReminder.create({ data: { eventId, kind } });
   },
+
+  async setMessageId(eventId: string, messageId: string, channelId: string) {
+    await prisma.event.update({
+      where: { id: eventId },
+      data: { messageId, channelId },
+    });
+  },
+
+  async update(eventId: string, data: Partial<{ messageId: string; channelId: string; status: EventStatus }>) {
+    await prisma.event.update({
+      where: { id: eventId },
+      data,
+    });
+  },
 };
