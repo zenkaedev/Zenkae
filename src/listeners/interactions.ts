@@ -70,6 +70,10 @@ import { executePoll } from '../commands/poll.js';
 import { handlePollButton, handleCreatePollSubmit } from '../ui/poll/panel.js';
 import { pollIds } from '../ui/poll/ids.js';
 
+// === EVENTS & PROFILE ===
+import { execute as executeEvents } from '../commands/events.js';
+import { execute as executeBotProfile } from '../commands/botProfile.js';
+
 type RecruitFilter = 'all' | 'pending' | 'approved' | 'rejected';
 
 /** ACK universal para modais (evita Unknown interaction 10062) */
@@ -128,6 +132,16 @@ export function registerInteractionRouter(client: Client) {
           flags: (base.flags ?? 0) | (privado ? MessageFlags.Ephemeral : 0),
         };
         await interaction.reply(reply);
+        return;
+      }
+
+      if (interaction.isChatInputCommand() && interaction.commandName === 'evento') {
+        await executeEvents(interaction);
+        return;
+      }
+
+      if (interaction.isChatInputCommand() && interaction.commandName === 'bot-profile') {
+        await executeBotProfile(interaction);
         return;
       }
 

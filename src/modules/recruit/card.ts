@@ -13,6 +13,8 @@ import { getMessageCount } from '../../listeners/messageCount.js';
 const V2 = {
   ActionRow: 1,
   Button: 2,
+  StringSelect: 3,
+  TextInput: 4,
   Section: 9,
   TextDisplay: 10,
   Thumbnail: 11,
@@ -65,6 +67,7 @@ export async function buildApplicationCard(client: Client, app: any, extras?: Bu
 
   const createdAt: MaybeDate = app?.createdAt ?? null;
   const updatedAt: MaybeDate = app?.updatedAt ?? createdAt ?? null;
+  const attachmentUrl: string | null = app?.attachmentUrl ?? null;
 
   const locale = extras?.locale ?? 'pt-BR'; // --------- fetch usuário e urls ---------
 
@@ -97,10 +100,10 @@ export async function buildApplicationCard(client: Client, app: any, extras?: Bu
     components: mainSectionComponents,
     accessory: avatarUrl
       ? {
-          type: V2.Thumbnail,
-          media: { url: avatarUrl },
-          description: 'Avatar do candidato',
-        }
+        type: V2.Thumbnail,
+        media: { url: avatarUrl },
+        description: 'Avatar do candidato',
+      }
       : undefined,
   }; // --------- seção Formulário (Q/A) ---------
 
@@ -127,7 +130,26 @@ export async function buildApplicationCard(client: Client, app: any, extras?: Bu
         content: `**${label}:** ${value}`,
       });
     }
-  } // --------- status ---------
+  }
+
+  // --------- Anexo ---------
+  if (attachmentUrl) {
+    qaComponents.push({ type: V2.Separator, divider: true, spacing: 1 });
+    qaComponents.push({
+      type: V2.TextDisplay,
+      content: `**Anexo:** [Abrir arquivo](${attachmentUrl})`
+    });
+
+    // Se for imagem, exibe galeria
+    if (/\.(png|jpe?g|gif|webp)$/i.test(attachmentUrl)) {
+      qaComponents.push({
+        type: V2.MediaGallery,
+        items: [{ media: { url: attachmentUrl } }],
+      });
+    }
+  }
+
+  // --------- status ---------
 
   const statusText = await renderStatus({
     client,

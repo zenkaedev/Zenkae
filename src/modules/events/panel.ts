@@ -6,6 +6,7 @@ import {
   EmbedBuilder,
   ButtonBuilder,
   ButtonStyle,
+  FileUploadBuilder,
   type ButtonInteraction,
   type ModalSubmitInteraction,
   type GuildTextBasedChannel,
@@ -24,8 +25,9 @@ function eventPayload(params: {
   description?: string | null;
   counts?: { yes: number; maybe: number; no: number };
   eventId?: string;
+  bannerUrl?: string | null;
 }) {
-  const { title, startsAt, description, counts, eventId } = params;
+  const { title, startsAt, description, counts, eventId, bannerUrl } = params;
   const ts = Math.floor(startsAt.getTime() / 1000);
 
   // Embed Principal
@@ -43,6 +45,10 @@ function eventPayload(params: {
     )
     .setFooter({ text: 'Clique abaixo para confirmar presença' })
     .setTimestamp();
+
+  if (bannerUrl) {
+    embed.setImage(bannerUrl);
+  }
 
   // Botões de RSVP
   const row = new ActionRowBuilder<ButtonBuilder>();
@@ -122,11 +128,20 @@ export async function openNewEventModal(inter: ButtonInteraction) {
     .setStyle(TextInputStyle.Paragraph)
     .setMaxLength(500);
 
+  // NOVO: File Upload para Banner
+  // Nota: FileUploadBuilder não tem setLabel, ele é apenas o arquivo.
+  // Para adicionar em ActionRow, usamos ActionRowBuilder<FileUploadBuilder>
+  const banner = new FileUploadBuilder()
+    .setCustomId('banner')
+    .setRequired(false);
+  // .setMaxFiles(1); // Removido pois parece não existir no builder ainda
+
   modal.addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(title),
     new ActionRowBuilder<TextInputBuilder>().addComponents(date),
     new ActionRowBuilder<TextInputBuilder>().addComponents(time),
     new ActionRowBuilder<TextInputBuilder>().addComponents(desc),
+    new ActionRowBuilder<any>().addComponents(banner), // Cast para any para evitar erro de tipo
   );
 
   await inter.showModal(modal);
@@ -139,6 +154,11 @@ export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
   const date = inter.fields.getTextInputValue('date').trim();
   const time = inter.fields.getTextInputValue('time').trim();
   const desc = (inter.fields.getTextInputValue('desc') || '').trim();
+
+  // Recuperar arquivo (banner)
+  // @ts-ignore
+  const files = inter.fields.getUploadedFiles ? inter.fields.getUploadedFiles('banner') : null;
+  const bannerAttachment = files && files.size > 0 ? files.first() : null;
 
   // Validação básica de data
   const startsAt = new Date(`${date}T${time}:00`);
@@ -160,8 +180,15 @@ export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
   }
 
   // 1. Envia placeholder
-  const payload = eventPayload({ title, startsAt, description: desc, eventId: undefined });
-  const sent = await (channel as GuildTextBasedChannel).send(payload);
+  const payloadFiles = bannerAttachment ? [bannerAttachment] : [];
+  const bannerUrl = bannerAttachment ? `attachment://${bannerAttachment.name}` : undefined;
+
+  const payload = eventPayload({ title, startsAt, description: desc, eventId: undefined, bannerUrl });
+
+  const sent = await (channel as GuildTextBasedChannel).send({
+    ...payload,
+    files: payloadFiles
+  });
 
   // 2. Salva no banco
   const saved = await eventsStore.create({
@@ -175,7 +202,7 @@ export async function handleNewEventSubmit(inter: ModalSubmitInteraction) {
 
   // 3. Atualiza com botões funcionais
   const counts = await eventsStore.stats(saved.id);
-  await sent.edit(eventPayload({ title, startsAt, description: desc, counts, eventId: saved.id }));
+  await sent.edit(eventPayload({ title, startsAt, description: desc, counts, eventId: saved.id, bannerUrl }));
 
   await replyV2Notice(inter, `✅ Evento **${title}** criado com sucesso!`, true);
 }
@@ -201,6 +228,11 @@ export async function handleRsvpClick(
   try {
     const ch = inter.channel!;
     const msg = await (ch as GuildTextBasedChannel).messages.fetch(ev.messageId);
+
+    // Tenta recuperar a URL da imagem se existir no embed atual
+    const currentEmbed = msg.embeds[0];
+    const bannerUrl = currentEmbed?.image?.url;
+
     await msg.edit(
       eventPayload({
         title: ev.title,
@@ -208,6 +240,7 @@ export async function handleRsvpClick(
         description: ev.description || undefined,
         counts,
         eventId: ev.id,
+        bannerUrl, // Mantém a imagem se existir
       }),
     );
   } catch {

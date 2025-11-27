@@ -12,9 +12,11 @@ import {
   TextInputBuilder,
   TextInputStyle,
   MessageFlags,
+  FileUploadBuilder,
   type ChatInputCommandInteraction,
   type GuildTextBasedChannel,
   type ButtonInteraction,
+  type Attachment,
 } from 'discord.js';
 
 import { recruitStore } from '../../modules/recruit/store.js';
@@ -103,12 +105,12 @@ export async function renderPublicRecruitPanelV2(guildId: string) {
         options: options.length
           ? options
           : [
-              {
-                label: 'Nenhuma classe configurada',
-                value: 'void',
-                description: 'Peça a um admin para configurar',
-              },
-            ],
+            {
+              label: 'Nenhuma classe configurada',
+              value: 'void',
+              description: 'Peça a um admin para configurar',
+            },
+          ],
         disabled: !options.length,
       },
     ],
@@ -276,38 +278,45 @@ export async function handleStartClick(inter: ButtonInteraction) {
     username: inter.user.username,
     nick: draft.nick!,
     className,
+    classId: draft.classId,
   });
-  (app as any).classId = draft.classId;
+  // (app as any).classId = draft.classId; // já passado no create
   (app as any).activityCount = activityCount;
 
   await recruitDrafts.clearUserDraft(guildId, userId);
 
-  if (qs.length) {
-    const MAX_FIELDS = 5;
-    const total = Math.min(qs.length, MAX_FIELDS);
+  // MAX_FIELDS = 4 para dar espaço ao FileUpload (total 5)
+  const MAX_FIELDS = 4;
+  const total = Math.min(qs.length, MAX_FIELDS);
 
-    const modal = new ModalBuilder()
-      .setCustomId(`${PUB_IDS.applyQModalPrefix}${app.id}:${total}`)
-      .setTitle('Perguntas de Recrutamento');
+  const modal = new ModalBuilder()
+    .setCustomId(`${PUB_IDS.applyQModalPrefix}${app.id}:${total}`)
+    .setTitle('Perguntas de Recrutamento');
 
-    qs.slice(0, total).forEach((q: string, idx: number) => {
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId(`q${idx + 1}`)
-            .setLabel(q.slice(0, 45) || `Pergunta ${idx + 1}`)
-            .setRequired(false)
-            .setStyle(TextInputStyle.Paragraph)
-            .setMaxLength(300),
-        ),
-      );
-    });
+  qs.slice(0, total).forEach((q: string, idx: number) => {
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId(`q${idx + 1}`)
+          .setLabel(q.slice(0, 45) || `Pergunta ${idx + 1}`)
+          .setRequired(false)
+          .setStyle(TextInputStyle.Paragraph)
+          .setMaxLength(300),
+      ),
+    );
+  });
 
-    await inter.showModal(modal);
-    return true;
-  }
+  // NOVO: File Upload (Anexo)
+  const fileUpload = new FileUploadBuilder()
+    .setCustomId('attachment')
+    .setRequired(false);
+  // .setMaxFiles(1);
 
-  await publishApplication(inter, app.id as string);
+  modal.addComponents(
+    new ActionRowBuilder<any>().addComponents(fileUpload)
+  );
+
+  await inter.showModal(modal);
   return true;
 }
 
@@ -340,8 +349,13 @@ export async function handleApplyQuestionsSubmit(inter: ModalSubmitInteraction) 
     if (v) answers.push(v);
   }
 
+  // Recuperar arquivo
+  // @ts-ignore
+  const files = inter.fields.getUploadedFiles ? inter.fields.getUploadedFiles('attachment') : null;
+  const attachment = files && files.size > 0 ? files.first() : null;
+
   await recruitStore.setAnswers(appId, answers);
-  await publishApplication(inter, appId);
+  await publishApplication(inter, appId, attachment);
   return true;
 }
 
@@ -350,6 +364,7 @@ export async function handleApplyQuestionsSubmit(inter: ModalSubmitInteraction) 
 async function publishApplication(
   interaction: ModalSubmitInteraction | ButtonInteraction,
   appId: string,
+  attachment?: Attachment | null
 ) {
   const app = await recruitStore.getById(appId);
   if (!app || !app.id) {
@@ -392,11 +407,26 @@ async function publishApplication(
     dmRejectedTemplate: s.dmRejectedTemplate,
   });
 
-  const sent = await (target as GuildTextBasedChannel).send(payload);
+  // Anexar arquivo se houver
+  const files = attachment ? [attachment] : [];
+
+  const sent = await (target as GuildTextBasedChannel).send({
+    ...payload,
+    files
+  });
+
   await recruitStore.setCardRef(app.id as string, {
     channelId: (sent.channel as any).id,
     messageId: sent.id,
   });
+
+  // Salvar URL do anexo no banco
+  if (attachment && sent.attachments.size > 0) {
+    const sentAttachment = sent.attachments.first();
+    if (sentAttachment) {
+      await recruitStore.setAttachment(app.id, sentAttachment.url);
+    }
+  }
 
   if ('reply' in interaction) {
     await (interaction as any)

@@ -210,6 +210,7 @@ export const recruitStore = {
     className: string;
     /** Opcional novo: id da classe da UI, se disponível */
     classId?: string | null;
+    attachmentUrl?: string | null;
   }) {
     return prisma.application.create({
       data: {
@@ -219,6 +220,7 @@ export const recruitStore = {
         nick: app.nick,
         className: app.className,
         classId: app.classId ?? null,
+        attachmentUrl: app.attachmentUrl ?? null,
         status: 'pending',
         qAnswers: toJsonString([]),
       },
@@ -229,6 +231,13 @@ export const recruitStore = {
     return prisma.application.update({
       where: { id: appId },
       data: { qAnswers: toJsonString(answers) },
+    });
+  },
+
+  async setAttachment(appId: string, url: string) {
+    return prisma.application.update({
+      where: { id: appId },
+      data: { attachmentUrl: url },
     });
   },
 
