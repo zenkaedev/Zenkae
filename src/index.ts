@@ -26,7 +26,10 @@ import { Env } from './env.js';
 import { registerInteractionRouter } from './listeners/interactions.js';
 import { startEventReminders } from './scheduler/eventsReminder.js';
 import { registerMessageCounter } from './listeners/messageCount.js';
-import { PrismaClient } from '@prisma/client';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { PrismaClient } = require('@prisma/client');
+
 import { loadCommands } from './commands/index.js';
 import { registerVoiceActivity } from './listeners/voiceActivity.js';
 import { Context } from './infra/context.js';
