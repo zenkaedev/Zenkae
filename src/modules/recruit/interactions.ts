@@ -85,7 +85,6 @@ recruitRouter.modal(ids.recruit.modalForm, async (i) => {
     // ensureDeferredModal is handled inside handler or we add it here?
     // Legacy code used ensureDeferredModal inside listener. 
     // We should probably standardize. For now calling handler directly which might expect deferral.
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleEditFormSubmit(i);
 });
 
@@ -96,7 +95,6 @@ recruitRouter.button(ids.recruit.settingsAppearance, async (i) => {
 });
 recruitRouter.modal(ids.recruit.modalAppearance, async (i) => {
     if (!(await assertStaff(i))) return;
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleAppearanceSubmit(i);
 });
 
@@ -107,7 +105,6 @@ recruitRouter.button(ids.recruit.settingsDM, async (i) => {
 });
 recruitRouter.modal(ids.recruit.modalDM, async (i) => {
     if (!(await assertStaff(i))) return;
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleDMTemplatesSubmit(i);
 });
 
@@ -153,7 +150,6 @@ recruitRouter.button(ids.recruit.classCreate, async (i) => {
 });
 recruitRouter.modal(new RegExp('^recruit:class:save'), async (i) => {
     if (!(await assertStaff(i))) return;
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleClassModalSubmit(i);
 });
 
@@ -162,14 +158,12 @@ recruitRouter.button(ids.recruit.apply, async (i) => {
     await openApplyModal(i);
 });
 recruitRouter.modal('recruit:apply:modal', async (i) => {
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleApplyModalSubmit(i);
 });
 recruitRouter.button(new RegExp('^recruit:apply:q:open:'), async (i) => {
     await openApplyQuestionsModal(i, i.customId.split(':').pop()!);
 });
 recruitRouter.modal(new RegExp('^recruit:apply:q:modal:'), async (i) => {
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleApplyQuestionsSubmit(i, i.customId.split(':').pop()!);
 });
 
@@ -187,7 +181,6 @@ recruitRouter.button(PUB_IDS.start, async (i) => {
     await handleStartClick(i);
 });
 recruitRouter.modal(new RegExp('^' + PUB_IDS.applyQModalPrefix), async (i) => {
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleApplyQuestionsSubmitPublic(i);
 });
 
@@ -203,6 +196,5 @@ recruitRouter.button(new RegExp('^recruit:decision:reject:'), async (i) => {
 });
 recruitRouter.modal(new RegExp('^recruit:decision:reject:modal:'), async (i) => {
     if (!(await assertStaff(i))) return;
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
     await handleDecisionRejectSubmit(i, i.customId.split(':').pop()!);
 });
