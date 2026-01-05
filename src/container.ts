@@ -61,7 +61,8 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       selects: [select],
       buttons: [
         { id: ids.recruit.publish, label: 'Publicar Painel' },
-        { id: 'recruit:settings', label: '⚙️ Configurar' }, // atalho para tela de config
+        { id: 'recruit:settings', label: '⚙️ Configurar' },
+        { id: 'recruit:clear-completed', label: '🗑️ Limpar Finalizados' },
       ],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;

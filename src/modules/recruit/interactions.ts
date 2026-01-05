@@ -30,6 +30,8 @@ import {
     handleDecisionRejectSubmit,
 } from './panel.js';
 
+import { recruitStore } from './store.js';
+
 import {
     openRecruitClassesSettings,
     openClassModal,
@@ -73,6 +75,26 @@ recruitRouter.button(ids.recruit.publish, async (i) => {
 recruitRouter.button('recruit:settings', async (i) => {
     if (!(await assertStaff(i))) return;
     await openRecruitSettings(i);
+});
+
+// Clear Completed Applications
+recruitRouter.button('recruit:clear-completed', async (i) => {
+    if (!(await assertStaff(i))) return;
+    await i.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const result = await recruitStore.clearCompleted(i.guildId!);
+    await i.editReply({
+        content: `✅ ${result.count} candidatura(s) finalizada(s) removida(s).`
+    });
+
+    // Refresh dashboard
+    const base = await renderDashboard({
+        tab: 'recruit',
+        guildId: i.guildId!,
+        filter: 'pending'
+    });
+    // @ts-ignore
+    await safeUpdate(i.message!, base);
 });
 
 // Settings: Forms

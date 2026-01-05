@@ -161,17 +161,23 @@ export async function publishPublicRecruitPanelV2(
   const targetId: string | undefined = settings.panelChannelId ?? fallbackChannelId; // <-- string | undefined
 
   if (!targetId) {
-    await (interaction as any)
-      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Canal inválido para painel.' })
-      .catch(() => null);
+    const msg = '❌ Canal inválido para painel.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: msg }).catch(() => null);
+    } else {
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
+    }
     return;
   }
 
   const target = await interaction.client.channels.fetch(targetId).catch(() => null);
   if (!target || !target.isTextBased()) {
-    await (interaction as any)
-      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Canal inválido para painel.' })
-      .catch(() => null);
+    const msg = '❌ Canal inválido para painel.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: msg }).catch(() => null);
+    } else {
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
+    }
     return;
   }
 
@@ -368,36 +374,38 @@ async function publishApplication(
 ) {
   const app = await recruitStore.getById(appId);
   if (!app || !app.id) {
-    await (interaction as any)
-      .reply?.({ flags: MessageFlags.Ephemeral, content: '❌ Aplicação não encontrada.' })
-      .catch(() => null);
+    const msg = '❌ Aplicação não encontrada.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: msg }).catch(() => null);
+    } else {
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
+    }
     return;
   }
 
   const s = await recruitStore.getSettings(app.guildId);
   const fallbackChannelId: string | undefined =
     interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? undefined;
-  const targetId: string | undefined = s.formsChannelId ?? fallbackChannelId; // <-- narrowing com undefined
+  const targetId: string | undefined = s.formsChannelId ?? fallbackChannelId;
 
   if (!targetId) {
-    await (interaction as any)
-      .reply?.({
-        flags: MessageFlags.Ephemeral,
-        content:
-          '❌ Configure o **Canal de formulário** em Recrutamento (ou execute em um canal de texto)."',
-      })
-      .catch(() => null);
+    const msg = '❌ Configure o **Canal de formulário** em Recrutamento (ou execute em um canal de texto).';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: msg }).catch(() => null);
+    } else {
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
+    }
     return;
   }
 
   const target = await interaction.client.channels.fetch(targetId).catch(() => null);
   if (!target || !target.isTextBased()) {
-    await (interaction as any)
-      .reply?.({
-        flags: MessageFlags.Ephemeral,
-        content: '❌ Canal alvo inválido para publicar o formulário.',
-      })
-      .catch(() => null);
+    const msg = '❌ Canal alvo inválido para publicar o formulário.';
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: msg }).catch(() => null);
+    } else {
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
+    }
     return;
   }
 
@@ -428,9 +436,15 @@ async function publishApplication(
     }
   }
 
-  if ('reply' in interaction) {
-    await (interaction as any)
-      .reply?.({ flags: MessageFlags.Ephemeral, content: '✅ Candidatura enviada para a staff.' })
-      .catch(() => null);
+  // Send success message
+  const msg = '✅ Candidatura enviada para a staff.';
+  try {
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
+    } else {
+      await interaction.followUp({ content: msg, flags: MessageFlags.Ephemeral });
+    }
+  } catch {
+    // ignore if interaction is already invalid
   }
 }

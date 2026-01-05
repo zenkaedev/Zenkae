@@ -308,4 +308,17 @@ export const recruitStore = {
   parseAnswers(raw?: string | null) {
     return parseArrayStr<string>(raw, []);
   },
+
+  /**
+   * Remove all completed (approved/rejected) applications for a guild
+   * @returns Count of deleted applications
+   */
+  async clearCompleted(guildId: string) {
+    return prisma.application.deleteMany({
+      where: {
+        guildId,
+        status: { in: ['approved', 'rejected'] },
+      },
+    });
+  },
 };
