@@ -1,7 +1,9 @@
 import pino from 'pino';
 import { Env } from '../env.js';
 
-const targets: pino.TransportTargetOptions[] = [
+const isDev = process.env.NODE_ENV !== 'production';
+
+const targets: pino.TransportTargetOptions[] = isDev ? [
     {
         target: 'pino-pretty',
         options: {
@@ -10,12 +12,12 @@ const targets: pino.TransportTargetOptions[] = [
             ignore: 'pid,hostname',
         },
     },
-];
+] : [];
 
 export const logger = pino({
     level: Env.LOG_LEVEL || 'info',
-    transport: {
+    transport: targets.length > 0 ? {
         targets,
-    },
+    } : undefined,
     base: undefined, // remove pid/hostname
 });
