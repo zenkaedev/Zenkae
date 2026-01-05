@@ -1,5 +1,4 @@
-// src/listeners/voiceActivity.ts
-import { Client, Events } from 'discord.js';
+import { Client, Events, VoiceState } from 'discord.js';
 import type { PrismaClient } from '@prisma/client';
 
 type Session = { startedAt: number; channelId: string };

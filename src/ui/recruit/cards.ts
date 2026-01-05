@@ -6,10 +6,14 @@ import {
   type Client,
   ComponentType,
 } from 'discord.js';
-import { PrismaClient } from '@prisma/client';
+import { Context } from '../../infra/context.js';
 import { ids } from '../../ui/ids.js';
 
-const prisma = new PrismaClient();
+const prisma = new Proxy({} as any, {
+  get(target, prop) {
+    return (Context.get().prisma as any)[prop];
+  }
+});
 
 type AppRow = {
   id: string;

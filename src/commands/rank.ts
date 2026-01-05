@@ -1,9 +1,13 @@
 // src/commands/rank.ts
 import { SlashCommandBuilder, type ChatInputCommandInteraction, AttachmentBuilder, MessageFlags } from 'discord.js';
-import { PrismaClient } from '@prisma/client';
+import { Context } from '../infra/context.js';
 import { getLiveSecondsForGuild, getLiveSecondsForGuildSince } from '../listeners/voiceActivity.js';
 
-const prisma = new PrismaClient();
+const prisma = new Proxy({} as any, {
+  get(target, prop) {
+    return (Context.get().prisma as any)[prop];
+  }
+});
 
 export const data = new SlashCommandBuilder()
   .setName('rank')

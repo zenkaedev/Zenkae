@@ -1,8 +1,11 @@
 // src/listeners/messageCount.ts
 import { Client, Events } from 'discord.js';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Context } from '../infra/context.js';
+const prisma = new Proxy({} as any, {
+  get(target, prop) {
+    return (Context.get().prisma as any)[prop];
+  }
+});
 
 /**
  * Incrementa um contador por usuário/servidor sempre que alguém envia

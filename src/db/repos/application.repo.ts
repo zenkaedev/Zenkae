@@ -1,5 +1,11 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { Context } from '../../infra/context.js';
+import type { Application } from '@prisma/client';
+
+const prisma = new Proxy({} as any, {
+  get(target, prop) {
+    return (Context.get().prisma as any)[prop];
+  }
+});
 
 function safeParse<T = any>(s?: string | null, fallback: T = [] as any) {
   if (!s) return fallback;
@@ -45,7 +51,7 @@ export default class ApplicationRepo {
       where: { guildId, status },
       orderBy: { createdAt: 'desc' },
     });
-    return rows.map((r) => ({ ...r, answers: safeParse<string[]>(r.qAnswers) }));
+    return rows.map((r: Application) => ({ ...r, answers: safeParse<string[]>(r.qAnswers) }));
   }
 
   async setStatus(id: string, status: 'approved' | 'rejected', reason?: string | null) {

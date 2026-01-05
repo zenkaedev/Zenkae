@@ -1,5 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { Context } from '../../infra/context.js';
+const prisma = new Proxy({} as any, {
+  get(target, prop) {
+    return (Context.get().prisma as any)[prop];
+  }
+});
 
 export class GuildConfigRepo {
   async getByGuildId(guildId: string) {
