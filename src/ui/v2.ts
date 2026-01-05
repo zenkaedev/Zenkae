@@ -203,3 +203,31 @@ export function replyV2Notice(inter: D.RepliableInteraction, text: string, ephem
   const payload = buildNotice(text);
   return replyV2(inter, payload, ephemeral);
 }
+
+/** Helper pra atualizar mensagens de botões/selects com segurança (deferUpdate) */
+export async function safeUpdate(interaction: D.RepliableInteraction, base: D.InteractionReplyOptions | any) {
+  try {
+    if (
+      (interaction.isButton() || interaction.isAnySelectMenu()) &&
+      interaction.isRepliable()
+    ) {
+      if (!interaction.deferred && !interaction.replied) {
+        try {
+          await interaction.deferUpdate();
+        } catch {
+          // ignore
+        }
+      }
+      return await interaction.editReply(base as any);
+    }
+    if (interaction.deferred || interaction.replied)
+      return await interaction.editReply(base as any);
+    return await interaction.reply(base as any);
+  } catch (err) {
+    // Falha silenciosa ou log
+    try {
+      await replyV2Notice(interaction, '❌ Não foi possível atualizar a interface.', true);
+    } catch { /* ignore */ }
+    throw err;
+  }
+}

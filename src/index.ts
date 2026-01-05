@@ -13,9 +13,11 @@ must('DISCORD_TOKEN');
 must('DATABASE_URL'); // precisa estar true aqui
 
 // Debug rápido da URL (pra confirmar host/porta/params)
+// Debug rápido da URL (pra confirmar host/porta/params)
 try {
   const u = new URL(process.env.DATABASE_URL!);
-  console.log('[db url]', u.hostname, u.port || '(5432)', u.search || '(sem params)');
+  // logger no loga aqui ainda pois não foi inciado
+  // console.log('[db url]', u.hostname, u.port || '(5432)', u.search || '(sem params)');
 } catch {
   // ignore
 }
@@ -27,20 +29,13 @@ import { registerMessageCounter } from './listeners/messageCount.js';
 import { PrismaClient } from '@prisma/client';
 import { loadCommands } from './commands/index.js';
 import { registerVoiceActivity } from './listeners/voiceActivity.js';
+import { Context } from './infra/context.js';
+import { logger } from './infra/logger.js';
 
 const prisma = new PrismaClient();
 let clientRef: Client | null = null;
 
 async function bootstrap() {
-  // Warm-up do DB (sem prepared statement)
-  try {
-    await prisma.$executeRawUnsafe('SELECT 1');
-    console.log('✅ Prisma conectado');
-  } catch (err) {
-    console.error('❌ Falha ao conectar no Prisma:', err);
-    throw err;
-  }
-
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -51,8 +46,25 @@ async function bootstrap() {
   });
   clientRef = client;
 
+  // Init Context
+  Context.init({
+    client,
+    prisma,
+    logger,
+    env: Env
+  });
+
+  // Warm-up do DB (sem prepared statement)
+  try {
+    await prisma.$executeRawUnsafe('SELECT 1');
+    logger.info('✅ Prisma conectado');
+  } catch (err) {
+    logger.error({ err }, '❌ Falha ao conectar no Prisma');
+    throw err;
+  }
+
   client.once(Events.ClientReady, async (c) => {
-    console.log(`✅ Logado como ${c.user.tag}`);
+    logger.info(`✅ Logado como ${c.user.tag}`);
 
     if (Env.PRESENCE_TEXT) {
       const map: Record<string, ActivityType> = {
@@ -75,16 +87,16 @@ async function bootstrap() {
         const clientId = Env.CLIENT_ID || c.user.id;
 
         const commands = await loadCommands();
-        console.log(`🧩 Comandos carregados: ${commands.length}`);
+        logger.info(`🧩 Comandos carregados: ${commands.length}`);
         if (commands.length > 0) {
-          console.log(`🔁 Publicando ${commands.length} comandos (GLOBAL)...`);
+          logger.info(`🔁 Publicando ${commands.length} comandos (GLOBAL)...`);
           await rest.put(Routes.applicationCommands(clientId), { body: commands });
-          console.log('✅ Deploy global concluído.');
+          logger.info('✅ Deploy global concluído.');
         } else {
-          console.warn('⚠️ Nenhum comando para publicar — pulando deploy global.');
+          logger.warn('⚠️ Nenhum comando para publicar — pulando deploy global.');
         }
       } catch (err) {
-        console.error('❌ Falha no deploy global:', err);
+        logger.error({ err }, '❌ Falha no deploy global');
       }
     }
 
