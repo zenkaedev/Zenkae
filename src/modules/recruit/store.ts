@@ -1,7 +1,12 @@
-// src/modules/recruit/store.ts
-import { PrismaClient } from '@prisma/client';
+import { Context } from '../../infra/context.js';
 
-const prisma = new PrismaClient();
+// Getter preguiçoso para evitar erro de inicialização cíclica
+const prisma = new Proxy({} as any, {
+  get(target, prop) {
+    return (Context.get().prisma as any)[prop];
+  }
+});
+
 
 /** Status possível de uma aplicação */
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
