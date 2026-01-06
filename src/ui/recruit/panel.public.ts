@@ -156,6 +156,13 @@ export async function publishPublicRecruitPanelV2(
   const guildId = interaction.guildId!;
   const payload = await renderPublicRecruitPanelV2(guildId);
 
+  logger.info({
+    guildId,
+    hasComponents: !!payload.components,
+    componentsCount: payload.components?.length,
+    flags: payload.flags
+  }, 'Panel payload generated');
+
   const settings = await recruitStore.getSettings(guildId);
   const fallbackChannelId: string | undefined =
     interaction.channel?.id ?? interaction.guild?.rulesChannelId ?? undefined;
