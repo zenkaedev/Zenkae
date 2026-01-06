@@ -193,8 +193,13 @@ export async function publishPublicRecruitPanelV2(
         .catch(() => null);
       if (msg) {
         logger.info({ guildId, channelId: saved.channelId, messageId: saved.messageId }, 'Editing existing panel');
-        await msg.edit(payload);
-        return;
+        try {
+          await msg.edit(payload);
+          return;
+        } catch (err) {
+          logger.error({ guildId, err }, 'Failed to edit existing panel - will create new one');
+          // Continua para criar novo painel
+        }
       }
     }
   }
