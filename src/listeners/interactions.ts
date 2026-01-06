@@ -32,7 +32,7 @@ async function loadAllCommands() {
   }
 
   const files = fs.readdirSync(commandsPath)
-    .filter(f => f.endsWith('.js') && f !== 'index.js' && !f.startsWith('_'));
+    .filter(f => (f.endsWith('.js') || f.endsWith('.ts')) && f !== 'index.js' && f !== 'index.ts' && !f.startsWith('_'));
 
   logger.info({ files, count: files.length }, 'Found command files');
 
