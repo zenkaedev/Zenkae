@@ -22,6 +22,7 @@ import {
 import { recruitStore } from '../../modules/recruit/store.js';
 import * as recruitDrafts from '../../modules/recruit/store.drafts.js';
 import { buildApplicationCard } from '../../modules/recruit/card.js';
+import { logger } from '../../infra/logger.js';
 
 const V2 = {
   ActionRow: 1,
@@ -182,6 +183,8 @@ export async function publishPublicRecruitPanelV2(
   }
 
   const saved = await (recruitStore as any).getPanel?.(guildId).catch(() => null);
+  logger.info({ guildId, saved: !!saved }, 'Checking for existing panel');
+
   if (saved?.channelId && saved?.messageId) {
     const ch = await interaction.client.channels.fetch(saved.channelId).catch(() => null);
     if (ch?.isTextBased()) {
@@ -189,13 +192,17 @@ export async function publishPublicRecruitPanelV2(
         .fetch(saved.messageId)
         .catch(() => null);
       if (msg) {
+        logger.info({ guildId, channelId: saved.channelId, messageId: saved.messageId }, 'Editing existing panel');
         await msg.edit(payload);
         return;
       }
     }
   }
 
+  logger.info({ guildId, targetId }, 'Sending new panel');
   const sent = await (target as GuildTextBasedChannel).send(payload);
+  logger.info({ guildId, channelId: sent.channelId, messageId: sent.id }, 'Panel sent successfully');
+
   await (recruitStore as any).setPanel?.(guildId, {
     channelId: (sent.channel as any).id,
     messageId: sent.id,

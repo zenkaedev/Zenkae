@@ -84,7 +84,7 @@ recruitRouter.button('recruit:clear-completed', async (i) => {
 
     const result = await recruitStore.clearCompleted(i.guildId!);
     await i.editReply({
-        content: `✅ ${result.count} candidatura(s) finalizada(s) removida(s).`
+        content: `✅ ${result.count} candidatura(s) finalizada(s) removida(s).\n\n💡 Volte ao dashboard para ver a lista atualizada.`
     });
 
     // Refresh dashboard
