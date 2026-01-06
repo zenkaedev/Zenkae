@@ -26,7 +26,8 @@ export async function loadFont(fontPath: string): Promise<ArrayBuffer> {
         // Carregar do filesystem
         const absolutePath = path.resolve(__dirname, fontPath);
         const data = await fs.readFile(absolutePath);
-        buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+        // Explicit cast to ArrayBuffer to fix type error
+        buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
     }
 
     fontCache.set(fontPath, buffer);

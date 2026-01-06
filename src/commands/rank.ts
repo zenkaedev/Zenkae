@@ -29,7 +29,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // 3. Transformar dados para o template
     const rankedUsers = await Promise.all(
-      topUsers.map(async (userData, index) => {
+      topUsers.map(async (userData: any, index: number) => {
         const user = await interaction.client.users.fetch(userData.userId).catch(() => null);
         return {
           userId: userData.userId,
