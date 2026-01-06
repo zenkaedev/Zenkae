@@ -24,6 +24,7 @@ import {
 import { recruitStore } from './store.js';
 import { ids } from '../../ui/ids.js';
 import { publishPublicRecruitPanelV2, openNickModal } from '../../ui/recruit/panel.public.js';
+import { Context } from '../../infra/context.js';
 
 /* --------------------------------------------------------------------------------
    Painel de Controle (Staff)
@@ -89,6 +90,11 @@ export async function renderRecruitPanel(guildId: string) {
       .setCustomId(ids.recruit.settingsFormsChannel)
       .setLabel('Canal Forms')
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('recruit:settings:approved-role')
+      .setLabel('Cargo de Aprovado')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('👤'),
     new ButtonBuilder()
       .setCustomId(ids.recruit.publish)
       .setLabel('Publicar Painel')
@@ -346,23 +352,120 @@ export async function handleDecisionClick(inter: ButtonInteraction, action: 'app
 
       await inter.showModal(modal);
     } else {
-      // Aprovar direto
+      // ========== APROVAR ==========
       await ack(inter, { flags: MessageFlags.Ephemeral });
 
+      // 1. Buscar dados da aplicação
+      const app = await recruitStore.getById(appId);
+      if (!app) {
+        await notice(inter, '❌ Candidatura não encontrada.', true);
+        return;
+      }
+
+      const settings = await recruitStore.getSettings(app.guildId);
+
+      // 2. Atualizar status no banco
       await recruitStore.setStatus(appId, 'approved', inter.user.id);
 
-      // Tentar enviar DM
-      const app = await recruitStore.getById(appId);
-      if (app) {
-        const s = await recruitStore.getSettings(app.guildId);
-        const user = await inter.client.users.fetch(app.userId).catch(() => null);
-        if (user) {
-          const msg = s.dmAcceptedTemplate || 'Parabéns! Você foi aprovado.';
-          await user.send(`✅ **Sua candidatura foi aprovada!**\n\n${msg}`).catch(() => null);
+      // 3. Buscar member do guild
+      const member = await inter.guild?.members.fetch(app.userId).catch(() => null);
+
+      if (member) {
+        // 3.1 Atribuir cargo base de aprovado
+        if (settings.defaultApprovedRoleId) {
+          try {
+            await member.roles.add(settings.defaultApprovedRoleId, 'Aprovação de recrutamento');
+            (Context.get().logger as any).info(
+              { userId: app.userId, roleId: settings.defaultApprovedRoleId },
+              'Cargo base atribuído'
+            );
+          } catch (err) {
+            (Context.get().logger as any).error(
+              { userId: app.userId, err },
+              'Falha ao atribuir cargo base'
+            );
+          }
+        }
+
+        // 3.2 Atribuir cargo de classe (se configurado)
+        const classes = recruitStore.parseClasses(settings.classes);
+        const classe = classes.find((c) => String(c.id) === String(app.classId));
+        if (classe?.roleId) {
+          try {
+            await member.roles.add(classe.roleId, 'Cargo de classe - aprovação');
+            (Context.get().logger as any).info(
+              { userId: app.userId, roleId: classe.roleId, className: classe.name },
+              'Cargo de classe atribuído'
+            );
+          } catch (err) {
+            (Context.get().logger as any).error(
+              { userId: app.userId, err },
+              'Falha ao atribuir cargo de classe'
+            );
+          }
+        }
+
+        // 3.3 Forçar mudança de nickname
+        if (app.nick) {
+          try {
+            await member.setNickname(app.nick, 'Aprovação de recrutamento');
+            (Context.get().logger as any).info(
+              { userId: app.userId, nick: app.nick },
+              'Nickname atualizado'
+            );
+          } catch (err) {
+            (Context.get().logger as any).warn(
+              { userId: app.userId, err },
+              'Falha ao alterar nickname (pode ser owner ou falta de permissão)'
+            );
+          }
+        }
+      } else {
+        (Context.get().logger as any).warn(
+          { appId, userId: app.userId },
+          'Member não encontrado para aprovação'
+        );
+      }
+
+      // 4. Enviar DM ao candidato
+      const user = await inter.client.users.fetch(app.userId).catch(() => null);
+      if (user) {
+        const msg = settings.dmAcceptedTemplate || 'Parabéns! Você foi aprovado.';
+        await user.send(`✅ **Sua candidatura foi aprovada!**\n\n${msg}`).catch(() => null);
+      }
+
+      // 5. Atualizar card visualmente (verde + sem botões)
+      if (app.channelId && app.messageId) {
+        try {
+          const channel = await inter.client.channels.fetch(app.channelId);
+          if (channel?.isTextBased()) {
+            const message = await (channel as any).messages.fetch(app.messageId);
+
+            const updatedApp = {
+              ...app,
+              status: 'approved' as const,
+              moderatedById: inter.user.id,
+              moderatedByDisplay: inter.user.tag,
+              moderatedAt: new Date(),
+            };
+
+            const { buildApplicationCard } = await import('./card.js');
+            const updatedCard = await buildApplicationCard(inter.client, updatedApp, {
+              questions: recruitStore.parseQuestions(settings.questions),
+            });
+
+            await message.edit(updatedCard);
+            (Context.get().logger as any).info(
+              { appId, messageId: app.messageId },
+              'Card atualizado para verde (aprovado)'
+            );
+          }
+        } catch (err) {
+          (Context.get().logger as any).error({ appId, err }, 'Falha ao atualizar card visual');
         }
       }
 
-      await notice(inter, '✅ Candidato aprovado!', true);
+      await notice(inter, '✅ Candidato aprovado! Cargo e nick atualizados.', true);
     }
   } finally {
     processing.delete(k);
@@ -383,16 +486,56 @@ export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, 
   const reason =
     ((inter as any).fields.getTextInputValue('reason') || '').trim() || 'Sem motivo informado';
 
+  // Buscar aplicação
+  const app = await recruitStore.getById(appId);
+  if (!app) {
+    await notice(inter, '❌ Candidatura não encontrada.', true);
+    return;
+  }
+
+  const s = await recruitStore.getSettings(app.guildId);
+
+  // Atualizar status
   await recruitStore.setStatus(appId, 'rejected', inter.user.id);
 
   // Tentar enviar DM
-  const app = await recruitStore.getById(appId);
-  if (app) {
-    const s = await recruitStore.getSettings(app.guildId);
-    const user = await inter.client.users.fetch(app.userId).catch(() => null);
-    if (user) {
-      const msg = s.dmRejectedTemplate || 'Infelizmente você não foi aprovado.';
-      await user.send(`❌ **Sua candidatura foi reprovada.**\n\n**Motivo:** ${reason}\n\n${msg}`).catch(() => null);
+  const user = await inter.client.users.fetch(app.userId).catch(() => null);
+  if (user) {
+    const msg = s.dmRejectedTemplate || 'Infelizmente você não foi aprovado.';
+    await user
+      .send(`❌ **Sua candidatura foi reprovada.**\n\n**Motivo:** ${reason}\n\n${msg}`)
+      .catch(() => null);
+  }
+
+  // Atualizar card visualmente (vermelho + motivo)
+  if (app.channelId && app.messageId) {
+    try {
+      const channel = await inter.client.channels.fetch(app.channelId);
+      if (channel?.isTextBased()) {
+        const message = await (channel as any).messages.fetch(app.messageId);
+
+        const updatedApp = {
+          ...app,
+          status: 'rejected' as const,
+          reason: reason,
+          moderatedById: inter.user.id,
+          moderatedByDisplay: inter.user.tag,
+          moderatedAt: new Date(),
+        };
+
+        const { buildApplicationCard } = await import('./card.js');
+        const updatedCard = await buildApplicationCard(inter.client, updatedApp, {
+          questions: recruitStore.parseQuestions(s.questions),
+        });
+
+        await message.edit(updatedCard);
+        (Context.get().logger as any).info(
+          { appId, reason },
+          'Card atualizado para vermelho (rejeitado)'
+        );
+      }
+    } catch (err) {
+      (Context.get().logger as any).error({ appId, err }, 'Falha ao atualizar card visual');
     }
   }
 

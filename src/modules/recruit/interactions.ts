@@ -6,7 +6,7 @@ import { handleError } from '../../infra/errors.js';
 import { renderDashboard, type DashTab } from '../../container.js';
 import { safeUpdate } from '../../ui/v2.js';
 import type { FilterKind } from './types.js';
-import { MessageFlags, type StringSelectMenuInteraction } from 'discord.js';
+import { MessageFlags, ActionRowBuilder, RoleSelectMenuBuilder, type StringSelectMenuInteraction } from 'discord.js';
 
 // Controllers / Handlers
 import {
@@ -128,6 +128,35 @@ recruitRouter.button(ids.recruit.settingsDM, async (i) => {
 recruitRouter.modal(ids.recruit.modalDM, async (i) => {
     if (!(await assertStaff(i))) return;
     await handleDMTemplatesSubmit(i);
+});
+
+// Settings: Approved Role
+recruitRouter.button('recruit:settings:approved-role', async (i) => {
+    if (!(await assertStaff(i))) return;
+
+    const select = new RoleSelectMenuBuilder()
+        .setCustomId('recruit:settings:select:approved-role')
+        .setPlaceholder('Escolha o cargo dado ao aprovar');
+
+    await i.reply({
+        content: '👤 **Selecione o cargo padrão de aprovação:**\n\nEste cargo será dado automaticamente quando você aprovar uma candidatura.',
+        components: [new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select)],
+        flags: MessageFlags.Ephemeral
+    });
+});
+
+recruitRouter.select('recruit:settings:select:approved-role', async (i: any) => {
+    if (!(await assertStaff(i))) return;
+    await i.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const roleId = i.values?.[0];
+    if (!roleId) {
+        await i.editReply({ content: '❌ Nenhum cargo selecionado.' });
+        return;
+    }
+
+    await recruitStore.updateSettings(i.guildId!, { defaultApprovedRoleId: roleId });
+    await i.editReply({ content: `✅ Cargo de aprovado definido: <@&${roleId}>` });
 });
 
 // Settings: Channels
