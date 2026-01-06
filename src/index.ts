@@ -107,7 +107,7 @@ async function bootstrap() {
   });
 
   registerMessageCounter(client);
-  registerInteractionRouter(client);
+  await registerInteractionRouter(client);
   registerVoiceActivity(client, prisma);
 
   await client.login(Env.DISCORD_TOKEN);

@@ -1,23 +1,51 @@
 // src/listeners/interactions.ts
-import { Events, type Client, MessageFlags } from 'discord.js';
+import { Events, type Client, MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import { InteractionRouter } from '../infra/router.js';
 import { handleError } from '../infra/errors.js';
 import { logger } from '../infra/logger.js';
 import { ids } from '../ui/ids.js';
 import { renderDashboard, type DashTab } from '../container.js';
 import { safeUpdate } from '../ui/v2.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // Sub-routers
 import { recruitRouter } from '../modules/recruit/interactions.js';
 import { eventsRouter } from '../modules/events/interactions.js';
 import { miscRouter } from '../modules/misc/interactions.js';
 
-// Legacy / Command handlers
-import { execute as executeEvents } from '../commands/events.js';
-import { execute as executeBotProfile } from '../commands/botProfile.js';
-import { execute as executePoll } from '../commands/poll.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export function registerInteractionRouter(client: Client) {
+// Dinamically load all command modules
+const commandsPath = path.join(__dirname, '..', 'commands');
+const commandModules = new Map<string, any>();
+
+async function loadAllCommands() {
+  const files = fs.readdirSync(commandsPath)
+    .filter(f => f.endsWith('.js') && f !== 'index.js' && !f.startsWith('_'));
+
+  for (const file of files) {
+    const filePath = pathToFileURL(path.join(commandsPath, file)).href;
+    try {
+      const module = await import(filePath);
+      if (module.data && module.execute) {
+        const cmdName = module.data.name;
+        commandModules.set(cmdName, module);
+        logger.info({ command: cmdName }, 'Command loaded');
+      }
+    } catch (err) {
+      logger.error({ file, err }, 'Failed to load command');
+    }
+  }
+  logger.info({ count: commandModules.size }, 'All commands loaded');
+}
+
+export async function registerInteractionRouter(client: Client) {
+  // Load all commands first
+  await loadAllCommands();
+
   const mainRouter = new InteractionRouter();
 
   // Merge sub-modules
@@ -53,6 +81,16 @@ export function registerInteractionRouter(client: Client) {
       // 2. Commands (Not routed via customId)
       if (interaction.isChatInputCommand()) {
         const cmd = interaction.commandName;
+
+        // Try dynamic command loading first
+        const commandModule = commandModules.get(cmd);
+        if (commandModule && commandModule.execute) {
+          logger.info({ command: cmd, user: interaction.user.tag }, 'Executing command');
+          await commandModule.execute(interaction as ChatInputCommandInteraction);
+          return;
+        }
+
+        // Fallback for dashboard (special case)
         if (cmd === 'dashboard') {
           const privado = interaction.options.getBoolean('privado') ?? false;
           const base = await renderDashboard({ tab: 'home', guildId: interaction.guildId ?? undefined });
@@ -62,9 +100,14 @@ export function registerInteractionRouter(client: Client) {
           });
           return;
         }
-        if (cmd === 'evento') return await executeEvents(interaction);
-        if (cmd === 'bot-profile') return await executeBotProfile(interaction);
-        if (cmd === 'poll') return await executePoll(interaction as any);
+
+        // Command not found
+        logger.warn({ command: cmd }, 'Command not found');
+        await interaction.reply({
+          content: '❌ Comando não encontrado.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
       }
 
       // 3. Router

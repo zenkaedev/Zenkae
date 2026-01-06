@@ -4,7 +4,6 @@ import { renderer } from '../services/renderer/index.js';
 import { UserProfile } from '../services/renderer/templates/UserProfile.js';
 import { xpStore } from '../services/xp/store.js';
 import { getMessageCount } from '../listeners/messageCount.js';
-import { getLiveSecondsForGuild } from '../listeners/voiceActivity.js';
 import React from 'react';
 
 export const data = new SlashCommandBuilder()
@@ -34,16 +33,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const xpData = await xpStore.getUserLevel(guildId, targetUser.id);
         const messageCount = await getMessageCount(guildId, targetUser.id);
 
-        // Voice time - usar função correta ou 0 como fallback
-        let voiceSeconds = 0;
-        try {
-            const voiceActivity = await interaction.client.prisma?.voiceActivity.findUnique({
-                where: { guildId_userId: { guildId, userId: targetUser.id } }
-            });
-            voiceSeconds = voiceActivity?.totalSeconds || 0;
-        } catch {
-            voiceSeconds = 0;
-        }
+        // Voice time - TODO: integrate with voice tracking system
+        const voiceSeconds = 0;
         const voiceHours = Math.floor(voiceSeconds / 3600);
 
         // 2. Datas formatadas
