@@ -193,3 +193,19 @@ model PollVote {
   @@unique([pollId, userId, optionIdx]) // toggle por opção no multi
   @@index([pollId, optionIdx])
 }
+
+// ===== XP & Leveling System =====
+
+model UserLevel {
+  id            String   @id @default(cuid())
+  guildId       String
+  userId        String
+  xpTotal       Int      @default(0)
+  level         Int      @default(1)
+  lastMessageAt DateTime @default(now()) // Para cooldown de 60s
+
+  @@unique([guildId, userId])
+  @@index([guildId, xpTotal])
+  @@index([guildId, level])
+}
+

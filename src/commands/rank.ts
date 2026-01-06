@@ -1,132 +1,83 @@
 // src/commands/rank.ts
-import { SlashCommandBuilder, type ChatInputCommandInteraction, AttachmentBuilder, MessageFlags } from 'discord.js';
-import { Context } from '../infra/context.js';
-import { getLiveSecondsForGuild, getLiveSecondsForGuildSince } from '../listeners/voiceActivity.js';
-
-const prisma = new Proxy({} as any, {
-  get(target, prop) {
-    return (Context.get().prisma as any)[prop];
-  }
-});
+import { SlashCommandBuilder, ChatInputCommandInteraction, AttachmentBuilder } from 'discord.js';
+import { renderer } from '../services/renderer/index.js';
+import { RankList } from '../services/renderer/templates/RankList.js';
+import { xpStore } from '../services/xp/store.js';
+import React from 'react';
 
 export const data = new SlashCommandBuilder()
   .setName('rank')
-  .setDescription('Mostra o ranking de tempo em call.')
-  .addStringOption((o) =>
-    o
-      .setName('periodo')
-      .setDescription('Período do ranking')
-      .setRequired(false)
-      .addChoices(
-        { name: 'Geral (Todo o tempo)', value: 'all' },
-        { name: 'Semanal (Últimos 7 dias)', value: 'weekly' },
-        { name: 'Mensal (Últimos 30 dias)', value: 'monthly' },
-      ),
-  );
+  .setDescription('Mostra o ranking de níveis do servidor');
 
-export async function execute(inter: ChatInputCommandInteraction) {
-  if (!inter.inGuild() || !inter.guildId) {
-    await inter.reply({ content: 'Use este comando em um servidor.', flags: MessageFlags.Ephemeral });
+export async function execute(interaction: ChatInputCommandInteraction) {
+  if (!interaction.inCachedGuild()) {
+    await interaction.reply({ content: '❌ Este comando só funciona em servidores.', flags: 64 });
     return;
   }
 
-  const period = inter.options.getString('periodo') || 'all';
-  await inter.deferReply();
+  await interaction.deferReply(); // Rendering pode levar ~1s
+
+  const guildId = interaction.guildId;
+  const userId = interaction.user.id;
 
   try {
-    const guildId = inter.guildId;
-    let sinceDate: Date | undefined;
+    // 1. Buscar top 10 usuários
+    const topUsers = await xpStore.getTopUsers(guildId, 10);
 
-    if (period === 'weekly') {
-      sinceDate = new Date();
-      sinceDate.setDate(sinceDate.getDate() - 7);
-    } else if (period === 'monthly') {
-      sinceDate = new Date();
-      sinceDate.setDate(sinceDate.getDate() - 30);
+    // 2. Buscar rank do usuário que solicitou
+    const userRank = await xpStore.getUserRank(guildId, userId);
+
+    // 3. Transformar dados para o template
+    const rankedUsers = await Promise.all(
+      topUsers.map(async (userData, index) => {
+        const user = await interaction.client.users.fetch(userData.userId).catch(() => null);
+        return {
+          userId: userData.userId,
+          username: user?.username || 'Usuário Desconhecido',
+          avatarUrl: user?.displayAvatarURL({ size: 128, extension: 'png' }) || '',
+          level: userData.level,
+          xpTotal: userData.xpTotal,
+          rank: index + 1,
+        };
+      })
+    );
+
+    // 4. Se o usuário não está no top 10, buscar seus dados
+    let requestingUserData = undefined;
+    if (userRank > 10) {
+      const userData = await xpStore.getUserLevel(guildId, userId);
+      const user = await interaction.client.users.fetch(userId);
+      requestingUserData = {
+        userId,
+        username: user.username,
+        avatarUrl: user.displayAvatarURL({ size: 128, extension: 'png' }),
+        level: userData.level,
+        xpTotal: userData.xpTotal,
+        rank: userRank,
+      };
     }
 
-    // Buscar dados do banco
-    let rows;
-    if (sinceDate) {
-      // Se for período específico, precisamos filtrar logs ou ter tabela agregada
-      // Como o schema atual só tem VoiceRank (total), vamos usar VoiceLog se existir ou avisar
-      // O schema fornecido tem VoiceRank com totalSeconds.
-      // Se quisermos "semanal", precisaríamos de logs.
-      // Vou assumir que o usuário quer apenas o total por enquanto ou que existe lógica para logs.
-      // Mas para não quebrar, vou usar o VoiceRank (total) e avisar se for 'all'.
-      // Se o usuário pediu weekly/monthly e não temos logs, mostramos total com aviso?
-      // Melhor: Se não tiver logs implementados, mostramos apenas total.
-      // Mas vou tentar buscar logs se existirem no prisma.
-      // Verificando schema mentalmente: VoiceLog existe?
-      // Se não, fallback para total.
-      rows = await prisma.voiceActivity.findMany({
-        where: { guildId },
-        orderBy: { totalSeconds: 'desc' },
-        take: 15,
-      });
-    } else {
-      rows = await prisma.voiceActivity.findMany({
-        where: { guildId },
-        orderBy: { totalSeconds: 'desc' },
-        take: 15,
-      });
-    }
+    // 5. Renderizar imagem
+    const pngBuffer = await renderer.renderToPNG(
+      React.createElement(RankList, {
+        topUsers: rankedUsers,
+        requestingUser: requestingUserData,
+        guildName: interaction.guild.name,
+        guildColor: '#FFD700',
+      }),
+      { width: 900, height: 1200 }
+    );
 
-    // Adicionar tempo "ao vivo" (cache em memória)
-    // Precisamos somar o tempo da sessão atual para quem está em call agora
-    const liveMap = sinceDate
-      ? getLiveSecondsForGuildSince(guildId, sinceDate)
-      : getLiveSecondsForGuild(guildId);
+    // 6. Enviar como attachment
+    const attachment = new AttachmentBuilder(pngBuffer, { name: 'rank.png' });
 
-    // Combinar banco + live
-    const combined = new Map<string, number>();
-
-    for (const r of rows) {
-      combined.set(r.userId, r.totalSeconds);
-    }
-
-    for (const [uid, seconds] of liveMap.entries()) {
-      const current = combined.get(uid) || 0;
-      combined.set(uid, current + seconds);
-    }
-
-    // Ordenar
-    const sorted = [...combined.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 15);
-
-    if (sorted.length === 0) {
-      await inter.editReply('Nenhum dado de voz registrado ainda.');
-      return;
-    }
-
-    // Gerar texto
-    const lines = sorted.map(([uid, seconds], idx) => {
-      const hours = (seconds / 3600).toFixed(1);
-      const member = inter.guild?.members.cache.get(uid);
-      const name = member?.displayName || `<@${uid}>`;
-      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-      return `${medal} **${name}**: ${hours}h`;
-    });
-
-    const title =
-      period === 'weekly'
-        ? 'Ranking Semanal'
-        : period === 'monthly'
-          ? 'Ranking Mensal'
-          : 'Ranking Geral';
-
-    await inter.editReply({
-      content: `🏆 **${title}**\n\n${lines.join('\n')}`,
+    await interaction.editReply({
+      files: [attachment],
     });
   } catch (err) {
-    console.error('rank error:', err);
-    if (!inter.replied && !inter.deferred) {
-      await inter
-        .reply({ content: '❌ Falha ao gerar o ranking.', flags: MessageFlags.Ephemeral })
-        .catch(() => { });
-    } else {
-      await inter.editReply({ content: '❌ Falha ao gerar o ranking.' }).catch(() => { });
-    }
+    console.error('Error generating rank:', err);
+    await interaction.editReply({
+      content: '❌ Erro ao gerar ranking. Tente novamente.',
+    });
   }
 }
