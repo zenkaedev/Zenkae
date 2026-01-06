@@ -23,8 +23,18 @@ const commandsPath = path.join(__dirname, '..', 'commands');
 const commandModules = new Map<string, any>();
 
 async function loadAllCommands() {
+  logger.info({ commandsPath, dirname: __dirname }, 'Loading commands from path');
+
+  // Check if directory exists
+  if (!fs.existsSync(commandsPath)) {
+    logger.error({ commandsPath }, 'Commands directory does not exist!');
+    return;
+  }
+
   const files = fs.readdirSync(commandsPath)
     .filter(f => f.endsWith('.js') && f !== 'index.js' && !f.startsWith('_'));
+
+  logger.info({ files, count: files.length }, 'Found command files');
 
   for (const file of files) {
     const filePath = pathToFileURL(path.join(commandsPath, file)).href;
@@ -34,6 +44,8 @@ async function loadAllCommands() {
         const cmdName = module.data.name;
         commandModules.set(cmdName, module);
         logger.info({ command: cmdName }, 'Command loaded');
+      } else {
+        logger.warn({ file }, 'File missing data or execute export');
       }
     } catch (err) {
       logger.error({ file, err }, 'Failed to load command');
