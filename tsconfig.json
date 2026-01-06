@@ -3,37 +3,44 @@
     // Opções de Saída
     "outDir": "./dist",
     "rootDir": "./src",
-
     // Module Resolution
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
-    "lib": ["ES2022"],
-
+    "lib": [
+      "ES2022"
+    ],
     // Interoperabilidade
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-
     // Type Checking
     "strict": true,
     "skipLibCheck": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
-
     // Emit
     "declaration": false,
     "sourceMap": true,
     "removeComments": true,
-
     // Experimental
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-
     // Node.js
     "resolveJsonModule": true,
-    "allowJs": false
+    "allowJs": false,
+    // JSX Support (for Satori templates)
+    "jsx": "react",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
