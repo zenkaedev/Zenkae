@@ -202,18 +202,20 @@ export async function publishPublicRecruitPanelV2(
         logger.info({ guildId, channelId: saved.channelId, messageId: saved.messageId }, 'Editing existing panel');
         try {
           await msg.edit(payload);
+          logger.info({ guildId }, 'Panel edited successfully');
           return;
         } catch (err) {
-          logger.error({ guildId, err }, 'Failed to edit existing panel - will create new one');
-          // Continua para criar novo painel
+          logger.error({ guildId, err }, 'Failed to edit existing panel - clearing stale data');
+          // Clear stale record and fall through to create new panel
+          await recruitStore.clearPanel(guildId);
         }
       }
     }
   }
 
-  logger.info({ guildId, targetId }, 'Sending new panel');
+  logger.info({ guildId, targetId }, 'Creating new panel');
   const sent = await (target as GuildTextBasedChannel).send(payload);
-  logger.info({ guildId, channelId: sent.channelId, messageId: sent.id }, 'Panel sent successfully');
+  logger.info({ guildId, channelId: sent.channelId, messageId: sent.id }, 'Panel created successfully');
 
   await (recruitStore as any).setPanel?.(guildId, {
     channelId: (sent.channel as any).id,

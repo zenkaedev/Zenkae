@@ -205,6 +205,10 @@ export const recruitStore = {
     });
   },
 
+  async clearPanel(guildId: string) {
+    return prisma.recruitPanel.deleteMany({ where: { guildId } });
+  },
+
   /* ------------------------------ APPLICATION ---------------------------- */
 
   async create(app: {
