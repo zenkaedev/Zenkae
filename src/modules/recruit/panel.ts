@@ -430,8 +430,10 @@ export async function handleDecisionClick(inter: ButtonInteraction, action: 'app
       // 4. Enviar DM ao candidato
       const user = await inter.client.users.fetch(app.userId).catch(() => null);
       if (user) {
-        const msg = settings.dmAcceptedTemplate || 'Parabéns! Você foi aprovado.';
-        await user.send(`✅ **Sua candidatura foi aprovada!**\n\n${msg}`).catch(() => null);
+        const template = settings.dmAcceptedTemplate || 'Parabéns! Você foi aprovado.';
+        // Substituir variáveis do template
+        const msg = template.replace('{user}', user.username);
+        await user.send(msg).catch(() => null);
       }
 
       // 5. Atualizar card visualmente (verde + sem botões)
@@ -501,10 +503,10 @@ export async function handleDecisionRejectSubmit(inter: ModalSubmitInteraction, 
   // Tentar enviar DM
   const user = await inter.client.users.fetch(app.userId).catch(() => null);
   if (user) {
-    const msg = s.dmRejectedTemplate || 'Infelizmente você não foi aprovado.';
-    await user
-      .send(`❌ **Sua candidatura foi reprovada.**\n\n**Motivo:** ${reason}\n\n${msg}`)
-      .catch(() => null);
+    const template = s.dmRejectedTemplate || 'Infelizmente você não foi aprovado.';
+    // Substituir variáveis do template
+    const msg = template.replace('{reason}', reason);
+    await user.send(msg).catch(() => null);
   }
 
   // Atualizar card visualmente (vermelho + motivo)

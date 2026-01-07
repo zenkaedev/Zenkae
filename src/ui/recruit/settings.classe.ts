@@ -109,12 +109,12 @@ function buildClassesRowsV2(classes: Class[], selectedId?: string) {
         options: options.length
           ? options
           : [
-              {
-                label: 'Nenhuma classe configurada',
-                value: 'void',
-                description: 'Peça a um admin para configurar',
-              },
-            ],
+            {
+              label: 'Nenhuma classe configurada',
+              value: 'void',
+              description: 'Peça a um admin para configurar',
+            },
+          ],
         disabled: !options.length,
       },
     ],
@@ -163,11 +163,11 @@ async function renderClassesSettingsV2(guildId: string, selectedId?: string) {
 
   const lines = classes.length
     ? classes
-        .map(
-          (c: any) =>
-            `• ${c.emoji ?? '▫️'} **${esc(c.name)}** ${c.roleId ? `(<@&${c.roleId}>)` : ''}${c.color ? ` — cor: \`${c.color}\`` : ''}`,
-        )
-        .join('\n')
+      .map(
+        (c: any) =>
+          `• ${c.emoji ?? '▫️'} **${esc(c.name)}** ${c.roleId ? `(<@&${c.roleId}>)` : ''}${c.color ? ` — cor: \`${c.color}\`` : ''}`,
+      )
+      .join('\n')
     : '_Nenhuma classe configurada ainda._';
 
   const children: any[] = [];
@@ -266,21 +266,22 @@ export async function openClassModal(inter: ButtonInteraction, classId?: string)
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
+        .setCustomId('color')
+        .setLabel('Cor (#RRGGBB) - Cargo criado automaticamente')
+        .setRequired(false)
+        .setStyle(TextInputStyle.Short)
+        .setMaxLength(7)
+        .setPlaceholder('#3498DB')
+        .setValue((toEdit?.color as string | undefined) ?? ''),
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
         .setCustomId('roleId')
-        .setLabel('ID do Cargo (opcional)')
+        .setLabel('ID do Cargo (deixe vazio para criar auto)')
         .setRequired(false)
         .setStyle(TextInputStyle.Short)
         .setMaxLength(25)
         .setValue(toEdit?.roleId ?? ''),
-    ),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setCustomId('color')
-        .setLabel('Cor da Classe (#RRGGBB opcional)')
-        .setRequired(false)
-        .setStyle(TextInputStyle.Short)
-        .setMaxLength(7)
-        .setValue((toEdit?.color as string | undefined) ?? ''),
     ),
   );
 
@@ -295,7 +296,7 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
 
   const nameRaw = (inter.fields.getTextInputValue('name') || '').trim();
   const emojiRaw = (inter.fields.getTextInputValue('emoji') || '').trim();
-  const roleRaw = (inter.fields.getTextInputValue('roleId') || '').trim();
+  let roleRaw = (inter.fields.getTextInputValue('roleId') || '').trim();
   const colorRaw = (inter.fields.getTextInputValue('color') || '').trim();
 
   if (!nameRaw) {
@@ -307,6 +308,39 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   if (colorRaw && !color) {
     await replyV2Notice(inter, '❌ Cor inválida. Use o formato #RRGGBB (ex.: #FF8800).', true);
     return;
+  }
+
+  // 🆕 CRIAÇÃO AUTOMÁTICA DE CARGO
+  if (!roleRaw) {
+    try {
+      const colorInt = color ? hexToInt(color) : 0x99AAB5; // Cor padrão cinza Discord
+      const roleEmoji = toEmoji(emojiRaw);
+
+      const newRole = await inter.guild?.roles.create({
+        name: nameRaw,
+        color: colorInt,
+        hoist: true, // Mostrar separado na lista de membros
+        reason: 'Criação automática - Classe de recrutamento',
+        // Se emoji Unicode válido, adiciona
+        ...(roleEmoji?.name && !roleEmoji.id ? { unicodeEmoji: roleEmoji.name } : {}),
+      });
+
+      if (newRole) {
+        roleRaw = newRole.id;
+        await replyV2Notice(
+          inter,
+          `✅ Cargo **${nameRaw}** criado automaticamente!\n🆔 ID: \`${newRole.id}\``,
+          true
+        );
+      }
+    } catch (err: any) {
+      await replyV2Notice(
+        inter,
+        `❌ Falha ao criar cargo automaticamente.\n**Erro**: ${err.message || 'Desconhecido'}\n\nVerifique se o bot tem permissão \`MANAGE_ROLES\` e se o cargo do bot está acima na hierarquia.`,
+        true
+      );
+      return;
+    }
   }
 
   const s = await recruitStore.getSettings(inter.guildId);
@@ -347,7 +381,7 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
         const c = hexToInt(color);
         await (role as any)
           .setColors({ primaryColor: c }, 'Atualizado via Gestão de Classes')
-          .catch(() => {});
+          .catch(() => { });
       }
     } catch {
       // ignore
@@ -364,7 +398,7 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
 
   await inter
     .followUp({ content: '✅ Classe salva.', flags: MessageFlags.Ephemeral })
-    .catch(() => {});
+    .catch(() => { });
 }
 
 /* ----------------------- Remoção ----------------------- */

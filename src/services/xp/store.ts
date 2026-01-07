@@ -22,10 +22,19 @@ export const xpStore = {
      */
     getLevelFromXP(xpTotal: number): number {
         let level = 1;
-        while (xpTotal >= this.getXPForLevel(level)) {
-            xpTotal -= this.getXPForLevel(level);
+        let xpNeededSoFar = 0;
+
+        // Continua subindo de nível enquanto tiver XP suficiente
+        while (true) {
+            const xpNeededForNextLevel = this.getXPForLevel(level);
+            if (xpNeededSoFar + xpNeededForNextLevel > xpTotal) {
+                // Não tem XP suficiente para o próximo nível
+                break;
+            }
+            xpNeededSoFar += xpNeededForNextLevel;
             level++;
         }
+
         return level;
     },
 

@@ -48,7 +48,7 @@ export function registerMessageCounter(client: Client) {
                 title: '🎉 LEVEL UP! 🎉',
                 description: `Parabéns, ${msg.author}! Você alcançou o **Nível ${result.newLevel}**!`,
                 thumbnail: {
-                  url: 'https://media.tenor.com/ZCkVUTjHJjMAAAAi/level-up.gif' // GIF animado
+                  url: 'https://media1.tenor.com/m/0pmPIX08hQUAAAAC/goku-dragon-ball-level-up-anime-gif.gif'
                 },
                 fields: [
                   {

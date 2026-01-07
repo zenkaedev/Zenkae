@@ -4,7 +4,14 @@ import { renderer } from '../services/renderer/index.js';
 import { UserProfile } from '../services/renderer/templates/UserProfile.js';
 import { xpStore } from '../services/xp/store.js';
 import { getMessageCount } from '../listeners/messageCount.js';
+import { Context } from '../infra/context.js';
 import React from 'react';
+
+const prisma = new Proxy({} as any, {
+    get(target, prop) {
+        return (Context.get().prisma as any)[prop];
+    },
+});
 
 export const data = new SlashCommandBuilder()
     .setName('info')
@@ -33,8 +40,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const xpData = await xpStore.getUserLevel(guildId, targetUser.id);
         const messageCount = await getMessageCount(guildId, targetUser.id);
 
-        // Voice time - TODO: integrate with voice tracking system
-        const voiceSeconds = 0;
+        // Voice time - fetch from database
+        const voiceData = await prisma.voiceActivity.findUnique({
+            where: { guildId_userId: { guildId, userId: targetUser.id } },
+        });
+        const voiceSeconds = voiceData?.totalSeconds ?? 0;
         const voiceHours = Math.floor(voiceSeconds / 3600);
 
         // 2. Datas formatadas

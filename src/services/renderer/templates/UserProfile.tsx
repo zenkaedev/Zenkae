@@ -13,6 +13,16 @@ interface UserProfileProps {
     guildColor: string;
 }
 
+// Helper to determine border style based on level
+function getLevelStyle(level: number) {
+    if (level >= 100) return { color: '#ff0000', glow: '0 0 15px #ff0000', border: '3px solid #ff0000' }; // Mythic (Red/Glow)
+    if (level >= 80) return { color: '#ffd700', glow: '0 0 10px #ffd700', border: '3px solid #ffd700' }; // Legendary (Gold)
+    if (level >= 50) return { color: '#a335ee', glow: '0 0 8px #a335ee', border: '3px solid #a335ee' }; // Epic (Purple)
+    if (level >= 30) return { color: '#66c0f4', glow: '0 0 5px #66c0f4', border: '3px solid #66c0f4' }; // Rare (Blue)
+    if (level >= 10) return { color: '#5cff5c', glow: '0 0 5px #5cff5c', border: '3px solid #5cff5c' }; // Uncommon (Green)
+    return { color: '#c7d5e0', glow: 'none', border: '3px solid #c7d5e0' }; // Basic (Grey)
+}
+
 export function UserProfile(props: UserProfileProps) {
     const {
         username,
@@ -25,6 +35,8 @@ export function UserProfile(props: UserProfileProps) {
         memberSince,
     } = props;
 
+    const style = getLevelStyle(level);
+
     return (
         <div
             style={{
@@ -36,6 +48,9 @@ export function UserProfile(props: UserProfileProps) {
                 borderRadius: '12px',
                 overflow: 'hidden',
                 position: 'relative',
+                // Dynamic Border for the Card Container
+                border: style.border,
+                boxShadow: style.glow !== 'none' ? `inset ${style.glow}` : 'none',
             }}
         >
             {/* Banner Background - Right Side with Fade */}
@@ -65,15 +80,17 @@ export function UserProfile(props: UserProfileProps) {
                             width: '90px',
                             height: '90px',
                             borderRadius: '8px',
-                            border: '3px solid #c7d5e0',
                             marginRight: '20px',
+                            // Dynamic Border for Avatar
+                            border: style.border,
+                            boxShadow: style.glow,
                         }}
                     />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '36px', fontWeight: '700', color: '#c7d5e0', marginBottom: '4px' }}>
                             {username}
                         </span>
-                        <span style={{ fontSize: '18px', color: '#66c0f4', fontWeight: '600' }}>
+                        <span style={{ fontSize: '18px', color: style.color, fontWeight: '600' }}>
                             Nível {level}
                         </span>
                     </div>
@@ -117,12 +134,12 @@ export function UserProfile(props: UserProfileProps) {
                             style={{
                                 width: `${Math.min(100, Math.max(0, xpProgress))}%`,
                                 height: '100%',
-                                background: 'linear-gradient(90deg, #66c0f4 0%, #2a98d5 100%)',
+                                background: `linear-gradient(90deg, ${style.color} 0%, ${style.color} 100%)`, // Matches border color
                                 borderRadius: '4px',
                             }}
                         />
                     </div>
-                    <span style={{ fontSize: '12px', color: '#66c0f4', alignSelf: 'flex-end', fontWeight: '600' }}>
+                    <span style={{ fontSize: '12px', color: style.color, alignSelf: 'flex-end', fontWeight: '600' }}>
                         {Math.round(xpProgress)}%
                     </span>
                 </div>
