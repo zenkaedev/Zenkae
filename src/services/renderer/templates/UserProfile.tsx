@@ -6,7 +6,7 @@ interface UserProfileProps {
     avatarUrl: string;
     bannerUrl?: string;
     level: number;
-    xpProgress: number; // 0-100
+    xpProgress: number;
     messageCount: number;
     voiceHours: number;
     memberSince: string;
@@ -32,22 +32,22 @@ export function UserProfile(props: UserProfileProps) {
                 flexDirection: 'column',
                 width: '800px',
                 height: '600px',
-                background: '#1b2838', // Steam dark blue-gray
+                background: '#1b2838',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 position: 'relative',
             }}
         >
-            {/* Banner Background - Aligned Right com Fade */}
+            {/* Banner Background - Right Side with Fade */}
             {bannerUrl && (
                 <div
                     style={{
                         position: 'absolute',
                         top: 0,
                         right: 0,
-                        width: '500px',
-                        height: '250px',
-                        backgroundImage: `linear-gradient(to right, rgba(27,40,56,1) 0%, rgba(27,40,56,0.3) 40%, rgba(27,40,56,0) 100%), url(${bannerUrl})`,
+                        width: '450px',
+                        height: '220px',
+                        backgroundImage: `linear-gradient(to right, rgba(27,40,56,1) 0%, rgba(27,40,56,0.4) 35%, rgba(27,40,56,0) 100%), url(${bannerUrl})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                         backgroundRepeat: 'no-repeat',
@@ -55,18 +55,10 @@ export function UserProfile(props: UserProfileProps) {
                 />
             )}
 
-            {/* Content Container */}
-            <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    padding: '32px',
-                    position: 'relative',
-                    zIndex: 1,
-                }}
-            >
-                {/* Header - Avatar + Name + Level */}
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
+            {/* Content */}
+            <div style={{ display: 'flex', flexDirection: 'column', padding: '32px', flex: 1 }}>
+                {/* Header - Avatar + Name */}
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '28px' }}>
                     <img
                         src={avatarUrl}
                         style={{
@@ -78,29 +70,16 @@ export function UserProfile(props: UserProfileProps) {
                         }}
                     />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span
-                            style={{
-                                fontSize: '36px',
-                                fontWeight: '700',
-                                color: '#c7d5e0',
-                                marginBottom: '4px',
-                            }}
-                        >
+                        <span style={{ fontSize: '36px', fontWeight: '700', color: '#c7d5e0', marginBottom: '4px' }}>
                             {username}
                         </span>
-                        <span
-                            style={{
-                                fontSize: '18px',
-                                color: '#66c0f4', // Steam blue
-                                fontWeight: '600',
-                            }}
-                        >
+                        <span style={{ fontSize: '18px', color: '#66c0f4', fontWeight: '600' }}>
                             Nível {level}
                         </span>
                     </div>
                 </div>
 
-                {/* XP Progress Section */}
+                {/* XP Progress */}
                 <div
                     style={{
                         display: 'flex',
@@ -108,12 +87,12 @@ export function UserProfile(props: UserProfileProps) {
                         backgroundColor: '#16202d',
                         padding: '20px',
                         borderRadius: '6px',
-                        marginBottom: '24px',
+                        marginBottom: '20px',
                     }}
                 >
                     <span
                         style={{
-                            fontSize: '12px',
+                            fontSize: '11px',
                             color: '#8f98a0',
                             textTransform: 'uppercase',
                             marginBottom: '10px',
@@ -123,8 +102,6 @@ export function UserProfile(props: UserProfileProps) {
                     >
                         Próximo Nível
                     </span>
-
-                    {/* Progress Bar */}
                     <div
                         style={{
                             display: 'flex',
@@ -140,32 +117,18 @@ export function UserProfile(props: UserProfileProps) {
                             style={{
                                 width: `${Math.min(100, Math.max(0, xpProgress))}%`,
                                 height: '100%',
-                                background: 'linear-gradient(90deg, #66c0f4 0%, #2a98d5 100%)', // Steam blue gradient
+                                background: 'linear-gradient(90deg, #66c0f4 0%, #2a98d5 100%)',
                                 borderRadius: '4px',
                             }}
                         />
                     </div>
-
-                    <span
-                        style={{
-                            fontSize: '12px',
-                            color: '#66c0f4',
-                            alignSelf: 'flex-end',
-                            fontWeight: '600',
-                        }}
-                    >
+                    <span style={{ fontSize: '12px', color: '#66c0f4', alignSelf: 'flex-end', fontWeight: '600' }}>
                         {Math.round(xpProgress)}%
                     </span>
                 </div>
 
                 {/* Stats Grid */}
-                <div
-                    style={{
-                        display: 'flex',
-                        gap: '16px',
-                        marginBottom: '16px',
-                    }}
-                >
+                <div style={{ display: 'flex', gap: '14px', flex: 1 }}>
                     {/* Mensagens */}
                     <div
                         style={{
@@ -173,122 +136,92 @@ export function UserProfile(props: UserProfileProps) {
                             display: 'flex',
                             flexDirection: 'column',
                             backgroundColor: '#16202d',
-                            padding: '24px 20px',
+                            padding: '20px 16px',
                             borderRadius: '6px',
                             alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        <span style={{ fontSize: '28px', marginBottom: '8px', color: '#c7d5e0' }}>
-                            💬
-                        </span>
                         <span
                             style={{
-                                fontSize: '32px',
+                                fontSize: '10px',
+                                marginBottom: '10px',
+                                color: '#66c0f4',
                                 fontWeight: '700',
-                                color: '#c7d5e0',
-                                marginBottom: '4px',
-                            }}
-                        >
-                            {messageCount.toLocaleString()}
-                        </span>
-                        <span
-                            style={{
-                                fontSize: '11px',
-                                color: '#8f98a0',
+                                letterSpacing: '1px',
                                 textTransform: 'uppercase',
-                                fontWeight: '600',
-                                letterSpacing: '0.5px',
                             }}
                         >
                             Mensagens
                         </span>
+                        <span style={{ fontSize: '28px', fontWeight: '700', color: '#c7d5e0' }}>
+                            {messageCount.toLocaleString()}
+                        </span>
                     </div>
 
-                    {/* Tempo em Voz */}
+                    {/* Tempo em Call */}
                     <div
                         style={{
                             flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             backgroundColor: '#16202d',
-                            padding: '24px 20px',
+                            padding: '20px 16px',
                             borderRadius: '6px',
                             alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        <span style={{ fontSize: '28px', marginBottom: '8px', color: '#c7d5e0' }}>
-                            🎧
-                        </span>
                         <span
                             style={{
-                                fontSize: '32px',
+                                fontSize: '10px',
+                                marginBottom: '10px',
+                                color: '#66c0f4',
                                 fontWeight: '700',
-                                color: '#c7d5e0',
-                                marginBottom: '4px',
-                            }}
-                        >
-                            {voiceHours}h
-                        </span>
-                        <span
-                            style={{
-                                fontSize: '11px',
-                                color: '#8f98a0',
+                                letterSpacing: '1px',
                                 textTransform: 'uppercase',
-                                fontWeight: '600',
-                                letterSpacing: '0.5px',
                             }}
                         >
                             Tempo em Call
                         </span>
+                        <span style={{ fontSize: '28px', fontWeight: '700', color: '#c7d5e0' }}>
+                            {voiceHours}h
+                        </span>
                     </div>
 
-                    {/* Membro Desde */}
+                    {/* No Discord */}
                     <div
                         style={{
                             flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             backgroundColor: '#16202d',
-                            padding: '24px 20px',
+                            padding: '20px 16px',
                             borderRadius: '6px',
                             alignItems: 'center',
+                            justifyContent: 'center',
                         }}
                     >
-                        <span style={{ fontSize: '28px', marginBottom: '8px', color: '#c7d5e0' }}>
-                            ⏰
-                        </span>
                         <span
                             style={{
-                                fontSize: '18px',
+                                fontSize: '10px',
+                                marginBottom: '10px',
+                                color: '#66c0f4',
                                 fontWeight: '700',
-                                color: '#c7d5e0',
-                                marginBottom: '4px',
-                            }}
-                        >
-                            {memberSince}
-                        </span>
-                        <span
-                            style={{
-                                fontSize: '11px',
-                                color: '#8f98a0',
+                                letterSpacing: '1px',
                                 textTransform: 'uppercase',
-                                fontWeight: '600',
-                                letterSpacing: '0.5px',
                             }}
                         >
                             No Discord
+                        </span>
+                        <span style={{ fontSize: '16px', fontWeight: '700', color: '#c7d5e0' }}>
+                            {memberSince}
                         </span>
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        marginTop: '8px',
-                    }}
-                >
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
                     <span
                         style={{
                             fontSize: '10px',
