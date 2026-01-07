@@ -60,12 +60,14 @@ export function UserProfile(props: UserProfileProps) {
                         position: 'absolute',
                         top: 0,
                         right: 0,
-                        width: '450px',
-                        height: '220px',
-                        backgroundImage: `linear-gradient(to right, rgba(27,40,56,1) 0%, rgba(27,40,56,0.4) 35%, rgba(27,40,56,0) 100%), url(${bannerUrl})`,
+                        bottom: 0,
+                        width: '550px', // Aumentado para cobrir mais
+                        height: '100%', // Full height para não ficar cortado
+                        backgroundImage: `linear-gradient(to right, #1b2838 10%, rgba(27,40,56,0.6) 50%, rgba(27,40,56,0.2) 100%), url(${bannerUrl})`,
                         backgroundSize: 'cover',
-                        backgroundPosition: 'center',
+                        backgroundPosition: 'center', // Centralizado geralmente é melhor, mas se cortar topo podemos ajustar
                         backgroundRepeat: 'no-repeat',
+                        opacity: 0.7, // Leve transparência para não brigar com texto
                     }}
                 />
             )}

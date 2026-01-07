@@ -297,6 +297,29 @@ export async function openClassModal(inter: ButtonInteraction, classId?: string)
   await inter.showModal(modal);
 }
 
+// Helper local para parsear emojis (Unicode ou Custom)
+function parseEmoji(raw: string) {
+  const trimmed = raw.trim();
+  // Regex para custom emoji: <:nome:ID> ou <a:nome:ID>
+  const customMatch = trimmed.match(/<(a)?:(\w+):(\d+)>/);
+  if (customMatch) {
+    const isAnimated = !!customMatch[1];
+    const name = customMatch[2];
+    const id = customMatch[3];
+    return {
+      type: 'custom',
+      name,
+      id,
+      url: `https://cdn.discordapp.com/emojis/${id}.png` // Role icons aceitam PNG/JPEG
+    };
+  }
+  // Se for unicode (ex: 🛡️), não tem ID
+  if (trimmed) {
+    return { type: 'unicode', name: trimmed, id: undefined, url: undefined };
+  }
+  return null;
+}
+
 export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   if (!inter.inCachedGuild()) return;
 
@@ -323,16 +346,40 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   if (!roleRaw) {
     try {
       const colorInt = color ? hexToInt(color) : 0x99AAB5; // Cor padrão cinza Discord
-      const roleEmoji = toEmoji(emojiRaw);
+      const emojiData = parseEmoji(emojiRaw);
 
-      const newRole = await inter.guild?.roles.create({
+      let createOptions: any = {
         name: nameRaw,
         color: colorInt,
-        hoist: true, // Mostrar separado na lista de membros
+        hoist: true,
         reason: 'Criação automática - Classe de recrutamento',
-        // Se emoji Unicode válido, adiciona
-        ...(roleEmoji?.name && !roleEmoji.id ? { unicodeEmoji: roleEmoji.name } : {}),
-      });
+      };
+
+      // Se for Custom Emoji e tiver URL -> tenta usar como ICON (requer Boost Nvl 2)
+      if (emojiData?.type === 'custom' && emojiData.url) {
+        createOptions.icon = emojiData.url;
+      }
+      // Se for Unicode Emoji -> usa unicodeEmoji (requer Boost Nvl 2)
+      else if (emojiData?.type === 'unicode' && emojiData.name) {
+        createOptions.unicodeEmoji = emojiData.name;
+      }
+
+      let newRole: any;
+      try {
+        newRole = await inter.guild?.roles.create(createOptions);
+      } catch (err: any) {
+        // Fallback: Se falhar (falta de boost/feature), tenta criar sem nada de ícone
+        if (err.message?.includes('boosts') || err.message?.includes('Missing Features') || err.code === 50035 || err.code === 50013) {
+          newRole = await inter.guild?.roles.create({
+            name: nameRaw,
+            color: colorInt,
+            hoist: true,
+            reason: 'Criação automática (Fallback sem emoji) - Classe de recrutamento',
+          });
+        } else {
+          throw err;
+        }
+      }
 
       if (newRole) {
         roleRaw = newRole.id;
