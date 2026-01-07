@@ -1,26 +1,30 @@
 // src/services/renderer/templates/UserProfile.tsx
 import React from 'react';
 
-interface UserProfileProps {
+export interface UserProfileProps {
     username: string;
     avatarUrl: string;
     bannerUrl?: string;
     level: number;
     xpProgress: number;
+    currentXP: number;
+    requiredXP: number;
     messageCount: number;
     voiceHours: number;
     memberSince: string;
     guildColor: string;
+    roleName: string;
+    roleColor: string;
 }
 
-// Helper to determine border style based on level
-function getLevelStyle(level: number) {
-    if (level >= 100) return { color: '#ff0000', glow: '0 0 15px #ff0000', border: '3px solid #ff0000' }; // Mythic (Red/Glow)
-    if (level >= 80) return { color: '#ffd700', glow: '0 0 10px #ffd700', border: '3px solid #ffd700' }; // Legendary (Gold)
-    if (level >= 50) return { color: '#a335ee', glow: '0 0 8px #a335ee', border: '3px solid #a335ee' }; // Epic (Purple)
-    if (level >= 30) return { color: '#66c0f4', glow: '0 0 5px #66c0f4', border: '3px solid #66c0f4' }; // Rare (Blue)
-    if (level >= 10) return { color: '#5cff5c', glow: '0 0 5px #5cff5c', border: '3px solid #5cff5c' }; // Uncommon (Green)
-    return { color: '#c7d5e0', glow: 'none', border: '3px solid #c7d5e0' }; // Basic (Grey)
+// Helper to determine indicator color based on level
+function getLevelColor(level: number) {
+    if (level >= 100) return '#ff0000'; // Mythic
+    if (level >= 80) return '#ffd700'; // Legendary
+    if (level >= 50) return '#a335ee'; // Epic
+    if (level >= 30) return '#66c0f4'; // Rare
+    if (level >= 10) return '#5cff5c'; // Uncommon
+    return '#66c0f4'; // Default Blue
 }
 
 export function UserProfile(props: UserProfileProps) {
@@ -30,12 +34,16 @@ export function UserProfile(props: UserProfileProps) {
         bannerUrl,
         level,
         xpProgress,
+        currentXP,
+        requiredXP,
         messageCount,
         voiceHours,
         memberSince,
+        roleName,
+        roleColor,
     } = props;
 
-    const style = getLevelStyle(level);
+    const levelColor = getLevelColor(level);
 
     return (
         <div
@@ -44,266 +52,286 @@ export function UserProfile(props: UserProfileProps) {
                 flexDirection: 'column',
                 width: '800px',
                 height: '600px',
-                background: '#1b2838',
-                borderRadius: '12px',
+                background: '#101822',
+                borderRadius: '20px',
                 overflow: 'hidden',
                 position: 'relative',
-                // Dynamic Border for the Card Container
-                border: style.border,
-                boxShadow: style.glow !== 'none' ? `inset ${style.glow}` : 'none',
+                fontFamily: 'sans-serif',
             }}
         >
-            {/* Banner Background - Full Width with Fade */}
-            {bannerUrl && (
+            {/* 1. TOP BANNER AREA */}
+            <div
+                style={{
+                    width: '100%',
+                    height: '240px',
+                    position: 'relative',
+                    background: '#1b2838',
+                }}
+            >
+                {bannerUrl ? (
+                    <img
+                        src={bannerUrl}
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                        }}
+                    />
+                ) : (
+                    <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #1b2838, #2a475e)' }} />
+                )}
+                {/* Gradient Overlay */}
                 <div
                     style={{
                         position: 'absolute',
-                        top: 0,
-                        right: 0,
                         bottom: 0,
-                        left: 0, // Full width covering everything
+                        left: 0,
                         width: '100%',
-                        height: '100%',
-                        // Gradient: Solid/Dark on left (for text), transparent on right (for image)
-                        backgroundImage: `linear-gradient(90deg, #1b2838 25%, rgba(27,40,56,0.85) 50%, rgba(27,40,56,0.2) 100%), url(${bannerUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'top center', // Prioritizar topo (cabeças/rostos)
-                        backgroundRepeat: 'no-repeat',
-                        opacity: 0.5, // Ajustado para não ficar muito agressivo
+                        height: '140px',
+                        backgroundImage: 'linear-gradient(to bottom, transparent 0%, #101822 100%)',
                     }}
                 />
-            )}
+            </div>
 
-            {/* Content */}
-            <div style={{ display: 'flex', flexDirection: 'column', padding: '32px', flex: 1 }}>
-                {/* Header - Avatar + Name */}
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '28px' }}>
-                    <img
-                        src={avatarUrl}
-                        style={{
-                            width: '90px',
-                            height: '90px',
-                            borderRadius: '8px',
-                            marginRight: '20px',
-                            // Dynamic Border for Avatar
-                            border: style.border,
-                            boxShadow: style.glow,
-                        }}
-                    />
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '36px', fontWeight: '700', color: '#c7d5e0', marginBottom: '4px' }}>
-                            {username}
-                        </span>
-                        <span style={{ fontSize: '18px', color: style.color, fontWeight: '600' }}>
-                            Nível {level}
-                        </span>
-                    </div>
-                </div>
+            {/* 2. PROFILE HEADER (Floating) */}
+            <div style={{ padding: '0 40px', marginTop: '-80px', position: 'relative', zIndex: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
 
-                {/* XP Progress */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        backgroundColor: '#16202d',
-                        padding: '20px',
-                        borderRadius: '6px',
-                        marginBottom: '20px',
-                    }}
-                >
-                    <span
-                        style={{
-                            fontSize: '11px',
-                            color: '#8f98a0',
-                            textTransform: 'uppercase',
-                            marginBottom: '10px',
-                            fontWeight: '600',
-                            letterSpacing: '1px',
-                        }}
-                    >
-                        Próximo Nível
-                    </span>
-                    <div
-                        style={{
-                            display: 'flex',
-                            width: '100%',
-                            height: '8px',
-                            background: '#0e1419',
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            marginBottom: '8px',
-                        }}
-                    >
+                    {/* AVATAR + NAME GROUP */}
+                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                        {/* Avatar Container */}
                         <div
                             style={{
-                                width: `${Math.min(100, Math.max(0, xpProgress))}%`,
-                                height: '100%',
-                                background: `linear-gradient(90deg, ${style.color} 0%, ${style.color} 100%)`, // Matches border color
-                                borderRadius: '4px',
+                                width: '140px',
+                                height: '140px',
+                                borderRadius: '50%',
+                                padding: '6px',
+                                background: '#101822',
+                                position: 'relative',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                             }}
-                        />
-                    </div>
-                    <span style={{ fontSize: '12px', color: style.color, alignSelf: 'flex-end', fontWeight: '600' }}>
-                        {Math.round(xpProgress)}%
-                    </span>
-                </div>
-
-                {/* Stats Grid */}
-                <div style={{ display: 'flex', gap: '14px', flex: 1 }}>
-                    {/* Mensagens */}
-                    <div
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            backgroundColor: '#16202d',
-                            padding: '20px 16px',
-                            borderRadius: '6px',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        {/* Icon: Message Square */}
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#66c0f4"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{ marginBottom: '8px' }}
                         >
+                            {/* Level Ring Border */}
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: 0, left: 0, right: 0, bottom: 0,
+                                    borderRadius: '50%',
+                                    border: `3px solid ${levelColor}`,
+                                    boxShadow: `0 0 15px ${levelColor}40`,
+                                }}
+                            />
+
+                            <img
+                                src={avatarUrl}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                }}
+                            />
+
+                            {/* Level Badge Pill */}
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    bottom: '-5px',
+                                    background: '#1b2838',
+                                    border: `2px solid ${levelColor}`,
+                                    borderRadius: '20px',
+                                    padding: '4px 12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
+                                }}
+                            >
+                                <span style={{ color: levelColor, fontSize: '14px', fontWeight: '800' }}>
+                                    LVL {level}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* User Info Text */}
+                        <div style={{ marginLeft: '24px', marginBottom: '15px' }}>
+                            <h1 style={{
+                                margin: 0,
+                                fontSize: '36px',
+                                fontWeight: '800',
+                                color: '#ffffff',
+                                textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+                                lineHeight: '1',
+                                marginBottom: '8px'
+                            }}>
+                                {username}
+                            </h1>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {/* Role Badge */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    background: `${roleColor}15`,
+                                    border: `1px solid ${roleColor}30`,
+                                }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: roleColor, marginRight: '8px', boxShadow: `0 0 6px ${roleColor}` }} />
+                                    <span style={{ color: roleColor, fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        {roleName}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* XP Progress Section (Right) */}
+                    <div style={{ marginBottom: '20px', textAlign: 'right', minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', marginBottom: '6px' }}>
+                            <span style={{ color: '#ffffff', fontWeight: '800', fontSize: '24px', marginRight: '4px' }}>
+                                {Math.round(xpProgress)}%
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#8f98a0', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                to next level
+                            </span>
+                        </div>
+                        <div style={{ color: '#66c0f4', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
+                            <span style={{ color: '#fff' }}>{currentXP.toLocaleString()}</span>
+                            <span style={{ margin: '0 4px', color: '#8f98a0' }}>/</span>
+                            <span style={{ color: '#8f98a0' }}>{requiredXP.toLocaleString()} XP</span>
+                        </div>
+
+                        {/* XP Bar */}
+                        <div style={{ width: '100%', height: '8px', background: '#090c10', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div
+                                style={{
+                                    height: '100%',
+                                    width: `${Math.min(100, Math.max(0, xpProgress))}%`,
+                                    background: `linear-gradient(90deg, ${levelColor} 0%, ${levelColor}dd 100%)`,
+                                    borderRadius: '4px',
+                                    boxShadow: `0 0 10px ${levelColor}50`
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. STATS GRID */}
+            <div style={{ padding: '0 40px', marginTop: '40px', display: 'flex', gap: '20px', flex: 1 }}>
+
+                {/* Messages Card */}
+                <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
+                    <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#66c0f4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
-                        <span
-                            style={{
-                                fontSize: '10px',
-                                marginBottom: '4px',
-                                color: '#66c0f4',
-                                fontWeight: '700',
-                                letterSpacing: '1px',
-                                textTransform: 'uppercase',
-                            }}
-                        >
-                            Mensagens
-                        </span>
-                        <span style={{ fontSize: '28px', fontWeight: '700', color: '#c7d5e0' }}>
-                            {messageCount.toLocaleString()}
-                        </span>
                     </div>
+                    <div>
+                        <span style={statsLabelStyle}>Mensagens</span>
+                        <span style={statsValueStyle}>{messageCount.toLocaleString()}</span>
+                    </div>
+                </div>
 
-                    {/* Tempo em Call */}
-                    <div
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            backgroundColor: '#16202d',
-                            padding: '20px 16px',
-                            borderRadius: '6px',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        {/* Icon: Mic */}
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#66c0f4"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{ marginBottom: '8px' }}
-                        >
+                {/* Voice Card */}
+                <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
+                    <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#66c0f4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                             <line x1="12" y1="19" x2="12" y2="23" />
                             <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
-                        <span
-                            style={{
-                                fontSize: '10px',
-                                marginBottom: '4px',
-                                color: '#66c0f4',
-                                fontWeight: '700',
-                                letterSpacing: '1px',
-                                textTransform: 'uppercase',
-                            }}
-                        >
-                            Tempo em Call
-                        </span>
-                        <span style={{ fontSize: '28px', fontWeight: '700', color: '#c7d5e0' }}>
-                            {voiceHours}h
-                        </span>
                     </div>
+                    <div>
+                        <span style={statsLabelStyle}>Tempo em Call</span>
+                        <span style={statsValueStyle}>{voiceHours}h</span>
+                    </div>
+                </div>
 
-                    {/* No Servidor Desde */}
-                    <div
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            backgroundColor: '#16202d',
-                            padding: '20px 16px',
-                            borderRadius: '6px',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        {/* Icon: Calendar */}
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#66c0f4"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{ marginBottom: '8px' }}
-                        >
+                {/* Join Date Card */}
+                <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
+                    <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#66c0f4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                             <line x1="16" y1="2" x2="16" y2="6" />
                             <line x1="8" y1="2" x2="8" y2="6" />
                             <line x1="3" y1="10" x2="21" y2="10" />
                         </svg>
-                        <span
-                            style={{
-                                fontSize: '10px',
-                                marginBottom: '4px',
-                                color: '#66c0f4',
-                                fontWeight: '700',
-                                letterSpacing: '1px',
-                                textTransform: 'uppercase',
-                            }}
-                        >
-                            No Servidor desde
-                        </span>
-                        <span style={{ fontSize: '16px', fontWeight: '700', color: '#c7d5e0' }}>
-                            {memberSince}
-                        </span>
+                    </div>
+                    <div>
+                        <span style={statsLabelStyle}>Membro Desde</span>
+                        <span style={statsValueStyle}>{memberSince}</span>
                     </div>
                 </div>
+            </div>
 
-                {/* Footer */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                    <span
-                        style={{
-                            fontSize: '10px',
-                            color: '#495967',
-                            fontWeight: '600',
-                            letterSpacing: '1px',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        Zenkae
-                    </span>
+            {/* 4. FOOTER / DECORATION */}
+            <div style={{ padding: '0 40px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                {/* Fake Achievements Placeholder */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    opacity: 0.5,
+                    background: '#16202d',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #1b2838'
+                }}>
+                    <span style={{ fontSize: '16px' }}>🏆</span>
+                    <span style={{ fontSize: '12px', color: '#8f98a0', fontWeight: '600' }}>Conquistas em breve</span>
                 </div>
+
+                <span style={{ fontSize: '12px', color: '#2a475e', fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                    ZENKAE PROFILE
+                </span>
             </div>
         </div>
     );
 }
+
+// SHARED STYLES
+const statsBoxStyle: React.CSSProperties = {
+    flex: 1,
+    background: '#16202d',
+    borderRadius: '12px',
+    padding: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+};
+
+const iconBoxStyle: React.CSSProperties = {
+    width: '56px',
+    height: '56px',
+    borderRadius: '12px',
+    background: '#101822',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    boxShadow: 'inset 0 0 10px rgba(0,0,0,0.2)',
+};
+
+const statsLabelStyle: React.CSSProperties = {
+    fontSize: '11px',
+    color: '#8f98a0',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    display: 'block',
+    marginBottom: '4px',
+};
+
+const statsValueStyle: React.CSSProperties = {
+    fontSize: '22px',
+    fontWeight: '800',
+    color: '#ffffff',
+    textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+};

@@ -145,6 +145,7 @@ export const xpStore = {
             return {
                 level: 1,
                 xpTotal: 0,
+                xpInCurrentLevel: 0,
                 xpForNextLevel: this.getXPForLevel(1),
                 xpProgress: 0,
             };
@@ -157,6 +158,7 @@ export const xpStore = {
         return {
             level: data.level,
             xpTotal: data.xpTotal,
+            xpInCurrentLevel,
             xpForNextLevel,
             xpProgress: Math.min(100, Math.max(0, xpProgress)),
         };

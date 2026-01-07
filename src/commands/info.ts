@@ -52,10 +52,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(member.joinedAt)
             : '—';
 
-        // 3. Avatar e Banner
+        // 3. Avatar, Banner e Cargo
         const avatarUrl = targetUser.displayAvatarURL({ size: 256, extension: 'png' });
         const userFull = await targetUser.fetch();
         const bannerUrl = userFull.bannerURL({ size: 1024, extension: 'png' }) ?? undefined;
+
+        // Get Highest Role
+        const roles = member.roles.cache
+            .filter(r => r.name !== '@everyone')
+            .sort((a, b) => b.position - a.position);
+        const highestRole = roles.first();
+        const roleName = highestRole?.name ?? 'Membro';
+        const roleColor = highestRole?.hexColor ?? '#c7d5e0';
 
         // 4. Renderizar imagem
         const pngBuffer = await renderer.renderToPNG(
@@ -65,10 +73,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
                 bannerUrl,
                 level: xpData.level,
                 xpProgress: xpData.xpProgress,
+                currentXP: xpData.xpInCurrentLevel,
+                requiredXP: xpData.xpForNextLevel,
                 messageCount,
                 voiceHours,
                 memberSince: joinedAt,
-                guildColor: '#FFD700', // NoWay amarelo
+                guildColor: roleColor, // Use role color as theme
+                roleName, // New Prop
+                roleColor, // New Prop
             }),
             { width: 800, height: 600 }
         );
