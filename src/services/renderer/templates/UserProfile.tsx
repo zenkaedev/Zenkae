@@ -24,7 +24,7 @@ function getLevelColor(level: number) {
     if (level >= 50) return '#a335ee'; // Epic
     if (level >= 30) return '#66c0f4'; // Rare
     if (level >= 10) return '#5cff5c'; // Uncommon
-    return '#66c0f4'; // Default Blue
+    return '#8f98a0'; // Default Gray (Common)
 }
 
 export function UserProfile(props: UserProfileProps) {
@@ -241,6 +241,8 @@ export function UserProfile(props: UserProfileProps) {
                 </div>
             </div>
 
+// ... (previous code)
+
             {/* 3. STATS GRID */}
             <div style={{
                 display: 'flex',
@@ -252,12 +254,12 @@ export function UserProfile(props: UserProfileProps) {
 
                 {/* Messages Card */}
                 <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
-                    <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
+                    <div style={{ ...iconBoxStyle, color: '#66c0f4', marginBottom: '12px' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <span style={statsLabelStyle}>Mensagens</span>
                         <span style={statsValueStyle}>{messageCount.toLocaleString()}</span>
                     </div>
@@ -265,7 +267,7 @@ export function UserProfile(props: UserProfileProps) {
 
                 {/* Voice Card */}
                 <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
-                    <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
+                    <div style={{ ...iconBoxStyle, color: '#66c0f4', marginBottom: '12px' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -273,7 +275,7 @@ export function UserProfile(props: UserProfileProps) {
                             <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <span style={statsLabelStyle}>Tempo em Call</span>
                         <span style={statsValueStyle}>{voiceHours}h</span>
                     </div>
@@ -281,7 +283,7 @@ export function UserProfile(props: UserProfileProps) {
 
                 {/* Join Date Card */}
                 <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
-                    <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
+                    <div style={{ ...iconBoxStyle, color: '#66c0f4', marginBottom: '12px' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                             <line x1="16" y1="2" x2="16" y2="6" />
@@ -289,7 +291,7 @@ export function UserProfile(props: UserProfileProps) {
                             <line x1="3" y1="10" x2="21" y2="10" />
                         </svg>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <span style={statsLabelStyle}>Membro Desde</span>
                         <span style={statsValueStyle}>{memberSince}</span>
                     </div>
@@ -301,7 +303,8 @@ export function UserProfile(props: UserProfileProps) {
                 display: 'flex',
                 padding: '0 40px 30px',
                 justifyContent: 'space-between',
-                alignItems: 'flex-end'
+                alignItems: 'flex-end',
+                marginTop: 'auto' // Push to bottom
             }}>
                 {/* Fake Achievements Placeholder */}
                 <div style={{
@@ -312,7 +315,8 @@ export function UserProfile(props: UserProfileProps) {
                     background: '#16202d',
                     padding: '8px 16px',
                     borderRadius: '8px',
-                    border: '1px solid #1b2838'
+                    border: '1px solid #1b2838',
+                    marginTop: '20px' // Add top margin to separate from stats
                 }}>
                     <span style={{ fontSize: '16px' }}>🏆</span>
                     <span style={{ fontSize: '12px', color: '#8f98a0', fontWeight: '600' }}>Conquistas em breve</span>
@@ -333,8 +337,10 @@ const statsBoxStyle: React.CSSProperties = {
     borderRadius: '12px',
     padding: '24px',
     display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
+    flexDirection: 'column', // Vertical layout
+    alignItems: 'center',     // Center horizontally
+    justifyContent: 'center', // Center vertically
+    gap: '0px', // Gap handled by margin on icon
     borderWidth: '1px',
     borderStyle: 'solid',
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
