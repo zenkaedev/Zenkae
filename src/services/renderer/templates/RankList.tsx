@@ -124,6 +124,7 @@ export function RankList(props: RankListProps) {
                             {/* Crown for #1 */}
                             {isFirst && (
                                 <div style={{
+                                    display: 'flex', // Satori fix
                                     position: 'absolute',
                                     top: '-40px',
                                     fontSize: '50px',
@@ -168,12 +169,15 @@ export function RankList(props: RankListProps) {
                             </span>
 
                             <div style={{
+                                display: 'flex', // Satori fix
                                 background: '#101822',
                                 padding: '8px 16px',
                                 borderRadius: '20px',
                                 color: placeColor,
                                 fontWeight: '700',
-                                fontSize: '14px'
+                                fontSize: '14px',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}>
                                 {user.xpTotal.toLocaleString()} XP
                             </div>

@@ -241,7 +241,7 @@ export function UserProfile(props: UserProfileProps) {
                 </div>
             </div>
 
-// ... (previous code)
+
 
             {/* 3. STATS GRID */}
             <div style={{
