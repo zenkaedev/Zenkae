@@ -198,6 +198,8 @@ async function renderClassesSettingsV2(guildId: string, selectedId?: string) {
   });
 
   return {
+    content: '', // Limpar conteúdo de texto se houver
+    embeds: [], // 🚨 CRÍTICO: Limpar embeds antigos (incompatíveis com V2)
     flags: 1 << 15, // MessageFlags.IsComponentsV2
     components: [{ type: V2.Container, components: children }],
   } as const;
@@ -222,7 +224,7 @@ export async function openRecruitClassesSettings(inter: ButtonInteraction) {
   } catch (err: any) {
     console.error('Error opening classes settings:', err);
     try {
-      const msg = { content: '❌ Erro ao abrir configurações de classes.', components: [], flags: MessageFlags.Ephemeral };
+      const msg: any = { content: '❌ Erro ao abrir configurações de classes.', components: [], flags: MessageFlags.Ephemeral };
       if (inter.deferred || inter.replied) await inter.followUp(msg);
       else await inter.reply(msg);
     } catch {
