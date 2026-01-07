@@ -1,5 +1,5 @@
 // src/listeners/messageCount.ts
-import { Client, Events } from 'discord.js';
+import { Client, Events, MessageFlags } from 'discord.js';
 import { Context } from '../infra/context.js';
 import { xpStore } from '../services/xp/store.js';
 
@@ -31,14 +31,48 @@ export function registerMessageCounter(client: Client) {
       });
 
       // 2. Adicionar XP (com cooldown de 60s)
+      // Integração com sistema XP
       try {
-        const { levelUp, newLevel } = await xpStore.addMessageXP(guildId, userId);
-        if (levelUp) {
-          Context.get().logger.info({ guildId, userId, newLevel }, 'User leveled up');
+        const result = await xpStore.addMessageXP(guildId, userId);
+
+        if (result.levelUp) {
+          Context.get().logger.info({ guildId, userId, newLevel: result.newLevel }, 'User leveled up');
+
+          // Enviar mensagem de parabéns (efêmera, só o usuário vê)
+          try {
+            const xpNeeded = Math.floor(100 * Math.pow(result.newLevel + 1, 1.5));
+
+            await msg.reply({
+              embeds: [{
+                color: 0xFFD700, // Dourado
+                title: '🎉 LEVEL UP! 🎉',
+                description: `Parabéns, ${msg.author}! Você alcançou o **Nível ${result.newLevel}**!`,
+                thumbnail: {
+                  url: 'https://media.tenor.com/ZCkVUTjHJjMAAAAi/level-up.gif' // GIF animado
+                },
+                fields: [
+                  {
+                    name: '✨ Novo Nível',
+                    value: `**${result.newLevel}**`,
+                    inline: true
+                  },
+                  {
+                    name: '🎯 Próximo Objetivo',
+                    value: `Nível ${result.newLevel + 1} (${xpNeeded.toLocaleString()} XP)`,
+                    inline: true
+                  }
+                ],
+                footer: {
+                  text: 'Continue participando para subir ainda mais! 🚀'
+                }
+              }]
+            });
+          } catch (err) {
+            Context.get().logger.error({ err }, 'Failed to send level up notification');
+          }
         }
-      } catch (xpErr) {
-        // Não deixa falha de XP quebrar o contador
-        Context.get().logger.error({ err: xpErr }, 'Failed to add XP');
+      } catch (err) {
+        Context.get().logger.error({ err, guildId, userId }, 'Failed to add XP');
       }
     } catch (err) {
       // loga, mas não quebra o bot

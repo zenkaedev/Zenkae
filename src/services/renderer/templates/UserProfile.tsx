@@ -39,42 +39,44 @@ export function UserProfile(props: UserProfileProps) {
                 width: '800px',
                 height: '600px',
                 backgroundImage: bannerUrl
-                    ? `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.9)), url(${bannerUrl})`
-                    : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                    ? `linear-gradient(rgba(10,10,20,0.85), rgba(20,20,40,0.95)), url(${bannerUrl})`
+                    : 'linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                padding: '40px',
+                backgroundRepeat: 'no-repeat',
+                padding: '48px',
                 position: 'relative',
             }}
         >
-            {/* Header com Avatar */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '40px' }}>
+            {/* Header com Avatar - Clean e Espaçoso */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '48px' }}>
                 <img
                     src={avatarUrl}
                     style={{
-                        width: '120px',
-                        height: '120px',
-                        borderRadius: '60px',
-                        border: `4px solid ${guildColor}`,
-                        marginRight: '24px',
+                        width: '100px',
+                        height: '100px',
+                        borderRadius: '50px',
+                        border: `3px solid rgba(255,255,255,0.3)`,
+                        marginRight: '28px',
                     }}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span
                         style={{
-                            fontSize: '48px',
-                            fontWeight: 'bold',
+                            fontSize: '42px',
+                            fontWeight: '700',
                             color: '#fff',
-                            marginBottom: '8px',
+                            marginBottom: '6px',
+                            letterSpacing: '-0.5px',
                         }}
                     >
                         {username}
                     </span>
                     <span
                         style={{
-                            fontSize: '32px',
-                            color: guildColor,
-                            fontWeight: 'bold',
+                            fontSize: '24px',
+                            color: 'rgba(255,255,255,0.7)',
+                            fontWeight: '400',
                         }}
                     >
                         Nível {level}
@@ -82,40 +84,50 @@ export function UserProfile(props: UserProfileProps) {
                 </div>
             </div>
 
-            {/* Barra de XP */}
+            {/* Barra de XP - Glass Card */}
             <div
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    padding: '20px',
-                    borderRadius: '12px',
-                    marginBottom: '24px',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    padding: '28px',
+                    borderRadius: '16px',
+                    marginBottom: '40px',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    backdropFilter: 'blur(10px)', // Não funciona no Satori, mas deixa pro futuro
                 }}
             >
-                <span style={{ fontSize: '18px', color: '#aaa', marginBottom: '8px' }}>
-                    Progresso para o próximo nível
+                <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px', fontWeight: '500' }}>
+                    PRÓXIMO NÍVEL
                 </span>
-                <span
-                    style={{
-                        fontSize: '28px',
-                        fontFamily: 'monospace',
-                        color: guildColor,
-                        letterSpacing: '2px',
-                    }}
-                >
-                    {progressBar}
-                </span>
-                <span style={{ fontSize: '16px', color: '#ccc', marginTop: '4px' }}>
+
+                {/* Barra de progresso CSS smooth */}
+                <div style={{
+                    width: '100%',
+                    height: '12px',
+                    background: 'rgba(255,255,255,0.1)',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    marginBottom: '10px',
+                }}>
+                    <div style={{
+                        width: `${Math.min(100, Math.max(0, xpProgress))}%`,
+                        height: '100%',
+                        background: `linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%)`,
+                        borderRadius: '6px',
+                    }} />
+                </div>
+
+                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', alignSelf: 'flex-end', fontWeight: '500' }}>
                     {Math.round(xpProgress)}%
                 </span>
             </div>
 
-            {/* Grid de Stats */}
+            {/* Grid de Stats - Glass Cards Clean */}
             <div
                 style={{
                     display: 'flex',
-                    gap: '16px',
+                    gap: '20px',
                     marginBottom: '24px',
                 }}
             >
@@ -125,17 +137,20 @@ export function UserProfile(props: UserProfileProps) {
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        backgroundColor: 'rgba(0,0,0,0.6)',
-                        padding: '20px',
-                        borderRadius: '12px',
-                        border: '2px solid rgba(255,255,255,0.1)',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        padding: '28px 20px',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255,255,255,0.12)',
                     }}
                 >
-                    <span style={{ fontSize: '24px', marginBottom: '8px' }}>💬</span>
-                    <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#fff' }}>
+                    <span style={{ fontSize: '20px', marginBottom: '12px' }}>💬</span>
+                    <span style={{ fontSize: '36px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
                         {messageCount.toLocaleString()}
                     </span>
-                    <span style={{ fontSize: '14px', color: '#aaa' }}>Mensagens</span>
+                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Mensagens
+                    </span>
                 </div>
 
                 {/* Voz */}
@@ -144,17 +159,20 @@ export function UserProfile(props: UserProfileProps) {
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        backgroundColor: 'rgba(0,0,0,0.6)',
-                        padding: '20px',
-                        borderRadius: '12px',
-                        border: '2px solid rgba(255,255,255,0.1)',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        padding: '28px 20px',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255,255,255,0.12)',
                     }}
                 >
-                    <span style={{ fontSize: '24px', marginBottom: '8px' }}>🎤</span>
-                    <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#fff' }}>
+                    <span style={{ fontSize: '20px', marginBottom: '12px' }}>🎤</span>
+                    <span style={{ fontSize: '36px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
                         {voiceHours}h
                     </span>
-                    <span style={{ fontSize: '14px', color: '#aaa' }}>Tempo em Voz</span>
+                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Tempo em Voz
+                    </span>
                 </div>
 
                 {/* Membro desde */}
@@ -163,31 +181,36 @@ export function UserProfile(props: UserProfileProps) {
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        backgroundColor: 'rgba(0,0,0,0.6)',
-                        padding: '20px',
-                        borderRadius: '12px',
-                        border: '2px solid rgba(255,255,255,0.1)',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        padding: '28px 20px',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255,255,255,0.12)',
                     }}
                 >
-                    <span style={{ fontSize: '24px', marginBottom: '8px' }}>📅</span>
-                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#fff' }}>
+                    <span style={{ fontSize: '20px', marginBottom: '12px' }}>📅</span>
+                    <span style={{ fontSize: '18px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
                         {memberSince}
                     </span>
-                    <span style={{ fontSize: '14px', color: '#aaa' }}>Membro desde</span>
+                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Membro desde
+                    </span>
                 </div>
             </div>
 
-            {/* Footer */}
+            {/* Footer minimalista */}
             <div
                 style={{
                     position: 'absolute',
-                    bottom: '20px',
-                    right: '40px',
-                    fontSize: '14px',
-                    color: '#666',
+                    bottom: '24px',
+                    right: '48px',
+                    fontSize: '11px',
+                    color: 'rgba(255,255,255,0.25)',
+                    fontWeight: '500',
+                    letterSpacing: '0.5px',
                 }}
             >
-                ZenKae Bot
+                ZENKAE
             </div>
         </div>
     );
