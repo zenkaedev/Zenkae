@@ -62,6 +62,8 @@ export function UserProfile(props: UserProfileProps) {
             {/* 1. TOP BANNER AREA */}
             <div
                 style={{
+                    display: 'flex', // Satori required
+                    flexDirection: 'column', // Stack children
                     width: '100%',
                     height: '240px',
                     position: 'relative',
@@ -94,7 +96,15 @@ export function UserProfile(props: UserProfileProps) {
             </div>
 
             {/* 2. PROFILE HEADER (Floating) */}
-            <div style={{ padding: '0 40px', marginTop: '-80px', position: 'relative', zIndex: 10 }}>
+            {/* Note: Satori layers by document order. Since this is after Banner, 
+                it renders ON TOP. Negative margin pulls it up. No zIndex needed. */}
+            <div style={{
+                display: 'flex', // Satori required
+                flexDirection: 'column',
+                padding: '0 40px',
+                marginTop: '-80px',
+                position: 'relative'
+            }}>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
 
                     {/* AVATAR + NAME GROUP */}
@@ -102,13 +112,13 @@ export function UserProfile(props: UserProfileProps) {
                         {/* Avatar Container */}
                         <div
                             style={{
+                                display: 'flex', // Satori required
                                 width: '140px',
                                 height: '140px',
                                 borderRadius: '50%',
                                 padding: '6px',
                                 background: '#101822',
                                 position: 'relative',
-                                display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}
@@ -137,13 +147,13 @@ export function UserProfile(props: UserProfileProps) {
                             {/* Level Badge Pill */}
                             <div
                                 style={{
+                                    display: 'flex', // Satori required
                                     position: 'absolute',
                                     bottom: '-5px',
                                     background: '#1b2838',
                                     border: `2px solid ${levelColor}`,
                                     borderRadius: '20px',
                                     padding: '4px 12px',
-                                    display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
@@ -156,7 +166,12 @@ export function UserProfile(props: UserProfileProps) {
                         </div>
 
                         {/* User Info Text */}
-                        <div style={{ marginLeft: '24px', marginBottom: '15px' }}>
+                        <div style={{
+                            display: 'flex',        // Satori required
+                            flexDirection: 'column', // Stack Title and Role
+                            marginLeft: '24px',
+                            marginBottom: '15px'
+                        }}>
                             <h1 style={{
                                 margin: 0,
                                 fontSize: '36px',
@@ -188,7 +203,14 @@ export function UserProfile(props: UserProfileProps) {
                     </div>
 
                     {/* XP Progress Section (Right) */}
-                    <div style={{ marginBottom: '20px', textAlign: 'right', minWidth: '200px' }}>
+                    <div style={{
+                        display: 'flex',         // Satori required
+                        flexDirection: 'column', // Stack children
+                        marginBottom: '20px',
+                        textAlign: 'right',
+                        minWidth: '200px',
+                        alignItems: 'flex-end', // Align right
+                    }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', marginBottom: '6px' }}>
                             <span style={{ color: '#ffffff', fontWeight: '800', fontSize: '24px', marginRight: '4px' }}>
                                 {Math.round(xpProgress)}%
@@ -197,14 +219,14 @@ export function UserProfile(props: UserProfileProps) {
                                 to next level
                             </span>
                         </div>
-                        <div style={{ color: '#66c0f4', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', color: '#66c0f4', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
                             <span style={{ color: '#fff' }}>{currentXP.toLocaleString()}</span>
                             <span style={{ margin: '0 4px', color: '#8f98a0' }}>/</span>
                             <span style={{ color: '#8f98a0' }}>{requiredXP.toLocaleString()} XP</span>
                         </div>
 
                         {/* XP Bar */}
-                        <div style={{ width: '100%', height: '8px', background: '#090c10', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: '8px', background: '#090c10', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
                             <div
                                 style={{
                                     height: '100%',
@@ -220,16 +242,22 @@ export function UserProfile(props: UserProfileProps) {
             </div>
 
             {/* 3. STATS GRID */}
-            <div style={{ padding: '0 40px', marginTop: '40px', display: 'flex', gap: '20px', flex: 1 }}>
+            <div style={{
+                display: 'flex',
+                padding: '0 40px',
+                marginTop: '40px',
+                gap: '20px',
+                flex: 1
+            }}>
 
                 {/* Messages Card */}
                 <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
                     <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#66c0f4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
                     </div>
-                    <div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={statsLabelStyle}>Mensagens</span>
                         <span style={statsValueStyle}>{messageCount.toLocaleString()}</span>
                     </div>
@@ -238,14 +266,14 @@ export function UserProfile(props: UserProfileProps) {
                 {/* Voice Card */}
                 <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
                     <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#66c0f4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                             <line x1="12" y1="19" x2="12" y2="23" />
                             <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
                     </div>
-                    <div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={statsLabelStyle}>Tempo em Call</span>
                         <span style={statsValueStyle}>{voiceHours}h</span>
                     </div>
@@ -254,14 +282,14 @@ export function UserProfile(props: UserProfileProps) {
                 {/* Join Date Card */}
                 <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
                     <div style={{ ...iconBoxStyle, color: '#66c0f4' }}>
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#66c0f4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                             <line x1="16" y1="2" x2="16" y2="6" />
                             <line x1="8" y1="2" x2="8" y2="6" />
                             <line x1="3" y1="10" x2="21" y2="10" />
                         </svg>
                     </div>
-                    <div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={statsLabelStyle}>Membro Desde</span>
                         <span style={statsValueStyle}>{memberSince}</span>
                     </div>
@@ -269,7 +297,12 @@ export function UserProfile(props: UserProfileProps) {
             </div>
 
             {/* 4. FOOTER / DECORATION */}
-            <div style={{ padding: '0 40px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div style={{
+                display: 'flex',
+                padding: '0 40px 30px',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end'
+            }}>
                 {/* Fake Achievements Placeholder */}
                 <div style={{
                     display: 'flex',
