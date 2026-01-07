@@ -103,6 +103,7 @@ export function UserProfile(props: UserProfileProps) {
 
                 {/* Barra de progresso CSS smooth */}
                 <div style={{
+                    display: 'flex',
                     width: '100%',
                     height: '12px',
                     background: 'rgba(255,255,255,0.1)',
