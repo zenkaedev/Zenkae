@@ -368,13 +368,20 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
       try {
         newRole = await inter.guild?.roles.create(createOptions);
       } catch (err: any) {
-        // Fallback: Se falhar (falta de boost/feature), tenta criar sem nada de ícone
+        // Fallback: Se falhar (falta de boost/feature), tenta criar sem ícone
         if (err.message?.includes('boosts') || err.message?.includes('Missing Features') || err.code === 50035 || err.code === 50013) {
+
+          // MELHORIA: Se for Emoji Unicode, coloca no NOME do cargo já que não deu para por como ícone
+          let fallbackName = nameRaw;
+          if (emojiData?.type === 'unicode' && emojiData.name) {
+            fallbackName = `${emojiData.name} ${nameRaw}`;
+          }
+
           newRole = await inter.guild?.roles.create({
-            name: nameRaw,
+            name: fallbackName,
             color: colorInt,
             hoist: true,
-            reason: 'Criação automática (Fallback sem emoji) - Classe de recrutamento',
+            reason: 'Criação automática (Fallback sem ícone) - Classe de recrutamento',
           });
         } else {
           throw err;

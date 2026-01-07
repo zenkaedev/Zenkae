@@ -355,9 +355,13 @@ export async function handleApplyQuestionsSubmit(inter: ModalSubmitInteraction) 
   let total = Number.parseInt(countRaw || '0', 10);
 
   if (!appId) {
-    await inter.reply({ flags: MessageFlags.Ephemeral, content: '❌ ID de aplicação ausente.' });
+    if (!inter.deferred) await inter.deferReply({ flags: MessageFlags.Ephemeral });
+    await inter.editReply({ content: '❌ ID de aplicação ausente.' });
     return true;
   }
+
+  // Defer immediately to prevent timeout (processing image/DB can be slow)
+  if (!inter.deferred) await inter.deferReply({ flags: MessageFlags.Ephemeral });
 
   if (!Number.isFinite(total) || total <= 0) total = 5;
 
@@ -463,7 +467,8 @@ async function publishApplication(
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral });
     } else {
-      await interaction.followUp({ content: msg, flags: MessageFlags.Ephemeral });
+      // Use editReply to resolve the deferral
+      await interaction.editReply({ content: msg });
     }
   } catch {
     // ignore if interaction is already invalid
