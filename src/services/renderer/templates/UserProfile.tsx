@@ -23,13 +23,7 @@ export function UserProfile(props: UserProfileProps) {
         messageCount,
         voiceHours,
         memberSince,
-        guildColor = '#FFD700', // Amarelo NoWay padrão
     } = props;
-
-    // Barra de progresso visual
-    const barFilled = Math.round((xpProgress / 100) * 20);
-    const barEmpty = 20 - barFilled;
-    const progressBar = '▓'.repeat(barFilled) + '░'.repeat(barEmpty);
 
     return (
         <div
@@ -38,180 +32,275 @@ export function UserProfile(props: UserProfileProps) {
                 flexDirection: 'column',
                 width: '800px',
                 height: '600px',
-                backgroundImage: bannerUrl
-                    ? `linear-gradient(rgba(10,10,20,0.85), rgba(20,20,40,0.95)), url(${bannerUrl})`
-                    : 'linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                padding: '48px',
+                background: '#1b2838', // Steam dark blue-gray
+                borderRadius: '12px',
+                overflow: 'hidden',
                 position: 'relative',
             }}
         >
-            {/* Header com Avatar - Clean e Espaçoso */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '48px' }}>
-                <img
-                    src={avatarUrl}
+            {/* Banner Background - Aligned Right com Fade */}
+            {bannerUrl && (
+                <div
                     style={{
-                        width: '100px',
-                        height: '100px',
-                        borderRadius: '50px',
-                        border: `3px solid rgba(255,255,255,0.3)`,
-                        marginRight: '28px',
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        width: '500px',
+                        height: '250px',
+                        backgroundImage: `linear-gradient(to right, rgba(27,40,56,1) 0%, rgba(27,40,56,0.3) 40%, rgba(27,40,56,0) 100%), url(${bannerUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
                     }}
                 />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span
-                        style={{
-                            fontSize: '42px',
-                            fontWeight: '700',
-                            color: '#fff',
-                            marginBottom: '6px',
-                            letterSpacing: '-0.5px',
-                        }}
-                    >
-                        {username}
-                    </span>
-                    <span
-                        style={{
-                            fontSize: '24px',
-                            color: 'rgba(255,255,255,0.7)',
-                            fontWeight: '400',
-                        }}
-                    >
-                        Nível {level}
-                    </span>
-                </div>
-            </div>
+            )}
 
-            {/* Barra de XP - Glass Card */}
+            {/* Content Container */}
             <div
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    padding: '28px',
-                    borderRadius: '16px',
-                    marginBottom: '40px',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    backdropFilter: 'blur(10px)', // Não funciona no Satori, mas deixa pro futuro
+                    padding: '32px',
+                    position: 'relative',
+                    zIndex: 1,
                 }}
             >
-                <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px', fontWeight: '500' }}>
-                    PRÓXIMO NÍVEL
-                </span>
+                {/* Header - Avatar + Name + Level */}
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
+                    <img
+                        src={avatarUrl}
+                        style={{
+                            width: '90px',
+                            height: '90px',
+                            borderRadius: '8px',
+                            border: '3px solid #c7d5e0',
+                            marginRight: '20px',
+                        }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span
+                            style={{
+                                fontSize: '36px',
+                                fontWeight: '700',
+                                color: '#c7d5e0',
+                                marginBottom: '4px',
+                            }}
+                        >
+                            {username}
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '18px',
+                                color: '#66c0f4', // Steam blue
+                                fontWeight: '600',
+                            }}
+                        >
+                            Nível {level}
+                        </span>
+                    </div>
+                </div>
 
-                {/* Barra de progresso CSS smooth */}
-                <div style={{
-                    display: 'flex',
-                    width: '100%',
-                    height: '12px',
-                    background: 'rgba(255,255,255,0.1)',
-                    borderRadius: '6px',
-                    overflow: 'hidden',
-                    marginBottom: '10px',
-                }}>
-                    <div style={{
-                        width: `${Math.min(100, Math.max(0, xpProgress))}%`,
-                        height: '100%',
-                        background: `linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%)`,
+                {/* XP Progress Section */}
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        backgroundColor: '#16202d',
+                        padding: '20px',
                         borderRadius: '6px',
-                    }} />
-                </div>
-
-                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', alignSelf: 'flex-end', fontWeight: '500' }}>
-                    {Math.round(xpProgress)}%
-                </span>
-            </div>
-
-            {/* Grid de Stats - Glass Cards Clean */}
-            <div
-                style={{
-                    display: 'flex',
-                    gap: '20px',
-                    marginBottom: '24px',
-                }}
-            >
-                {/* Mensagens */}
-                <div
-                    style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(255,255,255,0.06)',
-                        padding: '28px 20px',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        marginBottom: '24px',
                     }}
                 >
-                    <span style={{ fontSize: '20px', marginBottom: '12px' }}>💬</span>
-                    <span style={{ fontSize: '36px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
-                        {messageCount.toLocaleString()}
+                    <span
+                        style={{
+                            fontSize: '12px',
+                            color: '#8f98a0',
+                            textTransform: 'uppercase',
+                            marginBottom: '10px',
+                            fontWeight: '600',
+                            letterSpacing: '1px',
+                        }}
+                    >
+                        Próximo Nível
                     </span>
-                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Mensagens
+
+                    {/* Progress Bar */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            width: '100%',
+                            height: '8px',
+                            background: '#0e1419',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            marginBottom: '8px',
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: `${Math.min(100, Math.max(0, xpProgress))}%`,
+                                height: '100%',
+                                background: 'linear-gradient(90deg, #66c0f4 0%, #2a98d5 100%)', // Steam blue gradient
+                                borderRadius: '4px',
+                            }}
+                        />
+                    </div>
+
+                    <span
+                        style={{
+                            fontSize: '12px',
+                            color: '#66c0f4',
+                            alignSelf: 'flex-end',
+                            fontWeight: '600',
+                        }}
+                    >
+                        {Math.round(xpProgress)}%
                     </span>
                 </div>
 
-                {/* Voz */}
+                {/* Stats Grid */}
                 <div
                     style={{
-                        flex: 1,
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(255,255,255,0.06)',
-                        padding: '28px 20px',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        gap: '16px',
+                        marginBottom: '16px',
                     }}
                 >
-                    <span style={{ fontSize: '20px', marginBottom: '12px' }}>🎤</span>
-                    <span style={{ fontSize: '36px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
-                        {voiceHours}h
-                    </span>
-                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Tempo em Voz
-                    </span>
+                    {/* Mensagens */}
+                    <div
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            backgroundColor: '#16202d',
+                            padding: '24px 20px',
+                            borderRadius: '6px',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <span style={{ fontSize: '28px', marginBottom: '8px', color: '#c7d5e0' }}>
+                            💬
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '32px',
+                                fontWeight: '700',
+                                color: '#c7d5e0',
+                                marginBottom: '4px',
+                            }}
+                        >
+                            {messageCount.toLocaleString()}
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '11px',
+                                color: '#8f98a0',
+                                textTransform: 'uppercase',
+                                fontWeight: '600',
+                                letterSpacing: '0.5px',
+                            }}
+                        >
+                            Mensagens
+                        </span>
+                    </div>
+
+                    {/* Tempo em Voz */}
+                    <div
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            backgroundColor: '#16202d',
+                            padding: '24px 20px',
+                            borderRadius: '6px',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <span style={{ fontSize: '28px', marginBottom: '8px', color: '#c7d5e0' }}>
+                            🎧
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '32px',
+                                fontWeight: '700',
+                                color: '#c7d5e0',
+                                marginBottom: '4px',
+                            }}
+                        >
+                            {voiceHours}h
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '11px',
+                                color: '#8f98a0',
+                                textTransform: 'uppercase',
+                                fontWeight: '600',
+                                letterSpacing: '0.5px',
+                            }}
+                        >
+                            Tempo em Call
+                        </span>
+                    </div>
+
+                    {/* Membro Desde */}
+                    <div
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            backgroundColor: '#16202d',
+                            padding: '24px 20px',
+                            borderRadius: '6px',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <span style={{ fontSize: '28px', marginBottom: '8px', color: '#c7d5e0' }}>
+                            ⏰
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '18px',
+                                fontWeight: '700',
+                                color: '#c7d5e0',
+                                marginBottom: '4px',
+                            }}
+                        >
+                            {memberSince}
+                        </span>
+                        <span
+                            style={{
+                                fontSize: '11px',
+                                color: '#8f98a0',
+                                textTransform: 'uppercase',
+                                fontWeight: '600',
+                                letterSpacing: '0.5px',
+                            }}
+                        >
+                            No Discord
+                        </span>
+                    </div>
                 </div>
 
-                {/* Membro desde */}
+                {/* Footer */}
                 <div
                     style={{
-                        flex: 1,
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(255,255,255,0.06)',
-                        padding: '28px 20px',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        justifyContent: 'flex-end',
+                        marginTop: '8px',
                     }}
                 >
-                    <span style={{ fontSize: '20px', marginBottom: '12px' }}>📅</span>
-                    <span style={{ fontSize: '18px', fontWeight: '600', color: '#fff', marginBottom: '4px' }}>
-                        {memberSince}
-                    </span>
-                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Membro desde
+                    <span
+                        style={{
+                            fontSize: '10px',
+                            color: '#495967',
+                            fontWeight: '600',
+                            letterSpacing: '1px',
+                            textTransform: 'uppercase',
+                        }}
+                    >
+                        Zenkae
                     </span>
                 </div>
-            </div>
-
-            {/* Footer minimalista */}
-            <div
-                style={{
-                    position: 'absolute',
-                    bottom: '24px',
-                    right: '48px',
-                    fontSize: '11px',
-                    color: 'rgba(255,255,255,0.25)',
-                    fontWeight: '500',
-                    letterSpacing: '0.5px',
-                }}
-            >
-                ZENKAE
             </div>
         </div>
     );

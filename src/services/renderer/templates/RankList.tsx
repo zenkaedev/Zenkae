@@ -12,7 +12,7 @@ interface RankUser {
 
 interface RankListProps {
     topUsers: RankUser[];
-    requestingUser?: RankUser; // Se não estiver no top 10
+    requestingUser?: RankUser;
     guildName: string;
     guildColor?: string;
 }
@@ -27,48 +27,46 @@ export function RankList(props: RankListProps) {
                 flexDirection: 'column',
                 width: '900px',
                 height: '1200px',
-                background: 'linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%)',
-                padding: '48px',
-                position: 'relative',
+                background: '#1b2838', // Steam dark blue-gray
+                padding: '40px',
+                borderRadius: '12px',
             }}
         >
-            {/* Header - Nome do Servidor em Destaque */}
+            {/* Header - Steam Style */}
             <div
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center',
-                    marginBottom: '36px',
-                    paddingBottom: '24px',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)',
+                    marginBottom: '32px',
+                    paddingBottom: '20px',
+                    borderBottom: '1px solid #2a475e',
                 }}
             >
                 <span
                     style={{
-                        fontSize: '48px',
-                        fontWeight: '700',
-                        color: '#fff',
+                        fontSize: '14px',
+                        color: '#66c0f4', // Steam blue
+                        textTransform: 'uppercase',
+                        fontWeight: '600',
                         marginBottom: '8px',
-                        letterSpacing: '-0.5px',
+                        letterSpacing: '1.5px',
+                    }}
+                >
+                    Leaderboard
+                </span>
+                <span
+                    style={{
+                        fontSize: '42px',
+                        fontWeight: '700',
+                        color: '#c7d5e0',
                     }}
                 >
                     {guildName}
                 </span>
-                <span
-                    style={{
-                        fontSize: '18px',
-                        fontWeight: '500',
-                        color: 'rgba(255,255,255,0.5)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '2px',
-                    }}
-                >
-                    🏆 Ranking
-                </span>
             </div>
 
-            {/* Lista de Usuários - Clean Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+            {/* User List - Clean Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
                 {topUsers.map((user) => {
                     const isTop3 = user.rank <= 3;
                     const medal = user.rank === 1 ? '🥇' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : '';
@@ -79,32 +77,30 @@ export function RankList(props: RankListProps) {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                backgroundColor: isTop3 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
-                                padding: isTop3 ? '20px 24px' : '16px 24px',
-                                borderRadius: '16px',
-                                border: isTop3
-                                    ? '1px solid rgba(255,255,255,0.2)'
-                                    : '1px solid rgba(255,255,255,0.08)',
-                                gap: '20px',
+                                backgroundColor: isTop3 ? '#2a475e' : '#16202d',
+                                padding: isTop3 ? '18px 20px' : '14px 20px',
+                                borderRadius: '6px',
+                                gap: '16px',
+                                border: isTop3 ? '1px solid #66c0f4' : 'none',
                             }}
                         >
-                            {/* Rank Number ou Medal */}
+                            {/* Rank */}
                             <div
                                 style={{
-                                    minWidth: '50px',
                                     display: 'flex',
+                                    minWidth: '60px',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                 }}
                             >
                                 {medal ? (
-                                    <span style={{ fontSize: '32px' }}>{medal}</span>
+                                    <span style={{ fontSize: '28px' }}>{medal}</span>
                                 ) : (
                                     <span
                                         style={{
-                                            fontSize: '24px',
+                                            fontSize: isTop3 ? '24px' : '20px',
                                             fontWeight: '700',
-                                            color: 'rgba(255,255,255,0.4)',
+                                            color: isTop3 ? '#66c0f4' : '#8f98a0',
                                         }}
                                     >
                                         #{user.rank}
@@ -116,16 +112,14 @@ export function RankList(props: RankListProps) {
                             <img
                                 src={user.avatarUrl}
                                 style={{
-                                    width: isTop3 ? '60px' : '48px',
-                                    height: isTop3 ? '60px' : '48px',
-                                    borderRadius: '50%',
-                                    border: isTop3
-                                        ? '3px solid rgba(255,255,255,0.3)'
-                                        : '2px solid rgba(255,255,255,0.15)',
+                                    width: isTop3 ? '56px' : '48px',
+                                    height: isTop3 ? '56px' : '48px',
+                                    borderRadius: '6px',
+                                    border: isTop3 ? '2px solid #66c0f4' : '2px solid #2a475e',
                                 }}
                             />
 
-                            {/* Username */}
+                            {/* User Info */}
                             <div
                                 style={{
                                     flex: 1,
@@ -137,8 +131,8 @@ export function RankList(props: RankListProps) {
                                     style={{
                                         fontSize: isTop3 ? '22px' : '18px',
                                         fontWeight: isTop3 ? '700' : '600',
-                                        color: '#fff',
-                                        marginBottom: '4px',
+                                        color: '#c7d5e0',
+                                        marginBottom: '2px',
                                     }}
                                 >
                                     {user.username}
@@ -146,8 +140,8 @@ export function RankList(props: RankListProps) {
                                 <span
                                     style={{
                                         fontSize: '13px',
-                                        color: 'rgba(255,255,255,0.5)',
-                                        fontWeight: '500',
+                                        color: '#8f98a0',
+                                        fontWeight: '600',
                                     }}
                                 >
                                     {user.xpTotal.toLocaleString()} XP
@@ -160,17 +154,16 @@ export function RankList(props: RankListProps) {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    backgroundColor: 'rgba(255,255,255,0.1)',
-                                    padding: '8px 16px',
-                                    borderRadius: '20px',
-                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    backgroundColor: isTop3 ? '#66c0f4' : '#2a475e',
+                                    padding: '8px 18px',
+                                    borderRadius: '4px',
                                 }}
                             >
                                 <span
                                     style={{
                                         fontSize: isTop3 ? '18px' : '16px',
                                         fontWeight: '700',
-                                        color: '#fff',
+                                        color: isTop3 ? '#1b2838' : '#c7d5e0',
                                     }}
                                 >
                                     Nv. {user.level}
@@ -181,32 +174,35 @@ export function RankList(props: RankListProps) {
                 })}
             </div>
 
-            {/* Footer - Posição do Usuário Solicitante (se não está no top 10) */}
+            {/* Footer - User Position (if >10) */}
             {requestingUser && requestingUser.rank > 10 && (
                 <div
                     style={{
+                        display: 'flex',
                         marginTop: '24px',
-                        paddingTop: '24px',
-                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                        paddingTop: '20px',
+                        borderTop: '1px solid #2a475e',
                     }}
                 >
                     <div
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            backgroundColor: 'rgba(255,255,255,0.08)',
-                            padding: '16px 24px',
-                            borderRadius: '16px',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            gap: '20px',
+                            backgroundColor: '#16202d',
+                            padding: '14px 20px',
+                            borderRadius: '6px',
+                            gap: '16px',
+                            flex: 1,
+                            border: '1px solid #66c0f4',
                         }}
                     >
                         <span
                             style={{
-                                fontSize: '16px',
+                                fontSize: '14px',
                                 fontWeight: '600',
-                                color: 'rgba(255,255,255,0.6)',
-                                minWidth: '100px',
+                                color: '#8f98a0',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
                             }}
                         >
                             Sua posição:
@@ -215,7 +211,7 @@ export function RankList(props: RankListProps) {
                             style={{
                                 fontSize: '20px',
                                 fontWeight: '700',
-                                color: '#fff',
+                                color: '#66c0f4',
                             }}
                         >
                             #{requestingUser.rank}
@@ -223,7 +219,8 @@ export function RankList(props: RankListProps) {
                         <span
                             style={{
                                 fontSize: '14px',
-                                color: 'rgba(255,255,255,0.5)',
+                                color: '#c7d5e0',
+                                fontWeight: '600',
                             }}
                         >
                             Nível {requestingUser.level} • {requestingUser.xpTotal.toLocaleString()} XP
@@ -232,19 +229,25 @@ export function RankList(props: RankListProps) {
                 </div>
             )}
 
-            {/* Footer minimalista */}
+            {/* Footer */}
             <div
                 style={{
-                    position: 'absolute',
-                    bottom: '24px',
-                    right: '48px',
-                    fontSize: '11px',
-                    color: 'rgba(255,255,255,0.25)',
-                    fontWeight: '500',
-                    letterSpacing: '0.5px',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    marginTop: '16px',
                 }}
             >
-                ZENKAE
+                <span
+                    style={{
+                        fontSize: '10px',
+                        color: '#495967',
+                        fontWeight: '600',
+                        letterSpacing: '1px',
+                        textTransform: 'uppercase',
+                    }}
+                >
+                    Zenkae
+                </span>
             </div>
         </div>
     );
