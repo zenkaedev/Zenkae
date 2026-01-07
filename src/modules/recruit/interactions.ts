@@ -178,11 +178,11 @@ recruitRouter.button(ids.recruit.settingsClasses, async (i) => {
     if (!(await assertStaff(i))) return;
     await openRecruitClassesSettings(i);
 });
-recruitRouter.button(new RegExp('^recruit:class:edit:'), async (i) => {
+recruitRouter.button(new RegExp('^recruit:settings:class:edit:'), async (i) => {
     if (!(await assertStaff(i))) return;
     await openClassModal(i, i.customId.split(':').pop()!);
 });
-recruitRouter.button(new RegExp('^recruit:class:rm:'), async (i) => {
+recruitRouter.button(new RegExp('^recruit:settings:class:remove:'), async (i) => {
     if (!(await assertStaff(i))) return;
     await handleClassRemove(i, i.customId.split(':').pop()!);
 });
@@ -190,7 +190,14 @@ recruitRouter.button(ids.recruit.classCreate, async (i) => {
     if (!(await assertStaff(i))) return;
     await openClassModal(i);
 });
-recruitRouter.modal(new RegExp('^recruit:class:save'), async (i) => {
+
+// Modal Save (Create)
+recruitRouter.modal(ids.recruit.modalClassSave, async (i) => {
+    if (!(await assertStaff(i))) return;
+    await handleClassModalSubmit(i);
+});
+// Modal Update (Edit)
+recruitRouter.modal(new RegExp('^recruit:settings:class:update:'), async (i) => {
     if (!(await assertStaff(i))) return;
     await handleClassModalSubmit(i);
 });
