@@ -53,7 +53,7 @@ export function UserProfile(props: UserProfileProps) {
                 boxShadow: style.glow !== 'none' ? `inset ${style.glow}` : 'none',
             }}
         >
-            {/* Banner Background - Right Side with Fade */}
+            {/* Banner Background - Full Width with Fade */}
             {bannerUrl && (
                 <div
                     style={{
@@ -61,13 +61,15 @@ export function UserProfile(props: UserProfileProps) {
                         top: 0,
                         right: 0,
                         bottom: 0,
-                        width: '550px', // Aumentado para cobrir mais
-                        height: '100%', // Full height para não ficar cortado
-                        backgroundImage: `linear-gradient(to right, #1b2838 10%, rgba(27,40,56,0.6) 50%, rgba(27,40,56,0.2) 100%), url(${bannerUrl})`,
+                        left: 0, // Full width covering everything
+                        width: '100%',
+                        height: '100%',
+                        // Gradient: Solid/Dark on left (for text), transparent on right (for image)
+                        backgroundImage: `linear-gradient(90deg, #1b2838 25%, rgba(27,40,56,0.85) 50%, rgba(27,40,56,0.2) 100%), url(${bannerUrl})`,
                         backgroundSize: 'cover',
-                        backgroundPosition: 'center', // Centralizado geralmente é melhor, mas se cortar topo podemos ajustar
+                        backgroundPosition: 'top center', // Prioritizar topo (cabeças/rostos)
                         backgroundRepeat: 'no-repeat',
-                        opacity: 0.7, // Leve transparência para não brigar com texto
+                        opacity: 0.5, // Ajustado para não ficar muito agressivo
                     }}
                 />
             )}
