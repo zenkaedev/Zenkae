@@ -207,17 +207,24 @@ async function renderClassesSettingsV2(guildId: string, selectedId?: string) {
 
 export async function openRecruitClassesSettings(inter: ButtonInteraction) {
   if (!inter.inCachedGuild()) return;
-  const payload = await renderClassesSettingsV2(inter.guildId!);
+
   try {
-    if (inter.deferred || inter.replied) {
-      await inter.editReply(payload);
-    } else {
-      await inter.update(payload);
+    // 1. Acknowledge immediately to prevent timeout
+    if (!inter.deferred && !inter.replied) {
+      await inter.deferUpdate();
     }
-  } catch {
-    // fallback seguro
+
+    // 2. Fetch data (can take > 3s)
+    const payload = await renderClassesSettingsV2(inter.guildId!);
+
+    // 3. Update the message
+    await inter.editReply(payload);
+  } catch (err: any) {
+    console.error('Error opening classes settings:', err);
     try {
-      await inter.reply({ ...(payload as any), flags: MessageFlags.Ephemeral } as any);
+      const msg = { content: '❌ Erro ao abrir configurações de classes.', components: [], flags: MessageFlags.Ephemeral };
+      if (inter.deferred || inter.replied) await inter.followUp(msg);
+      else await inter.reply(msg);
     } catch {
       // ignore
     }
