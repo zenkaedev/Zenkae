@@ -1,14 +1,15 @@
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
-  EmbedBuilder,
-  ButtonBuilder,
+  AttachmentBuilder,
   ActionRowBuilder,
-  ButtonStyle,
-  GuildMember
+  ButtonBuilder,
+  ButtonStyle
 } from 'discord.js';
+import { renderer } from '../services/renderer/index.js';
+import { Leaderboard } from '../services/renderer/templates/Leaderboard.js';
 import { xpStore } from '../services/xp/store.js';
-import { createProgressBar } from '../utils/progressBar.js';
+import React from 'react';
 
 export const data = new SlashCommandBuilder()
   .setName('rank')
@@ -28,83 +29,64 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // 1. Buscar top 10 usuários
     const topUsers = await xpStore.getTopUsers(guildId, 10);
 
-    // 2. Construir lista de exibição
-    let topOneAvatar: string | null = null;
-
-    const lines = await Promise.all(topUsers.map(async (userData: any, index: number) => {
+    // 2. Preparar dados para o template
+    const activeUsers = await Promise.all(topUsers.map(async (userData: any, index: number) => {
       let displayName = 'Usuário Desconhecido';
-      let avatarUrl: string | null = null;
+      let avatarUrl = '';
 
       try {
         const member = await interaction.guild.members.fetch(userData.userId).catch(() => null);
         if (member) {
           displayName = member.displayName;
-          avatarUrl = member.displayAvatarURL({ extension: 'png', size: 256 });
+          avatarUrl = member.displayAvatarURL({ extension: 'png', size: 128 });
         }
       } catch (e) {
-        // ignore fetch error
+        // ignore
       }
 
-      if (index === 0 && avatarUrl) topOneAvatar = avatarUrl;
+      const { xpProgress } = await xpStore.getUserLevel(guildId, userData.userId);
 
-      // Calcular progresso
-      const { xpInCurrentLevel, xpForNextLevel, xpProgress } = await xpStore.getUserLevel(guildId, userData.userId);
-
-      // ANSI Bar Logic
-      // Total Length: 15 chars for high resolution
-      const size = 15;
-      const percentage = Math.min(Math.max(xpInCurrentLevel / xpForNextLevel, 0), 1);
-      const progress = Math.round(size * percentage);
-      const empty = size - progress;
-
-      // ANSI Colors: [1;35m (Bold Magenta/Purple) matches the reference
-
-      const filledChar = '█';
-      const emptyChar = ' ';
-
-      const barStr = filledChar.repeat(progress);
-      const emptyStr = emptyChar.repeat(empty);
-
-      // ANSI Format: Purple Input for Bar, Gray for Empty + Percentage Badge
-      const percentStr = `${Math.floor(xpProgress)}%`.padStart(4, ' ');
-
-      const ansiBar = ` [1;35m${barStr} [1;30m${emptyStr} [0m  [1;37m${percentStr} [0m`;
-
-      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
-
-      return `**${medal}** — **[Nível ${userData.level}]** ${displayName}\n` +
-        `\`\`\`ansi\n${ansiBar}\n\`\`\``;
+      return {
+        rank: index + 1,
+        username: displayName,
+        level: userData.level,
+        xpProgress: xpProgress,
+        avatarUrl,
+        isTop3: index < 3
+      };
     }));
 
-    if (lines.length === 0) {
+    if (activeUsers.length === 0) {
       await interaction.editReply('Ainda não há ninguém no ranking!');
       return;
     }
 
-    // 3. Montar Embed
-    const embed = new EmbedBuilder()
-      .setColor(0x2B2D31) // Dark Embed Theme
-      .setTitle(`🏆 Ranking Global - ${interaction.guild.name}`)
-      .setDescription(lines.join('\n')) // Less spacing between items
-      .setFooter({ text: 'Atualizado em tempo real' })
-      .setTimestamp();
+    // 3. Renderizar Imagem
+    // Altura dinâmica baseada no número de usuários (aprox 70px por user + 100px header/footer)
+    const height = 100 + (activeUsers.length * 70);
 
-    if (topOneAvatar) {
-      embed.setThumbnail(topOneAvatar);
-    }
+    const pngBuffer = await renderer.renderToPNG(
+      React.createElement(Leaderboard, {
+        users: activeUsers,
+        guildName: interaction.guild.name
+      }),
+      { width: 600, height: height }
+    );
 
-    // 4. Botão (Placeholder)
+    const attachment = new AttachmentBuilder(pngBuffer, { name: 'leaderboard.png' });
+
+    // 4. Botão
     const row = new ActionRowBuilder<ButtonBuilder>()
       .addComponents(
         new ButtonBuilder()
           .setLabel('Ver Top 100')
           .setStyle(ButtonStyle.Link)
-          .setURL('https://discord.com') // TODO: Colocar URL real do dashboard
+          .setURL('https://discord.com')
           .setEmoji('📊')
       );
 
     await interaction.editReply({
-      embeds: [embed],
+      files: [attachment],
       components: [row]
     });
 
