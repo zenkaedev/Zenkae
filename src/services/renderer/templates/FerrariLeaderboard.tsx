@@ -20,27 +20,33 @@ export const FerrariLeaderboard: React.FC<LeaderboardProps> = ({ users, guildNam
             width: '100%',
             height: '100%',
             backgroundColor: '#1a1b1e', // Darker background
-            backgroundImage: 'linear-gradient(135deg, #1a1b1e 0%, #0f1012 100%)',
+            background: 'linear-gradient(135deg, #1a1b1e 0%, #0f1012 100%)', // Changed from backgroundImage
             padding: '30px',
             fontFamily: 'Inter, sans-serif',
             color: 'white',
         }}>
-            {/* Header with Glassmorphism */}
+            {/* Header with Fake Glassmorphism (No backdrop-filter) */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: '25px',
                 padding: '15px 25px',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)', // Increased opacity slightly
                 borderRadius: '16px',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                // Satori supports simple box shadows
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span style={{ fontSize: '28px', marginRight: '15px' }}>🏆</span>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(90deg, #fff, #a5a6f6)', backgroundClip: 'text', color: 'transparent' }}>
+                        {/* Gradient Text in Satori is tricky, falling back to solid color if needed but trying standard */}
+                        <span style={{
+                            fontSize: '22px',
+                            fontWeight: 800,
+                            color: '#a5a6f6' // Solid fallback or gradient if supported
+                        }}>
                             LEADERBOARD
                         </span>
                         <span style={{ fontSize: '14px', color: '#9ca3af', fontWeight: 500 }}>
@@ -69,9 +75,9 @@ export const FerrariLeaderboard: React.FC<LeaderboardProps> = ({ users, guildNam
                         alignItems: 'center',
                         width: '100%',
                         padding: '12px 20px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
                         borderRadius: '14px',
-                        border: '1px solid rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
                     }}>
                         {/* Rank Badge */}
                         <div style={{
@@ -133,13 +139,13 @@ export const FerrariLeaderboard: React.FC<LeaderboardProps> = ({ users, guildNam
                                     overflow: 'hidden',
                                     marginRight: '12px'
                                 }}>
-                                    {/* Gradient Bar with Glow */}
+                                    {/* Gradient Bar - Simplified for stability */}
                                     <div style={{
                                         width: `${user.xpProgress}%`,
                                         height: '100%',
-                                        backgroundImage: 'linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%)', // Violet to Blue
+                                        background: 'linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%)', // Standard background prop
                                         borderRadius: '4px',
-                                        boxShadow: '0 0 10px rgba(139, 92, 246, 0.5)' // Soft glow
+                                        // Omitting heavy box-shadow/glow to prevent render issues
                                     }}></div>
                                 </div>
                                 <span style={{ fontSize: '12px', color: '#6b7280', width: '35px', textAlign: 'right' }}>
