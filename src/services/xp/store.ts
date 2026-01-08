@@ -28,7 +28,7 @@ export const xpStore = {
         while (true) {
             const xpNeededForNextLevel = this.getXPForLevel(level);
             if (xpNeededSoFar + xpNeededForNextLevel > xpTotal) {
-                // Não tem XP suficiente para o próximo nível
+                // Não tem XP suficiente para COMPLETAR o próximo nível
                 break;
             }
             xpNeededSoFar += xpNeededForNextLevel;

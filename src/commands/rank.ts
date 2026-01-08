@@ -80,14 +80,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     console.log('[RANK] Rendering image...');
     try {
       // Renderizar
-      const height = 140 + (activeUsers.length * 85); // Ajuste fino para o layout novo
+      // Altura dinâmica: Padding 80 + Header 120 + (Users * 95)
+      const height = 200 + (activeUsers.length * 100);
       const pngBuffer = await renderer.renderToPNG(
         React.createElement(FerrariLeaderboard, {
           users: activeUsers,
           guildName: interaction.guild.name,
           page: page
         }),
-        { width: 700, height: height } // Um pouco mais largo para "Ferrari" look
+        { width: 800, height: height } // Width 800 for better resolution
       );
       console.log('[RANK] Image rendered successfully');
 
