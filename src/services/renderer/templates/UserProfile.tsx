@@ -101,11 +101,11 @@ export function UserProfile(props: UserProfileProps) {
             <div style={{
                 display: 'flex', // Satori required
                 flexDirection: 'column',
-                padding: '0 40px',
+                padding: '0 45px', // Increased padding
                 marginTop: '-80px',
                 position: 'relative'
             }}>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', width: '100%', alignItems: 'flex-end', justifyContent: 'space-between' }}>
 
                     {/* AVATAR + NAME GROUP */}
                     <div style={{ display: 'flex', alignItems: 'flex-end' }}>

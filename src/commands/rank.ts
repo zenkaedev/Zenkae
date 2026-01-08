@@ -1,9 +1,14 @@
-// src/commands/rank.ts
-import { SlashCommandBuilder, ChatInputCommandInteraction, AttachmentBuilder } from 'discord.js';
-import { renderer } from '../services/renderer/index.js';
-import { RankList } from '../services/renderer/templates/RankList.js';
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+  EmbedBuilder,
+  ButtonBuilder,
+  ActionRowBuilder,
+  ButtonStyle,
+  GuildMember
+} from 'discord.js';
 import { xpStore } from '../services/xp/store.js';
-import React from 'react';
+import { createProgressBar } from '../utils/progressBar.js';
 
 export const data = new SlashCommandBuilder()
   .setName('rank')
@@ -15,65 +20,63 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  await interaction.deferReply(); // Rendering pode levar ~1s
+  await interaction.deferReply();
 
   const guildId = interaction.guildId;
-  const userId = interaction.user.id;
 
   try {
     // 1. Buscar top 10 usuários
     const topUsers = await xpStore.getTopUsers(guildId, 10);
 
-    // 2. Buscar rank do usuário que solicitou
-    const userRank = await xpStore.getUserRank(guildId, userId);
+    // 2. Construir lista de exibição
+    const lines = await Promise.all(topUsers.map(async (userData: any, index: number) => {
+      let displayName = 'Usuário Desconhecido';
 
-    // 3. Transformar dados para o template
-    const rankedUsers = await Promise.all(
-      topUsers.map(async (userData: any, index: number) => {
-        const user = await interaction.client.users.fetch(userData.userId).catch(() => null);
-        return {
-          userId: userData.userId,
-          username: user?.username || 'Usuário Desconhecido',
-          avatarUrl: user?.displayAvatarURL({ size: 128, extension: 'png' }) || '',
-          level: userData.level,
-          xpTotal: userData.xpTotal,
-          rank: index + 1,
-        };
-      })
-    );
+      try {
+        const member = await interaction.guild.members.fetch(userData.userId).catch(() => null);
+        if (member) displayName = member.displayName;
+      } catch (e) {
+        // ignore fetch error
+      }
 
-    // 4. Se o usuário não está no top 10, buscar seus dados
-    let requestingUserData = undefined;
-    if (userRank > 10) {
-      const userData = await xpStore.getUserLevel(guildId, userId);
-      const user = await interaction.client.users.fetch(userId);
-      requestingUserData = {
-        userId,
-        username: user.username,
-        avatarUrl: user.displayAvatarURL({ size: 128, extension: 'png' }),
-        level: userData.level,
-        xpTotal: userData.xpTotal,
-        rank: userRank,
-      };
+      // Calcular progresso do nível atual
+      const { xpInCurrentLevel, xpForNextLevel, xpProgress } = await xpStore.getUserLevel(guildId, userData.userId);
+      const progressBar = createProgressBar(xpInCurrentLevel, xpForNextLevel, 8); // 8 blocos
+
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+
+      return `**${medal} — [Nível ${userData.level}] ${displayName}**\n` +
+        `> ${progressBar} \`${Math.floor(xpProgress)}%\``;
+    }));
+
+    if (lines.length === 0) {
+      await interaction.editReply('Ainda não há ninguém no ranking!');
+      return;
     }
 
-    // 5. Renderizar imagem
-    const pngBuffer = await renderer.renderToPNG(
-      React.createElement(RankList, {
-        topUsers: rankedUsers,
-        requestingUser: requestingUserData,
-        guildName: interaction.guild.name,
-        guildColor: '#FFD700',
-      }),
-      { width: 900, height: 1200 }
-    );
+    // 3. Montar Embed
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2) // Blurple
+      .setTitle(`🏆 Ranking Global - ${interaction.guild.name}`)
+      .setDescription(lines.join('\n\n'))
+      .setFooter({ text: 'Atualizado em tempo real' })
+      .setTimestamp();
 
-    // 6. Enviar como attachment
-    const attachment = new AttachmentBuilder(pngBuffer, { name: 'rank.png' });
+    // 4. Botão (Placeholder)
+    const row = new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(
+        new ButtonBuilder()
+          .setLabel('Ver Top 100')
+          .setStyle(ButtonStyle.Link)
+          .setURL('https://discord.com') // TODO: Colocar URL real do dashboard
+          .setEmoji('📊')
+      );
 
     await interaction.editReply({
-      files: [attachment],
+      embeds: [embed],
+      components: [row]
     });
+
   } catch (err) {
     console.error('Error generating rank:', err);
     await interaction.editReply({

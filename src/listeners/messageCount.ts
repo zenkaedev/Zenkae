@@ -42,13 +42,13 @@ export function registerMessageCounter(client: Client) {
           try {
             const xpNeeded = Math.floor(100 * Math.pow(result.newLevel + 1, 1.5));
 
-            await msg.reply({
+            const reply = await msg.reply({
               embeds: [{
                 color: 0xFFD700, // Dourado
                 title: '🎉 LEVEL UP! 🎉',
                 description: `Parabéns, ${msg.author}! Você alcançou o **Nível ${result.newLevel}**!`,
-                thumbnail: {
-                  url: 'https://media1.tenor.com/m/0pmPIX08hQUAAAAC/goku-dragon-ball-level-up-anime-gif.gif'
+                image: {
+                  url: 'https://i.imgur.com/uh1X2YI.gif'
                 },
                 fields: [
                   {
@@ -63,10 +63,15 @@ export function registerMessageCounter(client: Client) {
                   }
                 ],
                 footer: {
-                  text: 'Continue participando para subir ainda mais! 🚀'
+                  text: 'Esta mensagem será apagada em 10 segundos.'
                 }
               }]
             });
+
+            // Auto-delete após 10 segundos
+            setTimeout(() => {
+              reply.delete().catch(() => { });
+            }, 10000);
           } catch (err) {
             Context.get().logger.error({ err }, 'Failed to send level up notification');
           }
