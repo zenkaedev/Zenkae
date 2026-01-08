@@ -29,24 +29,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const topUsers = await xpStore.getTopUsers(guildId, 10);
 
     // 2. Construir lista de exibição
+    let topOneAvatar: string | null = null;
+
     const lines = await Promise.all(topUsers.map(async (userData: any, index: number) => {
       let displayName = 'Usuário Desconhecido';
+      let avatarUrl: string | null = null;
 
       try {
         const member = await interaction.guild.members.fetch(userData.userId).catch(() => null);
-        if (member) displayName = member.displayName;
+        if (member) {
+          displayName = member.displayName;
+          avatarUrl = member.displayAvatarURL({ extension: 'png', size: 256 });
+        }
       } catch (e) {
         // ignore fetch error
       }
 
+      if (index === 0 && avatarUrl) topOneAvatar = avatarUrl;
+
       // Calcular progresso do nível atual
       const { xpInCurrentLevel, xpForNextLevel, xpProgress } = await xpStore.getUserLevel(guildId, userData.userId);
-      const progressBar = createProgressBar(xpInCurrentLevel, xpForNextLevel, 8); // 8 blocos
+      // Usando caracteres mais densos para simular barra contínua
+      const progressBar = createProgressBar(xpInCurrentLevel, xpForNextLevel, 10).replace(/▰/g, '▇').replace(/▱/g, '—');
 
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
 
-      return `**${medal} — [Nível ${userData.level}] ${displayName}**\n` +
-        `> ${progressBar} \`${Math.floor(xpProgress)}%\``;
+      return `**${medal}** — **[Nível ${userData.level}]** ${displayName}\n` +
+        `> ${progressBar} \` ${Math.floor(xpProgress)}% \``;
     }));
 
     if (lines.length === 0) {
@@ -61,6 +70,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setDescription(lines.join('\n\n'))
       .setFooter({ text: 'Atualizado em tempo real' })
       .setTimestamp();
+
+    if (topOneAvatar) {
+      embed.setThumbnail(topOneAvatar);
+    }
 
     // 4. Botão (Placeholder)
     const row = new ActionRowBuilder<ButtonBuilder>()
