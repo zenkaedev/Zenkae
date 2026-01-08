@@ -47,15 +47,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (index === 0 && avatarUrl) topOneAvatar = avatarUrl;
 
-      // Calcular progresso do nível atual
+      // Calcular progresso
       const { xpInCurrentLevel, xpForNextLevel, xpProgress } = await xpStore.getUserLevel(guildId, userData.userId);
-      // Usando caracteres mais densos para simular barra contínua
-      const progressBar = createProgressBar(xpInCurrentLevel, xpForNextLevel, 10).replace(/▰/g, '▇').replace(/▱/g, '—');
+
+      // ANSI Bar Logic
+      // Total Length: 15 chars for high resolution
+      const size = 15;
+      const percentage = Math.min(Math.max(xpInCurrentLevel / xpForNextLevel, 0), 1);
+      const progress = Math.round(size * percentage);
+      const empty = size - progress;
+
+      // ANSI Colors: [1;35m (Bold Magenta/Purple) matches the reference
+
+      const filledChar = '█';
+      const emptyChar = ' ';
+
+      const barStr = filledChar.repeat(progress);
+      const emptyStr = emptyChar.repeat(empty);
+
+      // ANSI Format: Purple Input for Bar, Gray for Empty + Percentage Badge
+      const percentStr = `${Math.floor(xpProgress)}%`.padStart(4, ' ');
+
+      const ansiBar = ` [1;35m${barStr} [1;30m${emptyStr} [0m  [1;37m${percentStr} [0m`;
 
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
 
       return `**${medal}** — **[Nível ${userData.level}]** ${displayName}\n` +
-        `> ${progressBar} \` ${Math.floor(xpProgress)}% \``;
+        `\`\`\`ansi\n${ansiBar}\n\`\`\``;
     }));
 
     if (lines.length === 0) {
@@ -65,9 +83,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // 3. Montar Embed
     const embed = new EmbedBuilder()
-      .setColor(0x5865F2) // Blurple
+      .setColor(0x2B2D31) // Dark Embed Theme
       .setTitle(`🏆 Ranking Global - ${interaction.guild.name}`)
-      .setDescription(lines.join('\n\n'))
+      .setDescription(lines.join('\n')) // Less spacing between items
       .setFooter({ text: 'Atualizado em tempo real' })
       .setTimestamp();
 
