@@ -323,6 +323,9 @@ function parseEmoji(raw: string) {
 export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   if (!inter.inCachedGuild()) return;
 
+  // 🚨 CRITICAL: Defer IMMEDIATELY to prevent "Unknown interaction" timeout
+  await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
   const isUpdate = ids.recruit.isModalClassUpdate(inter.customId);
   const classId = isUpdate ? inter.customId.split(':').pop()! : undefined;
 
@@ -332,13 +335,13 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   const colorRaw = (inter.fields.getTextInputValue('color') || '').trim();
 
   if (!nameRaw) {
-    await replyV2Notice(inter, '❌ Nome é obrigatório.', true);
+    await inter.editReply({ content: '❌ Nome é obrigatório.' });
     return;
   }
 
   const color = normalizeHexColor(colorRaw);
   if (colorRaw && !color) {
-    await replyV2Notice(inter, '❌ Cor inválida. Use o formato #RRGGBB (ex.: #FF8800).', true);
+    await inter.editReply({ content: '❌ Cor inválida. Use o formato #RRGGBB (ex.: #FF8800).' });
     return;
   }
 
@@ -390,18 +393,14 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
 
       if (newRole) {
         roleRaw = newRole.id;
-        await replyV2Notice(
-          inter,
-          `✅ Cargo **${nameRaw}** criado automaticamente!\n🆔 ID: \`${newRole.id}\``,
-          true
-        );
+        await inter.editReply({
+          content: `✅ Cargo **${nameRaw}** criado automaticamente!\n🆔 ID: \`${newRole.id}\``
+        });
       }
     } catch (err: any) {
-      await replyV2Notice(
-        inter,
-        `❌ Falha ao criar cargo automaticamente.\n**Erro**: ${err.message || 'Desconhecido'}\n\nVerifique se o bot tem permissão \`MANAGE_ROLES\` e se o cargo do bot está acima na hierarquia.`,
-        true
-      );
+      await inter.editReply({
+        content: `❌ Falha ao criar cargo automaticamente.\n**Erro**: ${err.message || 'Desconhecido'}\n\nVerifique se o bot tem permissão \`MANAGE_ROLES\` e se o cargo do bot está acima na hierarquia.`
+      });
       return;
     }
   }

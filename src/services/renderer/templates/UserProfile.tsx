@@ -195,7 +195,7 @@ export function UserProfile(props: UserProfileProps) {
                                     background: `${roleColor}15`,
                                     border: `1px solid ${roleColor}30`,
                                 }}>
-                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: roleColor, marginRight: '8px', boxShadow: `0 0 6px ${roleColor}` }} />
+                                    <div style={{ display: 'flex', width: '8px', height: '8px', borderRadius: '50%', background: roleColor, marginRight: '8px', boxShadow: `0 0 6px ${roleColor}` }} />
                                     <span style={{ color: roleColor, fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                         {roleName}
                                     </span>
@@ -221,7 +221,7 @@ export function UserProfile(props: UserProfileProps) {
                         )}
 
                         {/* XP Fraction */}
-                        <div style={{ display: 'flex', color: '#66c0f4', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'row', color: '#66c0f4', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
                             <span style={{ color: '#fff' }}>{currentXP.toLocaleString()}</span>
                             <span style={{ margin: '0 4px', color: '#8f98a0' }}>/</span>
                             <span style={{ color: '#8f98a0' }}>{requiredXP.toLocaleString()} XP</span>
