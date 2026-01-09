@@ -99,10 +99,17 @@ async function bootstrap() {
           logger.warn('⚠️ Nenhum comando para publicar — pulando deploy global.');
         }
       } catch (err) {
-        logger.error({ err }, '❌ Falha no deploy global');
+        logger.error({ err }, '❌ Erro ao fazer deploy global:');
       }
     }
 
+    // Initialize ZK Event Scheduler
+    try {
+      const { eventScheduler } = await import('./services/events/scheduler.js');
+      eventScheduler.init(client);
+    } catch (err) {
+      logger.error({ err }, 'Error initializing event scheduler');
+    }
     startEventReminders(client);
   });
 

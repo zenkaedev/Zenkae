@@ -1,8 +1,8 @@
 // prisma/schema.prisma
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")  
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -12,21 +12,21 @@ generator client {
 // ===== Recruiting =====
 
 model Application {
-  id        String   @id @default(cuid())
-  guildId   String
-  userId    String
-  username  String
-  nick      String
-  className String
-  classId   String?
-  status    String   @default("pending") // 'pending' | 'approved' | 'rejected'
-  qAnswers  String   @default("[]")      // JSON string
-  reason    String?
-  messageId String?
-  channelId String?
+  id            String   @id @default(cuid())
+  guildId       String
+  userId        String
+  username      String
+  nick          String
+  className     String
+  classId       String?
+  status        String   @default("pending") // 'pending' | 'approved' | 'rejected'
+  qAnswers      String   @default("[]") // JSON string
+  reason        String?
+  messageId     String?
+  channelId     String?
   attachmentUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Moderação
   moderatedById      String?
@@ -38,9 +38,9 @@ model Application {
 }
 
 model RecruitSettings {
-  guildId               String  @id
-  panelChannelId        String?
-  formsChannelId        String?
+  guildId        String  @id
+  panelChannelId String?
+  formsChannelId String?
 
   appearanceTitle       String?
   appearanceDescription String?
@@ -48,8 +48,8 @@ model RecruitSettings {
   appearanceThumbUrl    String?
   appearanceAccent      Int? // 0xRRGGBB opcional
 
-  questions             String   @default("[]") // JSON string
-  classes               String   @default("[]") // JSON string { id,name,emoji,roleId,color }
+  questions             String  @default("[]") // JSON string
+  classes               String  @default("[]") // JSON string { id,name,emoji,roleId,color }
   defaultApprovedRoleId String?
 
   dmAcceptedTemplate String   @default("Parabéns! Você foi aprovado 🎉")
@@ -100,7 +100,7 @@ model EventRsvp {
   eventId   String
   guildId   String
   userId    String
-  choice    String   // 'yes' | 'maybe' | 'no'
+  choice    String // 'yes' | 'maybe' | 'no'
   updatedAt DateTime @updatedAt
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -112,7 +112,7 @@ model EventRsvp {
 model EventReminder {
   id      String   @id @default(cuid())
   eventId String
-  kind    String   // '24h' | '1h' | '15m'
+  kind    String // '24h' | '1h' | '15m'
   sentAt  DateTime @default(now())
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -142,17 +142,17 @@ model ActivityPanel {
 // ===== Enquetes (Polls) =====
 
 model Poll {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   guildId     String
   channelId   String
   messageId   String?
   question    String
-  optionsJson String   // JSON string: string[] (ordem = índices)
-  multi       Boolean  @default(false)
+  optionsJson String // JSON string: string[] (ordem = índices)
+  multi       Boolean   @default(false)
   endsAt      DateTime?
   createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   votes PollVote[]
 
@@ -210,19 +210,19 @@ model UserLevel {
 }
 
 model RankSettings {
-  guildId        String   @id
-  weeklyRoleId   String?
-  monthlyRoleId  String?
-  lastWeeklyRotation DateTime?
+  guildId             String    @id
+  weeklyRoleId        String?
+  monthlyRoleId       String?
+  lastWeeklyRotation  DateTime?
   lastMonthlyRotation DateTime?
-  updatedAt      DateTime @updatedAt
+  updatedAt           DateTime  @updatedAt
 }
 
 model UserXPPeriod {
-  id        String   @id @default(cuid())
-  guildId   String
-  userId    String
-  periodType String   // 'WEEKLY', 'MONTHLY'
+  id         String   @id @default(cuid())
+  guildId    String
+  userId     String
+  periodType String // 'WEEKLY', 'MONTHLY'
   startDate  DateTime // The "key" for the period (Monday 00:00 BRT)
   xp         Int      @default(0)
   updatedAt  DateTime @updatedAt
@@ -231,3 +231,65 @@ model UserXPPeriod {
   @@index([guildId, periodType, startDate, xp]) // For ranking queries
 }
 
+model ZKEvent {
+  id                    String        @id @default(cuid())
+  guildId               String
+  title                 String
+  description           String        @db.Text
+  imageUrl              String?
+  voiceChannelId        String
+  eventDate             DateTime
+  dmMessage             String        @db.Text
+  zkReward              Int           @default(10)
+  createdBy             String
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  announcementMessageId String?
+  announcementChannelId String?
+  finalListMessageId    String?
+  rsvpLocked            Boolean       @default(false)
+  completed             Boolean       @default(false)
+  rsvps                 ZKEventRSVP[]
+
+  @@index([guildId, eventDate])
+  @@index([guildId, completed])
+}
+
+model ZKEventRSVP {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  response  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  event     ZKEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId, response])
+}
+
+model AuctionItem {
+  id          String       @id @default(cuid())
+  guildId     String
+  name        String
+  description String       @db.Text
+  imageUrl    String
+  zkCost      Int
+  createdAt   DateTime     @default(now())
+  bids        AuctionBid[]
+
+  @@index([guildId])
+}
+
+model AuctionBid {
+  id          String      @id @default(cuid())
+  guildId     String
+  itemId      String
+  userId      String
+  userXPLevel Int
+  createdAt   DateTime    @default(now())
+  item        AuctionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+  @@index([itemId, userXPLevel])
+}

@@ -40,6 +40,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const xpData = await xpStore.getUserLevel(guildId, targetUser.id);
         const messageCount = await getMessageCount(guildId, targetUser.id);
 
+        // Get rank position
+        const topUsers = await xpStore.getTopUsers(guildId, 999); // Get all to find position
+        const userRank = topUsers.findIndex((u: any) => u.userId === targetUser.id) + 1;
+
         // Voice time - fetch from database
         const voiceData = await prisma.voiceActivity.findUnique({
             where: { guildId_userId: { guildId, userId: targetUser.id } },
@@ -72,6 +76,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
                 avatarUrl,
                 bannerUrl,
                 level: xpData.level,
+                rank: userRank > 0 ? userRank : undefined, // Only show if found
                 xpProgress: xpData.xpProgress,
                 currentXP: xpData.xpInCurrentLevel,
                 requiredXP: xpData.xpForNextLevel,

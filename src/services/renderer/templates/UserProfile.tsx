@@ -228,7 +228,7 @@ export function UserProfile(props: UserProfileProps) {
                         </div>
 
                         {/* XP Bar */}
-                        <div style={{ width: '100%', height: '8px', background: '#090c10', borderRadius: '4px', overflow: 'hidden', display: 'flex', marginBottom: '6px' }}>
+                        <div style={{ width: '100%', maxWidth: '220px', height: '8px', background: '#090c10', borderRadius: '4px', overflow: 'hidden', display: 'flex', marginBottom: '6px' }}>
                             <div
                                 style={{
                                     height: '100%',
