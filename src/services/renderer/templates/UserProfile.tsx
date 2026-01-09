@@ -6,6 +6,7 @@ export interface UserProfileProps {
     avatarUrl: string;
     bannerUrl?: string;
     level: number;
+    rank?: number;  // Position in server ranking
     xpProgress: number;
     currentXP: number;
     requiredXP: number;
@@ -33,6 +34,7 @@ export function UserProfile(props: UserProfileProps) {
         avatarUrl,
         bannerUrl,
         level,
+        rank,
         xpProgress,
         currentXP,
         requiredXP,
@@ -211,14 +213,14 @@ export function UserProfile(props: UserProfileProps) {
                         minWidth: '200px',
                         alignItems: 'flex-end', // Align right
                     }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', marginBottom: '6px' }}>
-                            <span style={{ color: '#ffffff', fontWeight: '800', fontSize: '24px', marginRight: '4px' }}>
-                                {Math.round(xpProgress)}%
-                            </span>
-                            <span style={{ fontSize: '12px', color: '#8f98a0', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                                to next level
-                            </span>
-                        </div>
+                        {/* Rank Position (Top Right) */}
+                        {rank && (
+                            <div style={{ fontSize: '16px', color: '#8f98a0', fontWeight: '700', marginBottom: '8px' }}>
+                                #{rank}
+                            </div>
+                        )}
+
+                        {/* XP Fraction */}
                         <div style={{ display: 'flex', color: '#66c0f4', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
                             <span style={{ color: '#fff' }}>{currentXP.toLocaleString()}</span>
                             <span style={{ margin: '0 4px', color: '#8f98a0' }}>/</span>
@@ -226,7 +228,7 @@ export function UserProfile(props: UserProfileProps) {
                         </div>
 
                         {/* XP Bar */}
-                        <div style={{ width: '100%', height: '8px', background: '#090c10', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+                        <div style={{ width: '100%', height: '8px', background: '#090c10', borderRadius: '4px', overflow: 'hidden', display: 'flex', marginBottom: '6px' }}>
                             <div
                                 style={{
                                     height: '100%',
@@ -236,6 +238,11 @@ export function UserProfile(props: UserProfileProps) {
                                     boxShadow: `0 0 10px ${levelColor}50`
                                 }}
                             />
+                        </div>
+
+                        {/* Progress Percentage (Below Bar) */}
+                        <div style={{ display: 'flex', fontSize: '13px', color: '#8f98a0', fontWeight: '500' }}>
+                            <span>{Math.round(xpProgress)}% to next level</span>
                         </div>
                     </div>
                 </div>

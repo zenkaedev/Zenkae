@@ -115,7 +115,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       container.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
 
       const medal = user.rank === 1 ? '🥇' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : `#${user.rank}`;
-      const progressBar = createEmojiProgressBar(user.xpProgress, 6);
+      const progressBar = createEmojiProgressBar(user.xpProgress);
       const percentBox = `\`${Math.floor(user.xpProgress)}%\``;
 
       // Format:
@@ -229,7 +229,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
  * Estilo: [Start][Mid][Mid][Mid][End]
  * Concatenação DIRETA sem nenhum caractere entre emojis
  */
-function createEmojiProgressBar(percentage: number, length: number = 6): string {
+function createEmojiProgressBar(percentage: number, length: number = 12): string {
   const p = Math.max(0, Math.min(100, percentage));
 
   // Se 100%, barra full perfeita
