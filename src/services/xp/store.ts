@@ -102,8 +102,9 @@ export const xpStore = {
     /**
      * Adiciona XP por tempo em voz (10 XP por minuto)
      */
-    async addVoiceXP(guildId: string, userId: string, minutes: number): Promise<void> {
-        const xpGained = minutes * 10;
+    async addVoiceXP(guildId: string, userId: string, seconds: number): Promise<void> {
+        const xpGained = Math.floor((seconds / 60) * 10);
+        if (xpGained < 1) return;
 
         const userLevel = await prisma.userLevel.findUnique({
             where: { guildId_userId: { guildId, userId } },
@@ -152,7 +153,7 @@ export const xpStore = {
         }
 
         const xpForNextLevel = this.getXPForLevel(data.level);
-        const xpInCurrentLevel = data.xpTotal - this.getTotalXPForLevel(data.level - 1);
+        const xpInCurrentLevel = data.xpTotal - this.getTotalXPForLevel(data.level);
         const xpProgress = (xpInCurrentLevel / xpForNextLevel) * 100;
 
         return {

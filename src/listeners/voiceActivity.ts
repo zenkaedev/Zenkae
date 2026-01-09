@@ -1,5 +1,6 @@
 import { Client, Events, VoiceState } from 'discord.js';
 import type { PrismaClient } from '@prisma/client';
+import { xpStore } from '../services/xp/store.js';
 
 type Session = { startedAt: number; channelId: string };
 type Key = `${string}:${string}`;
@@ -56,8 +57,10 @@ export function registerVoiceActivity(client: Client, prisma: PrismaClient) {
       const seconds = Math.floor((now - sess.startedAt) / 1000);
       try {
         await commitSeconds(prisma, guildId, userId, seconds);
-      } catch {
-        // ignore
+        // XP System integration
+        await xpStore.addVoiceXP(guildId, userId, seconds);
+      } catch (err) {
+        console.error('[voiceActivity] error committing seconds/xp', err);
       }
       sessions.delete(key);
     }
