@@ -227,43 +227,54 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 /**
  * Cria uma barra de progresso visual usando Emojis Customizados
  * Estilo: [Start][Mid][Mid][Mid][End]
+ * Usa Zero-Width Joiner para eliminar espaços entre emojis
  */
 function createEmojiProgressBar(percentage: number, length: number = 6): string {
   const p = Math.max(0, Math.min(100, percentage));
+  const ZWJ = '\u200D'; // Zero-Width Joiner para colar emojis
 
   // Se 100%, barra full perfeita
   if (p >= 100) {
-    return `${EMOJI.progressbar.bar_full_start.markup}${EMOJI.progressbar.bar_full_mid.markup.repeat(length)}${EMOJI.progressbar.bar_full_end.markup}`;
+    const start = EMOJI.progressbar.bar_full_start.markup;
+    const mid = EMOJI.progressbar.bar_full_mid.markup;
+    const end = EMOJI.progressbar.bar_full_end.markup;
+    return start + ZWJ + Array(length).fill(mid).join(ZWJ) + ZWJ + end;
   }
 
   // Se 0%, barra vazia perfeita
   if (p <= 0) {
-    return `${EMOJI.progressbar.bar_empty_start.markup}${EMOJI.progressbar.bar_empty_mid.markup.repeat(length)}${EMOJI.progressbar.bar_empty_end.markup}`;
+    const start = EMOJI.progressbar.bar_empty_start.markup;
+    const mid = EMOJI.progressbar.bar_empty_mid.markup;
+    const end = EMOJI.progressbar.bar_empty_end.markup;
+    return start + ZWJ + Array(length).fill(mid).join(ZWJ) + ZWJ + end;
   }
 
   const totalBlocks = length;
   const filledBlocks = Math.round((p / 100) * totalBlocks);
   const emptyBlocks = totalBlocks - filledBlocks;
 
-  let bar = EMOJI.progressbar.bar_full_start.markup;
+  const parts: string[] = [];
+
+  // Start
+  parts.push(EMOJI.progressbar.bar_full_start.markup);
 
   // Preenche meio roxo
-  bar += EMOJI.progressbar.bar_full_mid.markup.repeat(filledBlocks);
+  for (let i = 0; i < filledBlocks; i++) {
+    parts.push(EMOJI.progressbar.bar_full_mid.markup);
+  }
 
   // Preenche meio vazio
-  if (emptyBlocks > 0) {
-    bar += EMOJI.progressbar.bar_empty_mid.markup.repeat(emptyBlocks);
+  for (let i = 0; i < emptyBlocks; i++) {
+    parts.push(EMOJI.progressbar.bar_empty_mid.markup);
   }
 
-  // Se a barra estiver cheia (filledBlocks == totalBlocks), usa ponta roxa.
-  // MAS, cuidado: se filled=8, empty=0. O loop acima correu bem.
-  // A ponta final deve ser roxa se filled == totalBlocks.
-
+  // End
   if (filledBlocks === totalBlocks) {
-    bar += EMOJI.progressbar.bar_full_end.markup;
+    parts.push(EMOJI.progressbar.bar_full_end.markup);
   } else {
-    bar += EMOJI.progressbar.bar_empty_end.markup;
+    parts.push(EMOJI.progressbar.bar_empty_end.markup);
   }
 
-  return bar;
+  // Junta tudo com ZWJ
+  return parts.join(ZWJ);
 }
