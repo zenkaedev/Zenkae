@@ -229,7 +229,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
  * Estilo: [Start][Mid][Mid][Mid][End]
  * Concatenação DIRETA sem nenhum caractere entre emojis
  */
-function createEmojiProgressBar(percentage: number, length: number = 12): string {
+function createEmojiProgressBar(percentage: number, length: number = 8): string {
   const p = Math.max(0, Math.min(100, percentage));
 
   // Se 100%, barra full perfeita
