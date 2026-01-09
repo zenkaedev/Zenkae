@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "postinstall": "prisma generate",
     "start": "tsx src/index.ts",
-    "start:migrate": "prisma migrate deploy && tsx src/index.ts",
+    "start:migrate": "prisma generate && prisma migrate deploy && tsx src/index.ts",
     "deploy:global": "tsx scripts/deploy-commands.ts",
     "clear:guild": "tsx scripts/clear-guild-commands.ts",
     "prisma:generate": "prisma generate",
