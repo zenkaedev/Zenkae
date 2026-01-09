@@ -6,7 +6,7 @@ import { handleError } from '../../infra/errors.js';
 import { renderDashboard, type DashTab } from '../../container.js';
 import { safeUpdate } from '../../ui/v2.js';
 import type { FilterKind } from './types.js';
-import { MessageFlags, ActionRowBuilder, RoleSelectMenuBuilder, type StringSelectMenuInteraction } from 'discord.js';
+import { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder, type StringSelectMenuInteraction } from 'discord.js';
 
 // Controllers / Handlers
 import {
@@ -125,19 +125,36 @@ recruitRouter.modal(ids.recruit.modalDM, async (i) => {
 recruitRouter.button('recruit:settings:approved-role', async (i) => {
     if (!(await assertStaff(i))) return;
 
-    // Defer to prevent timeout and fetch all roles
+    // Defer to prevent timeout
     await i.deferReply({ flags: MessageFlags.Ephemeral });
 
-    // Force fetch all guild roles to populate cache
-    await i.guild?.roles.fetch();
+    // Fetch ALL guild roles
+    const roles = await i.guild?.roles.fetch();
+    if (!roles) {
+        await i.editReply({ content: '❌ Não foi possível buscar os cargos do servidor.' });
+        return;
+    }
 
-    const select = new RoleSelectMenuBuilder()
+    // Convert to options
+    const roleOptions = Array.from(roles.values())
+        .filter(r => r.name !== '@everyone' && !r.managed)
+        .sort((a, b) => b.position - a.position)
+        .slice(0, 25)
+        .map(r => ({ label: r.name, value: r.id, description: `Posição: ${r.position}` }));
+
+    if (roleOptions.length === 0) {
+        await i.editReply({ content: '❌ Nenhum cargo disponível.' });
+        return;
+    }
+
+    const select = new StringSelectMenuBuilder()
         .setCustomId('recruit:settings:select:approved-role')
-        .setPlaceholder('Escolha o cargo dado ao aprovar');
+        .setPlaceholder('Escolha o cargo dado ao aprovar')
+        .addOptions(roleOptions);
 
     await i.editReply({
         content: '👤 **Selecione o cargo padrão de aprovação:**\n\nEste cargo será dado automaticamente quando você aprovar uma candidatura.',
-        components: [new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select)],
+        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
     });
 });
 
