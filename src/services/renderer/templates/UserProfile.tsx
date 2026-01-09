@@ -52,8 +52,8 @@ export function UserProfile(props: UserProfileProps) {
             style={{
                 display: 'flex',
                 flexDirection: 'column',
-                width: '800px',
-                height: '600px',
+                width: '1200px',
+                height: '900px',
                 background: '#101822',
                 borderRadius: '20px',
                 overflow: 'hidden',
@@ -87,6 +87,7 @@ export function UserProfile(props: UserProfileProps) {
                 {/* Gradient Overlay */}
                 <div
                     style={{
+                        display: 'flex',
                         position: 'absolute',
                         bottom: 0,
                         left: 0,
