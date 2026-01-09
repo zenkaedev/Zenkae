@@ -38,12 +38,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   // State
   let currentPage = 1;
+  let currentFilter: 'global' | 'monthly' | 'weekly' = 'global'; // Track current filter
   const ITEMS_PER_PAGE = 7;
 
   // Helper para gerar o payload (Components V2)
-  const generatePayload = async (page: number) => {
+  const generatePayload = async (page: number, filter: 'global' | 'monthly' | 'weekly' = 'global') => {
 
-    const filter = (interaction as any).values?.[0] || 'global';
     // State
     let range: 'global' | 'WEEKLY' | 'MONTHLY' = filter === 'weekly' ? 'WEEKLY' : filter === 'monthly' ? 'MONTHLY' : 'global';
 
@@ -104,7 +104,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Header
     container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`# ${interaction.guild.name}\n### 🏆 Leaderboard • Página ${page}`)
+      new TextDisplayBuilder().setContent(`# ${interaction.guild.name}\n🏆 Leaderboard • Página ${page}`)
     );
 
     // List
@@ -115,7 +115,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       container.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
 
       const medal = user.rank === 1 ? '🥇' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : `#${user.rank}`;
-      const progressBar = createEmojiProgressBar(user.xpProgress);
+      const progressBar = createEmojiProgressBar(user.xpProgress, 6);
+      const percentBox = `\`${Math.floor(user.xpProgress)}%\``;
 
       // Format:
       // 🥇 — [Nível 4] Junão!
@@ -123,7 +124,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       container.addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
           `**${medal}** — **[${user.levelLabel}]** ${user.username}\n` +
-          `${progressBar} **${Math.floor(user.xpProgress)}%**`
+          `${progressBar} ${percentBox}`
         )
       );
     }
@@ -173,7 +174,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     // 1. Enviar primeira página
-    const initialPayload = await generatePayload(currentPage);
+    const initialPayload = await generatePayload(currentPage, currentFilter);
     if (!initialPayload) {
       await interaction.editReply('Sem dados de ranking.');
       return;
@@ -181,11 +182,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const message = await interaction.editReply(initialPayload);
 
-    // 2. Collector
+    // 2. Collector (listen to both StringSelect and Buttons)
     const collector = message.createMessageComponentCollector({
-      componentType: ComponentType.Button,
       time: 60000
     });
+
 
     collector.on('collect', async (i) => {
       if (i.user.id !== interaction.user.id) {
@@ -193,20 +194,27 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      // V2 Defer Update is tricky? try generic defer
       await i.deferUpdate();
 
-      if (i.customId === 'prev') {
-        currentPage = Math.max(1, currentPage - 1);
-      } else if (i.customId === 'next') {
-        currentPage++;
+      // Handle filter changes from StringSelect
+      if (i.isStringSelectMenu() && i.customId === 'rank_filter') {
+        currentFilter = i.values[0] as 'global' | 'monthly' | 'weekly';
+        currentPage = 1; // Reset to page 1 when changing filters
+      }
+      // Handle pagination buttons
+      else if (i.isButton()) {
+        if (i.customId === 'prev') {
+          currentPage = Math.max(1, currentPage - 1);
+        } else if (i.customId === 'next') {
+          currentPage++;
+        }
       }
 
-      const newPayload = await generatePayload(currentPage);
+      const newPayload = await generatePayload(currentPage, currentFilter);
       if (newPayload) {
         await i.editReply(newPayload);
-      } else {
-        currentPage--;
+      } else if (i.isButton() && i.customId === 'next') {
+        currentPage--; // Revert if no data
       }
     });
   } catch (err) {
@@ -220,7 +228,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
  * Cria uma barra de progresso visual usando Emojis Customizados
  * Estilo: [Start][Mid][Mid][Mid][End]
  */
-function createEmojiProgressBar(percentage: number, length: number = 8): string {
+function createEmojiProgressBar(percentage: number, length: number = 6): string {
   const p = Math.max(0, Math.min(100, percentage));
 
   // Se 100%, barra full perfeita
