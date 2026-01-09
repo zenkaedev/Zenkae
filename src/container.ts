@@ -11,7 +11,7 @@ import { buildEventsList } from './modules/events/staff.js';
 import { buildScreen, loadBannerFrom, loadDefaultBanner } from './ui/v2.js';
 import { ids } from './ui/ids.js';
 
-export type DashTab = 'home' | 'recruit' | 'events' | 'admin';
+export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'economy';
 export type DashState = { tab: DashTab; guildId?: string; filter?: FilterKind };
 
 /** Payload V2 devolvido para reply/update */
@@ -30,7 +30,9 @@ function bannerFor(tab: DashTab) {
         ? 'recruit'
         : tab === 'events'
           ? 'events'
-          : 'admin';
+          : tab === 'economy'
+            ? 'economy'
+            : 'admin';
 
   return loadBannerFrom(dir) ?? loadDefaultBanner();
 }
@@ -91,6 +93,13 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
     }) as DashboardView;
   }
 
+  /* -------------------- ECONOMY -------------------- */
+  if (state.tab === 'economy') {
+    const { renderEconomyHome } = await import('./modules/economy/panel.js');
+    const payload = await renderEconomyHome(state.guildId ?? '');
+    return payload as DashboardView;
+  }
+
   /* -------------------- ADMIN -------------------- */
   if (state.tab === 'admin') {
     return buildScreen({
@@ -116,10 +125,12 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
     body:
       `**Recrutamento** → fluxo público + fila\n` +
       `**Eventos** → criação, RSVP e lembretes\n` +
+      `**Economy** → moeda, items e leilões\n` +
       `**Admin** → check-in e utilidades`,
     buttons: [
       { id: 'dash:recruit', label: 'Recrutamento' },
       { id: 'dash:events', label: 'Eventos' },
+      { id: 'dash:economy', label: 'Economy' },
       { id: 'dash:admin', label: 'Admin' },
     ],
   }) as DashboardView;

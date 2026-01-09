@@ -65,6 +65,10 @@ export async function registerInteractionRouter(client: Client) {
   mainRouter.merge(eventsRouter);
   mainRouter.merge(miscRouter);
 
+  // Merge economy router
+  const { economyRouter } = await import('../modules/economy/interactions.js');
+  mainRouter.merge(economyRouter);
+
   // Event RSVP buttons
   mainRouter.button(/^event_rsvp_(yes|no)_/, async (interaction) => {
     if (!interaction.isButton()) return;

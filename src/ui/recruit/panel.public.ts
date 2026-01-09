@@ -291,6 +291,15 @@ export async function handleStartClick(inter: ButtonInteraction) {
   const s = await recruitStore.getSettings(guildId);
   const qs = recruitStore.parseQuestions(s.questions);
 
+  // Check if there are no questions configured
+  if (qs.length === 0) {
+    await inter.reply({
+      flags: MessageFlags.Ephemeral,
+      content: '⚠️ O recrutamento ainda não tem perguntas configuradas. Peça a um admin para configurá-las no painel de Recrutamento.',
+    });
+    return true;
+  }
+
   const classes = recruitStore.parseClasses(s.classes);
   const cls = classes.find((c) => String(c.id) === String(draft.classId));
   const className = cls?.name ?? '—';
