@@ -13,7 +13,7 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write .",
     "postinstall": "prisma generate",
-    "start": "prisma generate && prisma migrate deploy && tsx src/index.ts",
+    "start": "prisma generate && tsx src/index.ts",
     "start:migrate": "prisma generate && prisma migrate deploy && tsx src/index.ts",
     "deploy:global": "tsx scripts/deploy-commands.ts",
     "clear:guild": "tsx scripts/clear-guild-commands.ts",
