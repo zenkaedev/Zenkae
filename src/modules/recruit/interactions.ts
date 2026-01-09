@@ -125,14 +125,19 @@ recruitRouter.modal(ids.recruit.modalDM, async (i) => {
 recruitRouter.button('recruit:settings:approved-role', async (i) => {
     if (!(await assertStaff(i))) return;
 
+    // Defer to prevent timeout and fetch all roles
+    await i.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // Force fetch all guild roles to populate cache
+    await i.guild?.roles.fetch();
+
     const select = new RoleSelectMenuBuilder()
         .setCustomId('recruit:settings:select:approved-role')
         .setPlaceholder('Escolha o cargo dado ao aprovar');
 
-    await i.reply({
+    await i.editReply({
         content: '👤 **Selecione o cargo padrão de aprovação:**\n\nEste cargo será dado automaticamente quando você aprovar uma candidatura.',
         components: [new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select)],
-        flags: MessageFlags.Ephemeral
     });
 });
 

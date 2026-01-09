@@ -260,7 +260,7 @@ export function UserProfile(props: UserProfileProps) {
             }}>
 
                 {/* Messages Card */}
-                <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
+                <div style={{ ...statsBoxStyle, borderColor: '#1b2838', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ ...iconBoxStyle, color: '#66c0f4', marginBottom: '12px' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -273,7 +273,7 @@ export function UserProfile(props: UserProfileProps) {
                 </div>
 
                 {/* Voice Card */}
-                <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
+                <div style={{ ...statsBoxStyle, borderColor: '#1b2838', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ ...iconBoxStyle, color: '#66c0f4', marginBottom: '12px' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -289,7 +289,7 @@ export function UserProfile(props: UserProfileProps) {
                 </div>
 
                 {/* Join Date Card */}
-                <div style={{ ...statsBoxStyle, borderColor: '#1b2838' }}>
+                <div style={{ ...statsBoxStyle, borderColor: '#1b2838', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ ...iconBoxStyle, color: '#66c0f4', marginBottom: '12px' }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
