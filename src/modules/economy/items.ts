@@ -107,7 +107,7 @@ export async function renderItemDetails(interaction: ButtonInteraction, itemId: 
         .setDescription(item.description)
         .setImage(item.imageUrl)
         .setColor(0x6d28d9)
-        .addFields({ name: '💰 Preço', value: `${item.zkCost} ${currencySymbol}`, inline: true });
+        .addFields({ name: '💰 Preço', value: `${item.startingPrice} ${currencySymbol}`, inline: true });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()

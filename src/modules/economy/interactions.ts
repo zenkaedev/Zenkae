@@ -1,4 +1,3 @@
-// src/modules/economy/interactions.ts
 import { InteractionRouter } from '../../infra/router.js';
 import { renderEconomyHome, renderItemsList, renderEventsList, renderStats } from './panel.js';
 import { openCurrencyModal, handleCurrencySubmit } from './currency.js';
@@ -62,6 +61,25 @@ economyRouter.button(/^economy:item:([^:]+):delete$/, async (interaction) => {
     if (!match) return;
     const itemId = match[1];
     await handleDeleteItem(interaction, itemId);
+});
+
+// Auction Bid
+economyRouter.button(/^auction_bid_/, async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    const match = interaction.customId.match(/^auction_bid_(.+)$/);
+    if (!match) return;
+
+    const itemId = match[1];
+
+    const { bidManager: bidService } = await import('../../services/auction/bid-manager.js');
+    const result = await bidService.placeBid(interaction.guildId!, interaction.user.id, itemId);
+
+    const emoji = result.success ? '✅' : '❌';
+    await interaction.reply({
+        content: `${emoji} ${result.message}`,
+        flags: 64
+    });
 });
 
 // Events

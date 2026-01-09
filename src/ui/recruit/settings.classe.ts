@@ -18,6 +18,7 @@ import {
   MessageFlags,
   ActionRowBuilder,
 } from 'discord.js';
+import { replyTemporary } from '../../infra/feedback.js';
 import { randomUUID } from 'node:crypto';
 
 import { recruitStore, type Class } from '../../modules/recruit/store.js';
@@ -458,9 +459,7 @@ export async function handleClassModalSubmit(inter: ModalSubmitInteraction) {
   if (!inter.deferred && !inter.replied) await inter.deferReply({ flags: MessageFlags.Ephemeral });
   await inter.editReply(payload);
 
-  await inter
-    .followUp({ content: '✅ Classe salva.', flags: MessageFlags.Ephemeral })
-    .catch(() => { });
+  await replyTemporary(inter, '✅ Classe salva.');
 }
 
 /* ----------------------- Remoção ----------------------- */

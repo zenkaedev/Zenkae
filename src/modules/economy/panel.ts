@@ -27,10 +27,9 @@ export async function renderEconomyHome(guildId: string) {
     const itemCount = items.length;
 
     // Count upcoming events
-    const events = await prisma.zKEvent.findMany({
-        where: { guildId, completed: false },
+    const eventCount = await prisma.event.count({
+        where: { guildId, status: 'scheduled' },
     });
-    const eventCount = events.length;
 
     // Get top holder
     const topHolders = await prisma.userZK.findMany({
@@ -154,10 +153,15 @@ export async function renderItemsList(guildId: string) {
  * Lista de Eventos
  */
 export async function renderEventsList(guildId: string) {
-    const events = await prisma.zKEvent.findMany({
-        where: { guildId, completed: false },
-        orderBy: { eventDate: 'asc' },
-        include: { rsvps: true },
+    // List upcoming events using the new schema
+    const events = await prisma.event.findMany({
+        where: {
+            guildId,
+            status: 'scheduled',
+            startsAt: { gte: new Date() }
+        },
+        orderBy: { startsAt: 'asc' },
+        include: { rsvps: true }, // Ensure Relation is loaded if needed, or use specific method
     });
 
     const currencySymbol = await zkSettings.getCurrencySymbol(guildId);
@@ -167,12 +171,12 @@ export async function renderEventsList(guildId: string) {
         description = '_Nenhum evento agendado._\n\nClique em **Novo Evento** para criar.';
     } else {
         const lines = events.map((event: any, idx: number) => {
-            const date = new Date(event.eventDate).toLocaleString('pt-BR', {
+            const date = new Date(event.startsAt).toLocaleString('pt-BR', {
                 dateStyle: 'short',
                 timeStyle: 'short',
             });
-            const yesCount = event.rsvps.filter((r: any) => r.response === 'YES').length;
-            const noCount = event.rsvps.filter((r: any) => r.response === 'NO').length;
+            const yesCount = event.rsvps.filter((r: any) => r.choice === 'yes').length;
+            const noCount = event.rsvps.filter((r: any) => r.choice === 'no').length;
 
             return `**${idx + 1}. ${event.title}**\n` +
                 `└ ${date} · 💰${event.zkReward} ${currencySymbol} · ✅${yesCount} ❌${noCount}`;

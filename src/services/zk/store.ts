@@ -1,10 +1,6 @@
 // src/services/zk/store.ts
-import { Context } from '../../infra/context.js';
+import { prisma } from '../../prisma/client.js';
 import { zkTransaction } from './transaction.js';
-
-const prisma = new Proxy({} as any, {
-    get: (_, prop) => (Context.get().prisma as any)[prop],
-});
 
 /**
  * ZK Points Balance Management

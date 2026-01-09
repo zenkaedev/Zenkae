@@ -13,6 +13,11 @@ function toDTO(e: any): EventDTO {
     messageId: e.messageId,
     createdAt: new Date(e.createdAt).getTime(),
     updatedAt: new Date(e.updatedAt).getTime(),
+    imageUrl: e.imageUrl,
+    voiceChannelId: e.voiceChannelId,
+    zkReward: e.zkReward,
+    announcementChannelId: e.announcementChannelId,
+    recurrence: e.recurrence,
   };
 }
 
@@ -24,6 +29,10 @@ export const eventsStore = {
     startsAt: Date;
     channelId: string;
     messageId: string;
+    imageUrl?: string;
+    voiceChannelId?: string;
+    zkReward?: number;
+    recurrence?: string;
   }): Promise<EventDTO> {
     const r = await prisma.event.create({
       data: {
@@ -33,6 +42,10 @@ export const eventsStore = {
         startsAt: opts.startsAt,
         channelId: opts.channelId,
         messageId: opts.messageId,
+        imageUrl: opts.imageUrl ?? null,
+        voiceChannelId: opts.voiceChannelId ?? null,
+        zkReward: opts.zkReward ?? 0,
+        recurrence: opts.recurrence ?? null,
       },
     });
     return toDTO(r);

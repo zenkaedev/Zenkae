@@ -48,3 +48,7 @@ export const eventRSVP = {
         return { yes, no, total: all.length };
     }
 };
+
+export function rsvpChoiceToEnum(choice: string): 'yes' | 'no' {
+    return choice.toUpperCase() === 'YES' ? 'yes' : 'no';
+}

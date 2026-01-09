@@ -69,44 +69,7 @@ export async function registerInteractionRouter(client: Client) {
   const { economyRouter } = await import('../modules/economy/interactions.js');
   mainRouter.merge(economyRouter);
 
-  // Event RSVP buttons
-  mainRouter.button(/^event_rsvp_(yes|no)_/, async (interaction) => {
-    if (!interaction.isButton()) return;
 
-    const match = interaction.customId.match(/^event_rsvp_(yes|no)_(.+)$/);
-    if (!match) return;
-
-    const response = match[1].toUpperCase() as 'YES' | 'NO';
-    const eventId = match[2];
-
-    const { eventRSVP: rsvpService } = await import('../services/events/rsvp.js');
-    await rsvpService.recordRSVP(eventId, interaction.user.id, response);
-
-    const emoji = response === 'YES' ? '✅' : '❌';
-    await interaction.reply({
-      content: `${emoji} Resposta registrada!`,
-      flags: 64
-    });
-  });
-
-  // Auction bid buttons
-  mainRouter.button(/^auction_bid_/, async (interaction) => {
-    if (!interaction.isButton()) return;
-
-    const match = interaction.customId.match(/^auction_bid_(.+)$/);
-    if (!match) return;
-
-    const itemId = match[1];
-
-    const { bidManager: bidService } = await import('../services/auction/bid-manager.js');
-    const result = await bidService.placeBid(interaction.guildId!, interaction.user.id, itemId);
-
-    const emoji = result.success ? '✅' : '❌';
-    await interaction.reply({
-      content: `${emoji} ${result.message}`,
-      flags: 64
-    });
-  });
 
   // Register generic dashboard navigation (that sits on root)
   mainRouter.button(new RegExp('^dash:'), async (interaction) => {

@@ -22,7 +22,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-function getBuilders() {
+export function getBuilders() {
   const anyD = D as any;
   const ContainerBuilder = anyD.ContainerBuilder;
   const TextDisplayBuilder = anyD.TextDisplayBuilder;

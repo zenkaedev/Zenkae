@@ -14,7 +14,7 @@ export const zkSettings = {
      * Get custom currency name for guild (default: "ZK Points")
      */
     async getCurrencyName(guildId: string): Promise<string> {
-        const settings = await prisma.guildSettings.findUnique({
+        const settings = await prisma.economySettings.findUnique({
             where: { guildId },
             select: { currencyName: true }
         });
@@ -25,27 +25,29 @@ export const zkSettings = {
      * Get custom currency symbol for guild (default: "ZK")
      */
     async getCurrencySymbol(guildId: string): Promise<string> {
-        const settings = await prisma.guildSettings.findUnique({
+        const settings = await prisma.economySettings.findUnique({
             where: { guildId },
-            select: { currencySymbol: true }
+            select: { currencyEmoji: true }
         });
-        return settings?.currencySymbol ?? 'ZK';
+        // Note: The service method says "Symbol" but schema has "currencyEmoji". 
+        // The previous code had "currencySymbol". I will alias emoji as symbol for compatibility.
+        return settings?.currencyEmoji ?? 'ZK';
     },
 
     /**
      * Update currency branding for guild
      */
     async updateCurrency(guildId: string, name: string, symbol: string): Promise<void> {
-        await prisma.guildSettings.upsert({
+        await prisma.economySettings.upsert({
             where: { guildId },
             create: {
                 guildId,
                 currencyName: name,
-                currencySymbol: symbol
+                currencyEmoji: symbol
             },
             update: {
                 currencyName: name,
-                currencySymbol: symbol
+                currencyEmoji: symbol
             }
         });
     },

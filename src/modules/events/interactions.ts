@@ -6,10 +6,11 @@ import { replyV2Notice } from '../../ui/v2.js';
 
 import {
     openNewEventModal,
-    handleNewEventSubmit,
+    handleDraftAction,
     handleRsvpClick,
 } from './panel.js';
 import { cancelEvent, notifyConfirmed } from './staff.js';
+import { eventsStore } from './store.js';
 
 export const eventsRouter = new InteractionRouter();
 
@@ -19,10 +20,16 @@ eventsRouter.button(ids.events.new, async (i) => {
     await openNewEventModal(i);
 });
 
-eventsRouter.modal('events:new:modal', async (i) => {
+// Draft Handlers (Edit, Toggle, Publish)
+eventsRouter.button(new RegExp('^events:draft:'), async (i) => {
     if (!(await assertStaff(i))) return;
-    if (!i.deferred && !i.replied) await i.deferReply({ flags: MessageFlags.Ephemeral });
-    await handleNewEventSubmit(i);
+    await handleDraftAction(i);
+});
+
+eventsRouter.modal(new RegExp('^events:draft:submit:'), async (i) => {
+    if (!(await assertStaff(i))) return;
+    // Modals don't need defer if we update immediately, but let's see logic inside
+    await handleDraftAction(i);
 });
 
 // RSVP
@@ -35,6 +42,26 @@ eventsRouter.button(new RegExp('^events:rsvp:'), async (i) => {
         return;
     }
     await handleRsvpClick(i, parsed.choice, parsed.eventId);
+});
+
+// Generic RSVP (Public)
+eventsRouter.button(/^event_rsvp_(yes|no)_/, async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    const match = interaction.customId.match(/^event_rsvp_(yes|no)_(.+)$/);
+    if (!match) return;
+
+    const response = match[1].toUpperCase() as 'YES' | 'NO';
+    const eventId = match[2];
+
+    const { rsvpChoiceToEnum } = await import('../../services/events/rsvp.js');
+    await eventsStore.rsvp(eventId, interaction.guildId!, interaction.user.id, rsvpChoiceToEnum(response));
+
+    const emoji = response === 'YES' ? '✅' : '❌';
+    await interaction.reply({
+        content: `${emoji} Resposta registrada!`,
+        flags: 64
+    });
 });
 
 // Notify

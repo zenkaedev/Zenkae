@@ -82,7 +82,7 @@ export function UserProfile(props: UserProfileProps) {
                         }}
                     />
                 ) : (
-                    <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #1b2838, #2a475e)' }} />
+                    <div style={{ display: 'flex', width: '100%', height: '100%', background: 'linear-gradient(45deg, #1b2838, #2a475e)' }} />
                 )}
                 {/* Gradient Overlay */}
                 <div
@@ -129,6 +129,7 @@ export function UserProfile(props: UserProfileProps) {
                             {/* Level Ring Border */}
                             <div
                                 style={{
+                                    display: 'flex',
                                     position: 'absolute',
                                     top: 0, left: 0, right: 0, bottom: 0,
                                     borderRadius: '50%',
@@ -216,7 +217,7 @@ export function UserProfile(props: UserProfileProps) {
                     }}>
                         {/* Rank Position (Top Right) */}
                         {rank && (
-                            <div style={{ fontSize: '16px', color: '#8f98a0', fontWeight: '700', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', fontSize: '16px', color: '#8f98a0', fontWeight: '700', marginBottom: '8px' }}>
                                 #{rank}
                             </div>
                         )}

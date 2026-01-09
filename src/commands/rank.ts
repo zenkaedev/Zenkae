@@ -10,11 +10,8 @@ import {
 } from 'discord.js';
 import { xpStore } from '../services/xp/store.js';
 // Import V2 internal helpers
-import { Brand } from '../ui/v2.js';
+import { Brand, getBuilders } from '../ui/v2.js';
 import { EMOJI } from '../ui/icons.generated.js';
-
-// Accessing internal V2 builders via reflection since they are not in standard typings
-const dAny = await import('discord.js') as any;
 
 export const data = new SlashCommandBuilder()
   .setName('rank')
@@ -24,9 +21,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!interaction.inCachedGuild()) return;
 
   // Check V2 Support
-  const ContainerBuilder = dAny.ContainerBuilder;
-  const TextDisplayBuilder = dAny.TextDisplayBuilder;
-  const SeparatorBuilder = dAny.SeparatorBuilder;
+  const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = getBuilders();
 
   if (!ContainerBuilder || !TextDisplayBuilder) {
     await interaction.reply({ content: '❌ Este bot não suporta Components V2 (Container/TextDisplay). Verifique a versão da biblioteca.', flags: MessageFlags.Ephemeral });

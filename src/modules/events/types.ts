@@ -12,6 +12,11 @@ export interface EventDTO {
   messageId: string;
   createdAt: number;
   updatedAt: number;
+  imageUrl?: string | null;
+  voiceChannelId?: string | null;
+  zkReward: number;
+  announcementChannelId?: string | null;
+  recurrence?: string | null;
 }
 
 export interface EventWithCounts extends EventDTO {

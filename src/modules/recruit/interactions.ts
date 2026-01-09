@@ -7,6 +7,7 @@ import { renderDashboard, type DashTab } from '../../container.js';
 import { safeUpdate } from '../../ui/v2.js';
 import type { FilterKind } from './types.js';
 import { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder, type StringSelectMenuInteraction } from 'discord.js';
+import { replyTemporary } from '../../infra/feedback.js';
 
 // Controllers / Handlers
 import {
@@ -68,7 +69,7 @@ recruitRouter.button(ids.recruit.publish, async (i) => {
     if (!(await assertStaff(i))) return;
     await i.deferReply({ flags: MessageFlags.Ephemeral });
     await publishPublicRecruitPanelV2(i);
-    await i.editReply({ content: '✅ Painel de recrutamento publicado/atualizado.' });
+    await replyTemporary(i, '✅ Painel de recrutamento publicado/atualizado.');
 });
 
 // Settings & Config
@@ -83,9 +84,7 @@ recruitRouter.button('recruit:clear-completed', async (i) => {
     await i.deferReply({ flags: MessageFlags.Ephemeral });
 
     const result = await recruitStore.clearCompleted(i.guildId!);
-    await i.editReply({
-        content: `✅ ${result.count} candidatura(s) finalizada(s) removida(s).\n\n💡 Volte ao dashboard para ver a lista atualizada.`
-    });
+    await replyTemporary(i, `✅ ${result.count} candidatura(s) finalizada(s) removida(s).\n\n💡 Volte ao dashboard para ver a lista atualizada.`);
 });
 
 // Settings: Forms

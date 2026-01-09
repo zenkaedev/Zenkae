@@ -9,10 +9,8 @@ import {
 } from 'discord.js';
 import { zkStore } from '../services/zk/store.js';
 import { zkSettings } from '../services/zk/settings.js';
-import { Brand } from '../ui/v2.js';
+import { Brand, getBuilders } from '../ui/v2.js';
 import { EMOJI } from '../ui/icons.generated.js';
-
-const dAny = await import('discord.js') as any;
 
 export const data = new SlashCommandBuilder()
     .setName('rankzk')
@@ -21,9 +19,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.inCachedGuild()) return;
 
-    const ContainerBuilder = dAny.ContainerBuilder;
-    const TextDisplayBuilder = dAny.TextDisplayBuilder;
-    const SeparatorBuilder = dAny.SeparatorBuilder;
+    const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = getBuilders();
 
     if (!ContainerBuilder || !TextDisplayBuilder) {
         await interaction.reply({ content: '❌ Este bot não suporta Components V2.', flags: MessageFlags.Ephemeral });

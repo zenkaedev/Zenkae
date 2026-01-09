@@ -1,11 +1,4 @@
-import { Context } from '../../infra/context.js';
-
-// Getter preguiçoso para evitar erro de inicialização cíclica
-const prisma = new Proxy({} as any, {
-  get(target, prop) {
-    return (Context.get().prisma as any)[prop];
-  }
-});
+import { prisma } from '../../prisma/client.js';
 
 
 /** Status possível de uma aplicação */
