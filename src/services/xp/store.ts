@@ -1,5 +1,6 @@
 // src/services/xp/store.ts
 import { Context } from '../../infra/context.js';
+import { periodUtils } from './period.js';
 
 const prisma = new Proxy({} as any, {
     get: (_, prop) => (Context.get().prisma as any)[prop],
@@ -96,6 +97,9 @@ export const xpStore = {
             },
         });
 
+        // XP Period
+        await this.addPeriodXP(guildId, userId, xpGained);
+
         return { levelUp, newLevel, xpGained };
     },
 
@@ -132,6 +136,9 @@ export const xpStore = {
                 level: newLevel,
             },
         });
+
+        // XP Period
+        await this.addPeriodXP(guildId, userId, xpGained);
     },
 
     /**
@@ -213,4 +220,58 @@ export const xpStore = {
     randomXP(min: number, max: number): number {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     },
+
+    /**
+     * Adiciona XP nos contadores de período (Semana/Mês)
+     */
+    async addPeriodXP(guildId: string, userId: string, xp: number) {
+        if (xp <= 0) return;
+
+        const weekStart = periodUtils.getCurrentWeekStart();
+        const monthStart = periodUtils.getCurrentMonthStart();
+
+        // Semana
+        await prisma.userXPPeriod.upsert({
+            where: {
+                guildId_userId_periodType_startDate: {
+                    guildId,
+                    userId,
+                    periodType: 'WEEKLY',
+                    startDate: weekStart
+                }
+            },
+            create: { guildId, userId, periodType: 'WEEKLY', startDate: weekStart, xp },
+            update: { xp: { increment: xp } }
+        });
+
+        // Mês
+        await prisma.userXPPeriod.upsert({
+            where: {
+                guildId_userId_periodType_startDate: {
+                    guildId,
+                    userId,
+                    periodType: 'MONTHLY',
+                    startDate: monthStart
+                }
+            },
+            create: { guildId, userId, periodType: 'MONTHLY', startDate: monthStart, xp },
+            update: { xp: { increment: xp } }
+        });
+    },
+
+    async getPeriodTopUsers(guildId: string, type: 'WEEKLY' | 'MONTHLY', limit = 10) {
+        const startDate = type === 'WEEKLY'
+            ? periodUtils.getCurrentWeekStart()
+            : periodUtils.getCurrentMonthStart();
+
+        return prisma.userXPPeriod.findMany({
+            where: {
+                guildId,
+                periodType: type,
+                startDate
+            },
+            orderBy: { xp: 'desc' },
+            take: limit
+        });
+    }
 };

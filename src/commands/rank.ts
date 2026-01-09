@@ -11,6 +11,7 @@ import {
 import { xpStore } from '../services/xp/store.js';
 // Import V2 internal helpers
 import { Brand } from '../ui/v2.js';
+import { EMOJI } from '../ui/icons.generated.js';
 
 // Accessing internal V2 builders via reflection since they are not in standard typings
 const dAny = await import('discord.js') as any;
@@ -42,7 +43,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // Helper para gerar o payload (Components V2)
   const generatePayload = async (page: number) => {
 
-    const allTopUsers = await xpStore.getTopUsers(guildId, 50);
+    const filter = (interaction as any).values?.[0] || 'global';
+    // State
+    let range: 'global' | 'WEEKLY' | 'MONTHLY' = filter === 'weekly' ? 'WEEKLY' : filter === 'monthly' ? 'MONTHLY' : 'global';
+
+    if (range === 'WEEKLY' || range === 'MONTHLY') {
+      // Force rotation check when viewing rank (lazy check)
+      await import('../services/xp/rotation.js').then(m => m.rotationService.checkRotations(guildId).catch(() => { }));
+    }
+
+    const allTopUsers = range === 'global'
+      ? await xpStore.getTopUsers(guildId, 50)
+      : await xpStore.getPeriodTopUsers(guildId, range, 50);
+
     const startIndex = (page - 1) * ITEMS_PER_PAGE;
     const pageUsers = allTopUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
@@ -56,12 +69,28 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         // ignore
       }
 
-      const { xpProgress } = await xpStore.getUserLevel(guildId, userData.userId);
+      // Para GLOBAL: Mostra Nível e Progresso
+      // Para PERÍODO: Mostra apenas XP Total Acumulado e um placeholder de barra cheia ou vazia
+      let details = '';
+      let xpProgress = 0;
+      let levelLabel = '';
+
+      if (range === 'global') {
+        const stats = await xpStore.getUserLevel(guildId, userData.userId);
+        xpProgress = stats.xpProgress;
+        levelLabel = `Lvl ${userData.level}`;
+      } else {
+        // Period Mode
+        // userData tem .xp (quantidade no período)
+        // Não calculamos nível parcial, mostramos XP bruto
+        xpProgress = 100; // Barra cheia visualmente ou 0
+        levelLabel = `${userData.xp.toLocaleString()} XP`;
+      }
 
       return {
         rank: startIndex + index + 1,
         username: displayName,
-        level: userData.level,
+        levelLabel,     // Changed from 'level' number
         xpProgress: xpProgress
       };
     }));
@@ -75,25 +104,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Header
     container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(`# 🏆 Leaderboard\n**${interaction.guild.name}** • Página ${page}`)
+      new TextDisplayBuilder().setContent(`# ${interaction.guild.name}\n### 🏆 Leaderboard • Página ${page}`)
     );
 
-    // Separator
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-
     // List
-    for (const user of activeUsers) {
-      const medal = user.rank === 1 ? '🥇' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : `#${user.rank}`;
-      const progressBar = createTextProgressBar(user.xpProgress);
+    for (const [index, user] of activeUsers.entries()) {
+      // Create a divider before every item (except perhaps the very first one if we want it clean, but User showed dividers separating them).
+      // actually User showed: Header \n Divisor \n Item 1 \n Divisor \n Item 2.
+      // So checking index.
+      container.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
 
+      const medal = user.rank === 1 ? '🥇' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : `#${user.rank}`;
+      const progressBar = createEmojiProgressBar(user.xpProgress);
+
+      // Format:
+      // 🥇 — [Nível 4] Junão!
+      // [Barra] 47%
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`### ${medal}  ${user.username}\n**Lvl ${user.level}** • ${progressBar} ${Math.floor(user.xpProgress)}%`)
+        new TextDisplayBuilder().setContent(
+          `**${medal}** — **[${user.levelLabel}]** ${user.username}\n` +
+          `${progressBar} **${Math.floor(user.xpProgress)}%**`
+        )
       );
     }
 
     if (activeUsers.length === 0) {
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`*Nenhum usuário encontrado.*`)
+        new TextDisplayBuilder().setContent('Nenhum usuário encontrado neste ranking ainda.')
       );
     }
 
@@ -104,9 +141,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setCustomId('rank_filter')
           .setPlaceholder('Filtrar Ranking')
           .addOptions([
-            { label: '🏆 Global (Todo o tempo)', value: 'global', default: true },
-            { label: '📅 Mensal (Em breve)', value: 'monthly', description: 'XP ganho neste mês' },
-            { label: ' weekly (Em breve)', value: 'weekly', description: 'XP ganho nesta semana' }
+            { label: '🏆 Global (Todo o tempo)', value: 'global', default: range === 'global' },
+            { label: '📅 Mensal (XP do Mês)', value: 'monthly', description: 'Ranking deste mês', default: range === 'MONTHLY' },
+            { label: '🗓️ Semanal', value: 'weekly', description: 'Ranking desta semana', default: range === 'WEEKLY' }
           ])
       );
 
@@ -121,11 +158,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setCustomId('next')
           .setLabel('Próximo')
           .setStyle(ButtonStyle.Primary)
-          .setDisabled(pageUsers.length < ITEMS_PER_PAGE),
-        new ButtonBuilder()
-          .setLabel('Ver Dashboard')
-          .setStyle(ButtonStyle.Link)
-          .setURL('https://discord.com')
+          .setDisabled(pageUsers.length < ITEMS_PER_PAGE)
       );
 
     // Add rows to container
@@ -182,8 +215,47 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 
-function createTextProgressBar(percentage: number, length = 10): string {
-  const filled = Math.round((percentage / 100) * length);
-  const empty = length - filled;
-  return '█'.repeat(filled) + '░'.repeat(empty);
+
+/**
+ * Cria uma barra de progresso visual usando Emojis Customizados
+ * Estilo: [Start][Mid][Mid][Mid][End]
+ */
+function createEmojiProgressBar(percentage: number, length: number = 8): string {
+  const p = Math.max(0, Math.min(100, percentage));
+
+  // Se 100%, barra full perfeita
+  if (p >= 100) {
+    return `${EMOJI.progressbar.bar_full_start.markup}${EMOJI.progressbar.bar_full_mid.markup.repeat(length)}${EMOJI.progressbar.bar_full_end.markup}`;
+  }
+
+  // Se 0%, barra vazia perfeita
+  if (p <= 0) {
+    return `${EMOJI.progressbar.bar_empty_start.markup}${EMOJI.progressbar.bar_empty_mid.markup.repeat(length)}${EMOJI.progressbar.bar_empty_end.markup}`;
+  }
+
+  const totalBlocks = length;
+  const filledBlocks = Math.round((p / 100) * totalBlocks);
+  const emptyBlocks = totalBlocks - filledBlocks;
+
+  let bar = EMOJI.progressbar.bar_full_start.markup;
+
+  // Preenche meio roxo
+  bar += EMOJI.progressbar.bar_full_mid.markup.repeat(filledBlocks);
+
+  // Preenche meio vazio
+  if (emptyBlocks > 0) {
+    bar += EMOJI.progressbar.bar_empty_mid.markup.repeat(emptyBlocks);
+  }
+
+  // Se a barra estiver cheia (filledBlocks == totalBlocks), usa ponta roxa.
+  // MAS, cuidado: se filled=8, empty=0. O loop acima correu bem.
+  // A ponta final deve ser roxa se filled == totalBlocks.
+
+  if (filledBlocks === totalBlocks) {
+    bar += EMOJI.progressbar.bar_full_end.markup;
+  } else {
+    bar += EMOJI.progressbar.bar_empty_end.markup;
+  }
+
+  return bar;
 }

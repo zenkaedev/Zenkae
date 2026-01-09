@@ -209,3 +209,25 @@ model UserLevel {
   @@index([guildId, level])
 }
 
+model RankSettings {
+  guildId        String   @id
+  weeklyRoleId   String?
+  monthlyRoleId  String?
+  lastWeeklyRotation DateTime?
+  lastMonthlyRotation DateTime?
+  updatedAt      DateTime @updatedAt
+}
+
+model UserXPPeriod {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  periodType String   // 'WEEKLY', 'MONTHLY'
+  startDate  DateTime // The "key" for the period (Monday 00:00 BRT)
+  xp         Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([guildId, userId, periodType, startDate])
+  @@index([guildId, periodType, startDate, xp]) // For ranking queries
+}
+

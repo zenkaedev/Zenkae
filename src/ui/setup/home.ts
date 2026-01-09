@@ -32,7 +32,7 @@ export function buildSetupHome() {
 
   // Botões só-ícone (padrão cinza). IDs: setup:channels / setup:roles / setup:webhooks
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    iconButton('setup:channels', 'files.file_files', 'neutral'),
+    iconButton('setup:channels', 'others.other_gear', 'neutral'),
     iconButton('setup:roles', 'user.user_cog', 'neutral'),
     iconButton('setup:webhooks', 'code.code_terminal', 'neutral'),
   );
