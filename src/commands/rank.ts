@@ -227,54 +227,35 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 /**
  * Cria uma barra de progresso visual usando Emojis Customizados
  * Estilo: [Start][Mid][Mid][Mid][End]
- * Usa Zero-Width Joiner para eliminar espaços entre emojis
+ * Concatenação DIRETA sem nenhum caractere entre emojis
  */
 function createEmojiProgressBar(percentage: number, length: number = 6): string {
   const p = Math.max(0, Math.min(100, percentage));
-  const ZWJ = '\u200D'; // Zero-Width Joiner para colar emojis
 
   // Se 100%, barra full perfeita
   if (p >= 100) {
-    const start = EMOJI.progressbar.bar_full_start.markup;
-    const mid = EMOJI.progressbar.bar_full_mid.markup;
-    const end = EMOJI.progressbar.bar_full_end.markup;
-    return start + ZWJ + Array(length).fill(mid).join(ZWJ) + ZWJ + end;
+    return EMOJI.progressbar.bar_full_start.markup +
+      EMOJI.progressbar.bar_full_mid.markup.repeat(length) +
+      EMOJI.progressbar.bar_full_end.markup;
   }
 
   // Se 0%, barra vazia perfeita
   if (p <= 0) {
-    const start = EMOJI.progressbar.bar_empty_start.markup;
-    const mid = EMOJI.progressbar.bar_empty_mid.markup;
-    const end = EMOJI.progressbar.bar_empty_end.markup;
-    return start + ZWJ + Array(length).fill(mid).join(ZWJ) + ZWJ + end;
+    return EMOJI.progressbar.bar_empty_start.markup +
+      EMOJI.progressbar.bar_empty_mid.markup.repeat(length) +
+      EMOJI.progressbar.bar_empty_end.markup;
   }
 
   const totalBlocks = length;
   const filledBlocks = Math.round((p / 100) * totalBlocks);
   const emptyBlocks = totalBlocks - filledBlocks;
 
-  const parts: string[] = [];
+  let bar = EMOJI.progressbar.bar_full_start.markup;
+  bar += EMOJI.progressbar.bar_full_mid.markup.repeat(filledBlocks);
+  bar += EMOJI.progressbar.bar_empty_mid.markup.repeat(emptyBlocks);
+  bar += (filledBlocks === totalBlocks)
+    ? EMOJI.progressbar.bar_full_end.markup
+    : EMOJI.progressbar.bar_empty_end.markup;
 
-  // Start
-  parts.push(EMOJI.progressbar.bar_full_start.markup);
-
-  // Preenche meio roxo
-  for (let i = 0; i < filledBlocks; i++) {
-    parts.push(EMOJI.progressbar.bar_full_mid.markup);
-  }
-
-  // Preenche meio vazio
-  for (let i = 0; i < emptyBlocks; i++) {
-    parts.push(EMOJI.progressbar.bar_empty_mid.markup);
-  }
-
-  // End
-  if (filledBlocks === totalBlocks) {
-    parts.push(EMOJI.progressbar.bar_full_end.markup);
-  } else {
-    parts.push(EMOJI.progressbar.bar_empty_end.markup);
-  }
-
-  // Junta tudo com ZWJ
-  return parts.join(ZWJ);
+  return bar;
 }
