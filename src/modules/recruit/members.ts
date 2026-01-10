@@ -1,7 +1,6 @@
-import { Client, Guild, TextChannel, MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
+import { Client, EmbedBuilder, Guild, TextChannel, MessageFlags } from 'discord.js';
 import { recruitStore } from './store.js';
 import { logger } from '../../infra/logger.js';
-import { getBuilders } from '../../ui/v2.js';
 
 export async function updateMembersPanel(guild: Guild) {
     try {
@@ -100,95 +99,46 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         totalMembers += g.members.length;
     });
 
-    // Get V2 Builders
-    const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = getBuilders();
+    // Build Embed - Clean with 3 columns
+    const embed = new EmbedBuilder()
+        .setDescription(`# ${guild.name} Membros`)
+        .setColor(0xFFA500) // Orange/Gold
+        .setFooter({ text: `${totalMembers} membros ativos` })
+        .setTimestamp();
 
-    // Build with Components V2
-    const container = new ContainerBuilder().setAccentColor(0xFFA500); // Orange/Gold
+    // Add fields for each class (inline = 3 columns automatically)
+    for (const c of classes) {
+        if (!c.roleId) continue;
+        const g = groups.get(c.roleId);
+        if (!g) continue;
 
-    // Header - NO EMOJI, add "Membros"
-    container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`# ${guild.name} Membros\n*${totalMembers} membros ativos*`)
-    );
+        const count = g.members.length;
+        const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
 
-    // Group classes in sets of 3 for column-like display
-    const COLS = 3;
-    for (let i = 0; i < classes.length; i += COLS) {
-        const chunk = classes.slice(i, i + COLS);
+        let fieldValue: string;
 
-        // Add separator before each row
-        container.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+        if (count === 0) {
+            fieldValue = '_Nenhum membro_';
+        } else {
+            const MAX_SHOW = 12; // Good for 3-column layout
+            const displayNames = sortedNames.slice(0, MAX_SHOW);
+            const namesList = displayNames.join('\n');
 
-        // Build content for this "row" (3 columns side by side)
-        const columns: string[] = [];
-
-        for (const c of chunk) {
-            if (!c.roleId) {
-                columns.push(''); // Empty column
-                continue;
-            }
-
-            const g = groups.get(c.roleId);
-            if (!g) {
-                columns.push('');
-                continue;
-            }
-
-            const count = g.members.length;
-            const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
-            const icon = c.emoji || '▪️';
-
-            let columnContent = `**${icon} ${c.name}** \`[${count}]\`\n`;
-
-            if (count === 0) {
-                columnContent += '_Nenhum membro_';
+            if (count > MAX_SHOW) {
+                fieldValue = `${namesList}\n\n*+${count - MAX_SHOW} outros*`;
             } else {
-                const MAX_SHOW = 10; // Reduced for multi-column
-                const displayNames = sortedNames.slice(0, MAX_SHOW);
-                const namesList = displayNames.join('\n');
-
-                if (count > MAX_SHOW) {
-                    columnContent += `${namesList}\n*+${count - MAX_SHOW}*`;
-                } else {
-                    columnContent += namesList;
-                }
+                fieldValue = namesList;
             }
-
-            columns.push(columnContent);
         }
 
-        // Combine columns horizontally (side by side)
-        // Split each column into lines and interleave
-        const splitColumns = columns.map(col => col.split('\n'));
-        const maxLines = Math.max(...splitColumns.map(c => c.length));
+        const icon = c.emoji || '▪️';
 
-        let combinedContent = '';
-        for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
-            const lineParts: string[] = [];
-            for (let colIdx = 0; colIdx < COLS; colIdx++) {
-                const line = splitColumns[colIdx]?.[lineIdx] || '';
-                lineParts.push(line.padEnd(35)); // Pad for alignment
-            }
-            combinedContent += lineParts.join('  ') + '\n';
-        }
-
-        container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(combinedContent.trim())
-        );
+        embed.addFields({
+            name: `${icon} ${c.name} [${count}]`,
+            value: fieldValue,
+            inline: true // This creates 3-column layout
+        });
     }
 
-    // Add refresh button
-    const refreshButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-            .setCustomId('members:refresh')
-            .setLabel('🔄 Atualizar Painel')
-            .setStyle(ButtonStyle.Secondary)
-    );
-
-    container.addActionRowComponents(refreshButton);
-
-    return {
-        components: [container],
-        flags: MessageFlags.IsComponentsV2
-    };
+    return { embeds: [embed] };
 }
