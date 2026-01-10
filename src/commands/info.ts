@@ -87,7 +87,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
                 roleName, // New Prop
                 roleColor, // New Prop
             }),
-            { width: 1200, height: 900, fitToWidth: 400 }
+            { width: 1200, height: 900, fitToWidth: 300 }
         );
 
         // 5. Enviar como attachment
