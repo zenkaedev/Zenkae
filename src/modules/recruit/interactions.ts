@@ -278,3 +278,12 @@ recruitRouter.modal(new RegExp('^recruit:decision:reject:modal:'), async (i) => 
     if (!(await assertStaff(i))) return;
     await handleDecisionRejectSubmit(i, i.customId.split(':').pop()!);
 });
+
+// --- MEMBERS PANEL REFRESH ---
+recruitRouter.button('members:refresh', async (i) => {
+    await i.deferUpdate();
+    const { updateMembersPanel } = await import('./members.js');
+    if (i.guild) {
+        await updateMembersPanel(i.guild);
+    }
+});

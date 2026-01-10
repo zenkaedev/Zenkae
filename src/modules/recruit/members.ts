@@ -1,6 +1,7 @@
-import { Client, EmbedBuilder, Guild, TextChannel, MessageFlags } from 'discord.js';
+import { Client, Guild, TextChannel, MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import { recruitStore } from './store.js';
 import { logger } from '../../infra/logger.js';
+import { getBuilders } from '../../ui/v2.js';
 
 export async function updateMembersPanel(guild: Guild) {
     try {
@@ -99,14 +100,18 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         totalMembers += g.members.length;
     });
 
-    // Build Embed - Modern & Clean with LARGE title
-    const embed = new EmbedBuilder()
-        .setDescription(`# 👥 ${guild.name}`)  // Just the title, clean!
-        .setColor(0xFFA500) // Orange/Gold
-        .setFooter({ text: `${totalMembers} membros ativos` })
-        .setTimestamp();
+    // Get V2 Builders
+    const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = getBuilders();
 
-    // Add fields for each class with modern spacing
+    // Build with Components V2
+    const container = new ContainerBuilder().setAccentColor(0xFFA500); // Orange/Gold
+
+    // Header
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`# 👥 ${guild.name}\n*${totalMembers} membros ativos*`)
+    );
+
+    // Add each class with separator
     for (const c of classes) {
         if (!c.roleId) continue;
         const g = groups.get(c.roleId);
@@ -115,33 +120,43 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         const count = g.members.length;
         const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
 
-        let fieldValue: string;
+        // Add separator before each class
+        container.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
+
+        const icon = c.emoji || '▪️';
+        let content: string;
 
         if (count === 0) {
-            fieldValue = '_Nenhum membro_\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯';
+            content = `**${icon} ${c.name}** \`[${count}]\`\n_Nenhum membro_`;
         } else {
             const MAX_SHOW = 18;
             const displayNames = sortedNames.slice(0, MAX_SHOW);
-
-            // Modern spaced list with separator at bottom
             const namesList = displayNames.join('\n');
 
             if (count > MAX_SHOW) {
-                fieldValue = `${namesList}\n\n*+${count - MAX_SHOW} outros*\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯`;
+                content = `**${icon} ${c.name}** \`[${count}]\`\n${namesList}\n\n*+${count - MAX_SHOW} outros*`;
             } else {
-                fieldValue = `${namesList}\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯`;
+                content = `**${icon} ${c.name}** \`[${count}]\`\n${namesList}`;
             }
         }
 
-        const icon = c.emoji || '▪️';
-
-        // Field name with [count] badge like in ranking
-        embed.addFields({
-            name: `${icon} ${c.name} [${count}]`,
-            value: fieldValue,
-            inline: true
-        });
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(content)
+        );
     }
 
-    return { embeds: [embed] };
+    // Add refresh button
+    const refreshButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId('members:refresh')
+            .setLabel('🔄 Atualizar Painel')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    container.addActionRowComponents(refreshButton);
+
+    return {
+        components: [container],
+        flags: MessageFlags.IsComponentsV2
+    };
 }
