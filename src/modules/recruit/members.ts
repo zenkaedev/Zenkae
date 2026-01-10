@@ -20,9 +20,9 @@ export async function updateMembersPanel(guild: Guild) {
             return;
         }
 
-        // Fetch all members to ensure cache is hot (required for accurate role checking)
-        await guild.members.fetch();
-        console.log(`[Members Panel] Fetched ${guild.members.cache.size} members`);
+        // NOTE: Removed guild.members.fetch() to avoid rate limits
+        // Discord.js caches members automatically when they join/update
+        console.log(`[Members Panel] Using cached members (${guild.members.cache.size} in cache)`);
 
         const panel = await renderPanel(guild, classes);
         console.log(`[Members Panel] Panel rendered successfully`);
@@ -92,12 +92,12 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
 
     // Build Embed
     const embed = new EmbedBuilder()
-        .setTitle(`# ${guild.name}`) // Large title with #
-        .setColor(0xFFD700) // Gold/Yellow theme
-        .setFooter({ text: `Total de Membros: ${totalMembers}` })
+        .setTitle(`# ${guild.name}`)
+        .setColor(0xFFA500) // Orange/Gold
+        .setFooter({ text: `Total: ${totalMembers} membros` })
         .setTimestamp();
 
-    // Add fields for each class with container aesthetic
+    // Add fields for each class - Clean & Minimal
     for (const c of classes) {
         if (!c.roleId) continue;
         const g = groups.get(c.roleId);
@@ -106,32 +106,25 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         const count = g.members.length;
         const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
 
-        // Build container-style box
-        const icon = c.emoji || '•';
-        const header = `[ ${icon} ${c.name.toUpperCase()} ]`;
-        const separator = '─'.repeat(20);
-
-        let box = `${header}${separator}\n`;
+        let fieldValue: string;
 
         if (count === 0) {
-            box += `│ Sem membros\n`;
+            fieldValue = '_Nenhum membro_';
         } else {
-            const MAX_SHOW = 15; // Reduced to keep it clean
+            const MAX_SHOW = 20;
             const displayNames = sortedNames.slice(0, MAX_SHOW);
 
-            displayNames.forEach(name => {
-                box += `│ ${name}\n`;
-            });
+            // Clean list with subtle separators
+            const namesList = displayNames.map(name => `• ${name}`).join('\n');
 
             if (count > MAX_SHOW) {
-                box += `│ ... e mais ${count - MAX_SHOW}\n`;
+                fieldValue = `${namesList}\n\n_+${count - MAX_SHOW} outros_`;
+            } else {
+                fieldValue = namesList;
             }
         }
 
-        box += `└${'─'.repeat(header.length + separator.length - 1)}`;
-
-        // Wrap in code block for container effect
-        const fieldValue = `\`\`\`\n${box}\n\`\`\``;
+        const icon = c.emoji || '▪️';
 
         embed.addFields({
             name: `${icon} ${c.name} (${count})`,
