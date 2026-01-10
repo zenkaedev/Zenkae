@@ -44,7 +44,6 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
     const members = guild.members.cache;
 
     // Group by class
-    // Map classId -> { class, members: [] }
     const groups = new Map<string, { class: any, members: string[] }>();
 
     // Initialize
@@ -55,69 +54,80 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
     // Distribute
     members.forEach(m => {
         if (m.user.bot) return; // Ignore bots
-        // Check roles
-        // A user might have multiple class roles? We usually pick the first one matching or all?
-        // Let's add to all matching to be safe
         const memberRoles = m.roles.cache;
         for (const [roleId, group] of groups.entries()) {
             if (memberRoles.has(roleId)) {
-                // Use Display Name (Nick)
                 group.members.push(m.displayName);
             }
         }
     });
 
-    // Build Embed
-    const embed = new EmbedBuilder()
-        .setTitle(`👥 ${guild.name} - Membros`)
-        .setColor(0x2b2d31) // Dark theme
-        // .setDescription('Lista de membros por classe / categoria.')
-        .setTimestamp();
-
-    // Sort groups? User didn't specify order, maybe defined order in settings (array order)
-    // We used Map, so insertion order is preserved if we iterate array
-
-    let totalCount = 0;
-
-    for (const c of classes) {
-        if (!c.roleId) continue;
-        const g = groups.get(c.roleId);
-        if (!g) continue;
-
-        const count = g.members.length;
-        totalCount += count;
-
-        // Format list
-        // Limit to avoid overflow. Field value limit is 1024.
-        // Assuming avg name 15 chars, ~60 names.
-        const MAX_SHOW = 40;
-        const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
-
-        let listStr = sortedNames.slice(0, MAX_SHOW).join('\n');
-        if (count > MAX_SHOW) {
-            listStr += `\n...e mais ${count - MAX_SHOW}`;
-        }
-        if (count === 0) listStr = '_Sem membros_';
-
-        const icon = c.emoji ? `${c.emoji} ` : '';
-        embed.addFields({
-            name: `${icon}${c.name} (${count})`,
-            value: listStr,
-            inline: true
-        });
-    }
-
-    // Summary footer or description
-    // User asked for summary at bottom: "Assassino: 2..."
+    // Build summary for top section
     const summary = classes
         .filter(c => c.roleId && groups.has(c.roleId))
         .map(c => {
             const g = groups.get(c.roleId!);
             return `**${c.name}**: ${g?.members.length || 0}`;
         })
-        .join('\n');
+        .join(' • ');
 
-    embed.setDescription(`**Resumo da Guilda**\n${summary}`);
+    // Build class sections
+    const sections: string[] = [];
+    for (const c of classes) {
+        if (!c.roleId) continue;
+        const g = groups.get(c.roleId);
+        if (!g) continue;
 
-    return { content: '', embeds: [embed] };
+        const count = g.members.length;
+        const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
+
+        const MAX_SHOW = 30;
+        let listStr = sortedNames.slice(0, MAX_SHOW).join(', ');
+        if (count > MAX_SHOW) {
+            listStr += ` (+${count - MAX_SHOW} mais)`;
+        }
+        if (count === 0) listStr = '_Sem membros_';
+
+        const icon = c.emoji ? `${c.emoji} ` : '';
+        sections.push(`**${icon}${c.name}** (${count})\n${listStr}`);
+    }
+
+    // Use Components V2
+    const { ContainerBuilder, TextDisplayBuilder } = (await import('../../ui/v2.js')).getBuilders();
+
+    if (!ContainerBuilder || !TextDisplayBuilder) {
+        // Fallback to embeds if V2 not available (shouldn't happen)
+        const { EmbedBuilder } = await import('discord.js');
+        const embed = new EmbedBuilder()
+            .setTitle(`👥 ${guild.name} - Membros`)
+            .setDescription(`**Resumo:** ${summary}`)
+            .setColor(0x6d28d9)
+            .setTimestamp();
+
+        for (const c of classes) {
+            if (!c.roleId) continue;
+            const g = groups.get(c.roleId);
+            if (!g) continue;
+            const count = g.members.length;
+            const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
+            const MAX_SHOW = 40;
+            let listStr = sortedNames.slice(0, MAX_SHOW).join('\n');
+            if (count > MAX_SHOW) listStr += `\n...e mais ${count - MAX_SHOW}`;
+            if (count === 0) listStr = '_Sem membros_';
+            const icon = c.emoji ? `${c.emoji} ` : '';
+            embed.addFields({ name: `${icon}${c.name} (${count})`, value: listStr, inline: true });
+        }
+        return { content: '', embeds: [embed] };
+    }
+
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder()
+                .setContent(`# 👥 ${guild.name} - Membros\n\n${summary}\n\n` + sections.join('\n\n'))
+        );
+
+    return {
+        components: [container],
+        flags: 1 << 7 // IS_COMPONENTS_V2
+    };
 }
