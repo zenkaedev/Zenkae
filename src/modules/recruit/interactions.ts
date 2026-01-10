@@ -279,9 +279,27 @@ recruitRouter.modal(new RegExp('^recruit:decision:reject:modal:'), async (i) => 
     await handleDecisionRejectSubmit(i, i.customId.split(':').pop()!);
 });
 
+// Cooldown map for members panel refresh (guild -> timestamp)
+const memberRefreshCooldowns = new Map<string, number>();
+const REFRESH_COOLDOWN_MS = 30 * 1000; // 30 seconds
+
 // --- MEMBERS PANEL REFRESH ---
 recruitRouter.button('members:refresh', async (i) => {
+    const now = Date.now();
+    const lastRefresh = memberRefreshCooldowns.get(i.guildId!);
+
+    if (lastRefresh && (now - lastRefresh) < REFRESH_COOLDOWN_MS) {
+        const remaining = Math.ceil((REFRESH_COOLDOWN_MS - (now - lastRefresh)) / 1000);
+        await i.reply({
+            content: `⏱️ Aguarde ${remaining}s antes de atualizar novamente.`,
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
     await i.deferUpdate();
+    memberRefreshCooldowns.set(i.guildId!, now);
+
     const { updateMembersPanel } = await import('./members.js');
     if (i.guild) {
         await updateMembersPanel(i.guild);

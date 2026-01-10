@@ -106,42 +106,74 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
     // Build with Components V2
     const container = new ContainerBuilder().setAccentColor(0xFFA500); // Orange/Gold
 
-    // Header
+    // Header - NO EMOJI, add "Membros"
     container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`# 👥 ${guild.name}\n*${totalMembers} membros ativos*`)
+        new TextDisplayBuilder().setContent(`# ${guild.name} Membros\n*${totalMembers} membros ativos*`)
     );
 
-    // Add each class with separator
-    for (const c of classes) {
-        if (!c.roleId) continue;
-        const g = groups.get(c.roleId);
-        if (!g) continue;
+    // Group classes in sets of 3 for column-like display
+    const COLS = 3;
+    for (let i = 0; i < classes.length; i += COLS) {
+        const chunk = classes.slice(i, i + COLS);
 
-        const count = g.members.length;
-        const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
-
-        // Add separator before each class
+        // Add separator before each row
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
 
-        const icon = c.emoji || '▪️';
-        let content: string;
+        // Build content for this "row" (3 columns side by side)
+        const columns: string[] = [];
 
-        if (count === 0) {
-            content = `**${icon} ${c.name}** \`[${count}]\`\n_Nenhum membro_`;
-        } else {
-            const MAX_SHOW = 18;
-            const displayNames = sortedNames.slice(0, MAX_SHOW);
-            const namesList = displayNames.join('\n');
-
-            if (count > MAX_SHOW) {
-                content = `**${icon} ${c.name}** \`[${count}]\`\n${namesList}\n\n*+${count - MAX_SHOW} outros*`;
-            } else {
-                content = `**${icon} ${c.name}** \`[${count}]\`\n${namesList}`;
+        for (const c of chunk) {
+            if (!c.roleId) {
+                columns.push(''); // Empty column
+                continue;
             }
+
+            const g = groups.get(c.roleId);
+            if (!g) {
+                columns.push('');
+                continue;
+            }
+
+            const count = g.members.length;
+            const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
+            const icon = c.emoji || '▪️';
+
+            let columnContent = `**${icon} ${c.name}** \`[${count}]\`\n`;
+
+            if (count === 0) {
+                columnContent += '_Nenhum membro_';
+            } else {
+                const MAX_SHOW = 10; // Reduced for multi-column
+                const displayNames = sortedNames.slice(0, MAX_SHOW);
+                const namesList = displayNames.join('\n');
+
+                if (count > MAX_SHOW) {
+                    columnContent += `${namesList}\n*+${count - MAX_SHOW}*`;
+                } else {
+                    columnContent += namesList;
+                }
+            }
+
+            columns.push(columnContent);
+        }
+
+        // Combine columns horizontally (side by side)
+        // Split each column into lines and interleave
+        const splitColumns = columns.map(col => col.split('\n'));
+        const maxLines = Math.max(...splitColumns.map(c => c.length));
+
+        let combinedContent = '';
+        for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
+            const lineParts: string[] = [];
+            for (let colIdx = 0; colIdx < COLS; colIdx++) {
+                const line = splitColumns[colIdx]?.[lineIdx] || '';
+                lineParts.push(line.padEnd(35)); // Pad for alignment
+            }
+            combinedContent += lineParts.join('  ') + '\n';
         }
 
         container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(content)
+            new TextDisplayBuilder().setContent(combinedContent.trim())
         );
     }
 
