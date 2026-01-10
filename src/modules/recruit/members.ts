@@ -20,9 +20,18 @@ export async function updateMembersPanel(guild: Guild) {
             return;
         }
 
-        // NOTE: Removed guild.members.fetch() to avoid rate limits
-        // Discord.js caches members automatically when they join/update
-        console.log(`[Members Panel] Using cached members (${guild.members.cache.size} in cache)`);
+        // Try to fetch members, but don't fail if rate limited
+        try {
+            console.log(`[Members Panel] Attempting to fetch members...`);
+            await guild.members.fetch();
+            console.log(`[Members Panel] Successfully fetched ${guild.members.cache.size} members`);
+        } catch (fetchError: any) {
+            if (fetchError.name === 'GatewayRateLimitError') {
+                console.log(`[Members Panel] Rate limited on member fetch, using cache (${guild.members.cache.size} cached)`);
+            } else {
+                console.error(`[Members Panel] Error fetching members:`, fetchError);
+            }
+        }
 
         const panel = await renderPanel(guild, classes);
         console.log(`[Members Panel] Panel rendered successfully`);
@@ -90,14 +99,26 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         totalMembers += g.members.length;
     });
 
-    // Build Embed
+    // Build modern description with stats
+    const classStats = classes
+        .filter(c => c.roleId && groups.has(c.roleId))
+        .map(c => {
+            const g = groups.get(c.roleId!);
+            const count = g?.members.length || 0;
+            const icon = c.emoji || '▪️';
+            return `${icon} **${count}**`;
+        })
+        .join('  ·  ');
+
+    // Build Embed - Modern & Clean
     const embed = new EmbedBuilder()
-        .setTitle(`# ${guild.name}`)
+        .setTitle(`👥 ${guild.name}`) // NO # - doesn't work in embed titles
+        .setDescription(`${classStats}\n━━━━━━━━━━━━━━━━━━━━`) // Visual separator
         .setColor(0xFFA500) // Orange/Gold
-        .setFooter({ text: `Total: ${totalMembers} membros` })
+        .setFooter({ text: `${totalMembers} membros ativos` })
         .setTimestamp();
 
-    // Add fields for each class - Clean & Minimal
+    // Add fields for each class with modern spacing
     for (const c of classes) {
         if (!c.roleId) continue;
         const g = groups.get(c.roleId);
@@ -109,16 +130,16 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         let fieldValue: string;
 
         if (count === 0) {
-            fieldValue = '_Nenhum membro_';
+            fieldValue = '```\nNenhum membro\n```';
         } else {
-            const MAX_SHOW = 20;
+            const MAX_SHOW = 18;
             const displayNames = sortedNames.slice(0, MAX_SHOW);
 
-            // Clean list with subtle separators
-            const namesList = displayNames.map(name => `• ${name}`).join('\n');
+            // Modern spaced list with breathing room
+            const namesList = displayNames.join('\n');
 
             if (count > MAX_SHOW) {
-                fieldValue = `${namesList}\n\n_+${count - MAX_SHOW} outros_`;
+                fieldValue = `${namesList}\n\n*+${count - MAX_SHOW} outros*`;
             } else {
                 fieldValue = namesList;
             }
@@ -127,7 +148,7 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         const icon = c.emoji || '▪️';
 
         embed.addFields({
-            name: `${icon} ${c.name} (${count})`,
+            name: `${icon} ${c.name}`,
             value: fieldValue,
             inline: true
         });
