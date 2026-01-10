@@ -28,7 +28,7 @@ class RendererService {
      */
     async renderToPNG(
         element: ReactElement,
-        options: { width: number; height: number }
+        options: { width: number; height: number; fitToWidth?: number }
     ): Promise<Buffer> {
         await this.initialize();
 
@@ -43,7 +43,7 @@ class RendererService {
         const resvg = new Resvg(svg, {
             fitTo: {
                 mode: 'width',
-                value: options.width,
+                value: options.fitToWidth || options.width,
             },
         });
 
