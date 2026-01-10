@@ -99,21 +99,9 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         totalMembers += g.members.length;
     });
 
-    // Build modern description with stats
-    const classStats = classes
-        .filter(c => c.roleId && groups.has(c.roleId))
-        .map(c => {
-            const g = groups.get(c.roleId!);
-            const count = g?.members.length || 0;
-            const icon = c.emoji || '▪️';
-            return `${icon} **${count}**`;
-        })
-        .join('  ·  ');
-
-    // Build Embed - Modern & Clean
+    // Build Embed - Modern & Clean with LARGE title
     const embed = new EmbedBuilder()
-        .setTitle(`👥 ${guild.name}`) // NO # - doesn't work in embed titles
-        .setDescription(`${classStats}\n━━━━━━━━━━━━━━━━━━━━`) // Visual separator
+        .setDescription(`# 👥 ${guild.name}`)  // Just the title, clean!
         .setColor(0xFFA500) // Orange/Gold
         .setFooter({ text: `${totalMembers} membros ativos` })
         .setTimestamp();
@@ -130,25 +118,26 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         let fieldValue: string;
 
         if (count === 0) {
-            fieldValue = '```\nNenhum membro\n```';
+            fieldValue = '_Nenhum membro_\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯';
         } else {
             const MAX_SHOW = 18;
             const displayNames = sortedNames.slice(0, MAX_SHOW);
 
-            // Modern spaced list with breathing room
+            // Modern spaced list with separator at bottom
             const namesList = displayNames.join('\n');
 
             if (count > MAX_SHOW) {
-                fieldValue = `${namesList}\n\n*+${count - MAX_SHOW} outros*`;
+                fieldValue = `${namesList}\n\n*+${count - MAX_SHOW} outros*\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯`;
             } else {
-                fieldValue = namesList;
+                fieldValue = `${namesList}\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯`;
             }
         }
 
         const icon = c.emoji || '▪️';
 
+        // Field name with [count] badge like in ranking
         embed.addFields({
-            name: `${icon} ${c.name}`,
+            name: `${icon} ${c.name} [${count}]`,
             value: fieldValue,
             inline: true
         });
