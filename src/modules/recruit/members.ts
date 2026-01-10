@@ -84,23 +84,20 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         }
     });
 
-    // Build summary for description
-    const summary = classes
-        .filter(c => c.roleId && groups.has(c.roleId))
-        .map(c => {
-            const g = groups.get(c.roleId!);
-            return `**${c.name}**: ${g?.members.length || 0}`;
-        })
-        .join(' • ');
+    // Calculate total members
+    let totalMembers = 0;
+    groups.forEach(g => {
+        totalMembers += g.members.length;
+    });
 
     // Build Embed
     const embed = new EmbedBuilder()
-        .setTitle(`👥 ${guild.name} - Membros`)
-        .setDescription(`**Resumo da Guilda**\n${summary}`)
-        .setColor(0x6d28d9) // Purple theme
+        .setTitle(`# ${guild.name}`) // Large title with #
+        .setColor(0xFFD700) // Gold/Yellow theme
+        .setFooter({ text: `Total de Membros: ${totalMembers}` })
         .setTimestamp();
 
-    // Add fields for each class
+    // Add fields for each class with container aesthetic
     for (const c of classes) {
         if (!c.roleId) continue;
         const g = groups.get(c.roleId);
@@ -109,18 +106,36 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         const count = g.members.length;
         const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
 
-        // Limit to avoid overflow (Field value limit is 1024 chars)
-        const MAX_SHOW = 40;
-        let listStr = sortedNames.slice(0, MAX_SHOW).join('\n');
-        if (count > MAX_SHOW) {
-            listStr += `\n...e mais ${count - MAX_SHOW}`;
-        }
-        if (count === 0) listStr = '_Sem membros_';
+        // Build container-style box
+        const icon = c.emoji || '•';
+        const header = `[ ${icon} ${c.name.toUpperCase()} ]`;
+        const separator = '─'.repeat(20);
 
-        const icon = c.emoji ? `${c.emoji} ` : '';
+        let box = `${header}${separator}\n`;
+
+        if (count === 0) {
+            box += `│ Sem membros\n`;
+        } else {
+            const MAX_SHOW = 15; // Reduced to keep it clean
+            const displayNames = sortedNames.slice(0, MAX_SHOW);
+
+            displayNames.forEach(name => {
+                box += `│ ${name}\n`;
+            });
+
+            if (count > MAX_SHOW) {
+                box += `│ ... e mais ${count - MAX_SHOW}\n`;
+            }
+        }
+
+        box += `└${'─'.repeat(header.length + separator.length - 1)}`;
+
+        // Wrap in code block for container effect
+        const fieldValue = `\`\`\`\n${box}\n\`\`\``;
+
         embed.addFields({
-            name: `${icon}${c.name} (${count})`,
-            value: listStr,
+            name: `${icon} ${c.name} (${count})`,
+            value: fieldValue,
             inline: true
         });
     }
