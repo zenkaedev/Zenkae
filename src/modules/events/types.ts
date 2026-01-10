@@ -17,6 +17,7 @@ export interface EventDTO {
   zkReward: number;
   announcementChannelId?: string | null;
   recurrence?: string | null;
+  dmMessage?: string | null;
 }
 
 export interface EventWithCounts extends EventDTO {

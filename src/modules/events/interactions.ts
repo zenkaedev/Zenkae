@@ -21,6 +21,7 @@ eventsRouter.button(ids.events.new, async (i) => {
 });
 
 // Draft Handlers (Edit, Toggle, Publish)
+// Draft Handlers (Edit, Toggle, Publish)
 eventsRouter.button(new RegExp('^events:draft:'), async (i) => {
     if (!(await assertStaff(i))) return;
     await handleDraftAction(i);
@@ -28,8 +29,27 @@ eventsRouter.button(new RegExp('^events:draft:'), async (i) => {
 
 eventsRouter.modal(new RegExp('^events:draft:submit:'), async (i) => {
     if (!(await assertStaff(i))) return;
-    // Modals don't need defer if we update immediately, but let's see logic inside
     await handleDraftAction(i);
+});
+
+// Manager Handlers
+eventsRouter.button(new RegExp('^events:manager:'), async (i) => {
+    if (!(await assertStaff(i))) return;
+    const { handleManagerAction, renderEventsManager } = await import('./panel.js');
+    if (i.customId === 'events:manager:open') {
+        await i.reply(await renderEventsManager(i.guildId!));
+        return;
+    }
+    await handleManagerAction(i);
+});
+eventsRouter.select(new RegExp('^events:draft:select:'), async (i) => {
+    if (!(await assertStaff(i))) return;
+    await handleDraftAction(i);
+});
+eventsRouter.select(new RegExp('^events:manager:select'), async (i) => {
+    if (!(await assertStaff(i))) return;
+    const { handleManagerAction } = await import('./panel.js');
+    await handleManagerAction(i);
 });
 
 // RSVP

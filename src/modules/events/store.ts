@@ -18,6 +18,7 @@ function toDTO(e: any): EventDTO {
     zkReward: e.zkReward,
     announcementChannelId: e.announcementChannelId,
     recurrence: e.recurrence,
+    dmMessage: e.dmMessage,
   };
 }
 
@@ -33,6 +34,8 @@ export const eventsStore = {
     voiceChannelId?: string;
     zkReward?: number;
     recurrence?: string;
+    dmMessage?: string;
+    announcementChannelId?: string;
   }): Promise<EventDTO> {
     const r = await prisma.event.create({
       data: {
@@ -46,6 +49,8 @@ export const eventsStore = {
         voiceChannelId: opts.voiceChannelId ?? null,
         zkReward: opts.zkReward ?? 0,
         recurrence: opts.recurrence ?? null,
+        dmMessage: opts.dmMessage ?? null,
+        announcementChannelId: opts.announcementChannelId ?? null,
       },
     });
     return toDTO(r);
@@ -136,5 +141,9 @@ export const eventsStore = {
       where: { id: eventId },
       data,
     });
+  },
+
+  async delete(eventId: string) {
+    await prisma.event.delete({ where: { id: eventId } });
   },
 };

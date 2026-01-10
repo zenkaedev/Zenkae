@@ -11,7 +11,7 @@ import { buildEventsList } from './modules/events/staff.js';
 import { buildScreen, loadBannerFrom, loadDefaultBanner } from './ui/v2.js';
 import { ids } from './ui/ids.js';
 
-export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'economy';
+export type DashTab = 'home' | 'recruit' | 'events' | 'admin';
 export type DashState = { tab: DashTab; guildId?: string; filter?: FilterKind };
 
 /** Payload V2 devolvido para reply/update */
@@ -30,9 +30,7 @@ function bannerFor(tab: DashTab) {
         ? 'recruit'
         : tab === 'events'
           ? 'events'
-          : tab === 'economy'
-            ? 'economy'
-            : 'admin';
+          : 'admin';
 
   return loadBannerFrom(dir) ?? loadDefaultBanner();
 }
@@ -88,33 +86,20 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       title: 'Eventos',
       subtitle: 'Prévia e gerenciamento dos próximos eventos.',
       body,
-      buttons: [{ id: ids.events.new, label: 'Novo Evento' }],
-      back: { id: 'dash:home', label: 'Voltar' },
-    }) as DashboardView;
-  }
-
-  /* -------------------- ECONOMY -------------------- */
-  if (state.tab === 'economy') {
-    const { renderEconomyHome } = await import('./modules/economy/panel.js');
-    const payload = await renderEconomyHome(state.guildId ?? '');
-    return payload as DashboardView;
-  }
-
-  /* -------------------- ADMIN -------------------- */
-  if (state.tab === 'admin') {
-    return buildScreen({
-      banner,
-      title: 'Admin',
-      subtitle: 'Utilidades e manutenção do servidor.',
-      body:
-        `- **Check-in semanal**: publica o painel público.\n` +
-        `- **Limpar**: remove componentes desta mensagem.\n`,
       buttons: [
-        { id: ids.activity.publish, label: 'Ativar Check-in Semanal' },
-        { id: ids.admin.clean, label: 'Limpar esta mensagem' },
+        { id: ids.events.new, label: 'Novo Evento' },
+        { id: 'events:manager:open', label: '⚙️ Gerenciar' }
       ],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;
+  }
+
+
+
+  /* -------------------- ADMIN -------------------- */
+  if (state.tab === 'admin') {
+    const { renderAdminHome } = await import('./modules/admin/panel.js');
+    return await renderAdminHome(state.guildId ?? '') as DashboardView;
   }
 
   /* -------------------- HOME -------------------- */
@@ -125,12 +110,11 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
     body:
       `**Recrutamento** → fluxo público + fila\n` +
       `**Eventos** → criação, RSVP e lembretes\n` +
-      `**Economy** → moeda, items e leilões\n` +
       `**Admin** → check-in e utilidades`,
     buttons: [
       { id: 'dash:recruit', label: 'Recrutamento' },
       { id: 'dash:events', label: 'Eventos' },
-      { id: 'dash:economy', label: 'Economy' },
+
       { id: 'dash:admin', label: 'Admin' },
     ],
   }) as DashboardView;

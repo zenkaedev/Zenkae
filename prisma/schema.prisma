@@ -41,6 +41,8 @@ model RecruitSettings {
   guildId        String  @id
   panelChannelId String?
   formsChannelId String?
+  membersPanelChannelId String? // Canal do painel de membros
+  membersPanelMessageId String? // ID da mensagem do painel de membros
 
   appearanceTitle       String?
   appearanceDescription String?
@@ -96,6 +98,7 @@ model Event {
   announcementChannelId String?
   recurrence            String? // 'WEEKLY' ou null
   recurrenceDay         Int?    // 0=Domingo, 1=Segunda...
+  dmMessage             String? // Mensagem personalizada enviada 1h antes
 
   rsvps     EventRsvp[]
   reminders EventReminder[]

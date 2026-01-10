@@ -117,6 +117,9 @@ async function bootstrap() {
   await registerInteractionRouter(client);
   registerVoiceActivity(client, prisma);
 
+  const { registerMembersListeners } = await import('./listeners/members.js');
+  registerMembersListeners(client);
+
   await client.login(Env.DISCORD_TOKEN);
 }
 

@@ -23,6 +23,7 @@ import {
     handleDMTemplatesSubmit,
     openSelectPanelChannel,
     openSelectFormsChannel,
+    openSelectMembersChannel,
     handleSelectChannel,
     openApplyQuestionsModal,
     handleApplyQuestionsSubmit,
@@ -169,6 +170,15 @@ recruitRouter.select('recruit:settings:select:approved-role', async (i: any) => 
 
     await recruitStore.updateSettings(i.guildId!, { defaultApprovedRoleId: roleId });
     await i.editReply({ content: `✅ Cargo de aprovado definido: <@&${roleId}>` });
+});
+
+recruitRouter.button('recruit:settings:members-channel', async (i) => {
+    if (!(await assertStaff(i))) return;
+    await openSelectMembersChannel(i);
+});
+recruitRouter.select('recruit:settings:select:members-channel', async (i) => {
+    if (!(await assertStaff(i))) return;
+    await handleSelectChannel(i as any, 'members');
 });
 
 // Settings: Channels

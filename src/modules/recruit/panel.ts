@@ -91,6 +91,10 @@ export async function renderRecruitPanel(guildId: string) {
       .setLabel('Canal Forms')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
+      .setCustomId('recruit:settings:members-channel')
+      .setLabel('Canal Membros')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
       .setCustomId('recruit:settings:approved-role')
       .setLabel('Cargo de Aprovado')
       .setStyle(ButtonStyle.Primary)
@@ -138,6 +142,8 @@ export async function handleRecruitSettingsButton(
     await openChannelSelect(interaction, 'panel');
   } else if (sub === 'forms-channel') {
     await openChannelSelect(interaction, 'forms');
+  } else if (sub === 'members-channel') {
+    await openChannelSelect(interaction, 'members');
   }
 }
 
@@ -284,16 +290,20 @@ export async function handleDMTemplatesSubmit(inter: ModalSubmitInteraction) {
   await notice(inter, '✅ Templates atualizados!', true);
 }
 
-export async function openChannelSelect(inter: ButtonInteraction, kind: 'panel' | 'forms') {
+export async function openChannelSelect(inter: ButtonInteraction, kind: 'panel' | 'forms' | 'members') {
+  let customId = `recruit:settings:select:${kind === 'panel' ? 'panel-channel' : kind === 'forms' ? 'forms-channel' : 'members-channel'}`;
+
   const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
     new ChannelSelectMenuBuilder()
-      .setCustomId(`recruit:settings:select:${kind === 'panel' ? 'panel-channel' : 'forms-channel'}`) // ids.recruit.selectPanelChannel / selectFormsChannel
+      .setCustomId(customId)
       .setPlaceholder('Selecione o canal')
       .setChannelTypes(ChannelType.GuildText),
   );
 
+  const title = kind === 'panel' ? 'Painel Público' : kind === 'forms' ? 'Formulários (Staff)' : 'Painel de Membros';
+
   await inter.reply({
-    content: `Selecione o canal para **${kind === 'panel' ? 'Painel Público' : 'Formulários (Staff)'}**:`,
+    content: `Selecione o canal para **${title}**:`,
     components: [row],
     flags: MessageFlags.Ephemeral,
   });
@@ -306,8 +316,11 @@ export async function openSelectPanelChannel(inter: ButtonInteraction) {
 export async function openSelectFormsChannel(inter: ButtonInteraction) {
   return openChannelSelect(inter, 'forms');
 }
+export async function openSelectMembersChannel(inter: ButtonInteraction) {
+  return openChannelSelect(inter, 'members');
+}
 
-export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms') {
+export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms' | 'members') {
   await ack(inter as ButtonInteraction, { flags: MessageFlags.Ephemeral });
   const selId = (inter.values?.[0] as string | undefined) ?? undefined;
   if (!selId) {
@@ -317,11 +330,16 @@ export async function handleSelectChannel(inter: any, kind: 'panel' | 'forms') {
 
   if (kind === 'panel') {
     await recruitStore.updateSettings(inter.guildId!, { panelChannelId: selId });
-  } else {
+  } else if (kind === 'forms') {
     await recruitStore.updateSettings(inter.guildId!, { formsChannelId: selId });
+  } else if (kind === 'members') {
+    await recruitStore.updateSettings(inter.guildId!, { membersPanelChannelId: selId });
+    // Trigger initial render
+    const { updateMembersPanel } = await import('./members.js');
+    await updateMembersPanel(inter.guild);
   }
 
-  await notice(inter, `✅ Canal de **${kind}** atualizado para <#${selId}>.`, true);
+  await notice(inter, `✅ Canal atualizado para <#${selId}>.`, true);
 }
 
 /* ---------------- Handlers de Decisão (Aprovar/Reprovar) ---------------- */

@@ -1,9 +1,7 @@
 // src/services/events/scheduler.ts
 import cron from 'node-cron';
-import { Client, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import { Context } from '../../infra/context.js';
-import { zkStore } from '../zk/store.js';
-import { zkSettings } from '../zk/settings.js';
 import { eventRSVP } from './rsvp.js';
 
 const prisma = new Proxy({} as any, {
@@ -56,201 +54,96 @@ export const eventScheduler = {
         const now = new Date();
 
         // Find incomplete events
-        const events = await prisma.zKEvent.findMany({
-            where: { completed: false },
-            include: { rsvps: true }
+        const events = await prisma.event.findMany({
+            where: { status: 'scheduled' },
+            include: { rsvps: true, reminders: true }
         });
 
         for (const event of events) {
-            const eventDate = new Date(event.eventDate);
+            const eventDate = new Date(event.startsAt);
             const diff = eventDate.getTime() - now.getTime();
             const hoursUntil = diff / (1000 * 60 * 60);
 
             // 24h before: Post announcement
-            if (hoursUntil <= 24 && hoursUntil > 23 && !event.announcementMessageId) {
+            if (hoursUntil <= 24 && hoursUntil > 23 && event.announcementChannelId && !event.reminders.some((r: any) => r.kind === '24h')) {
                 await this.postAnnouncement(client, event);
+                await prisma.eventReminder.create({
+                    data: { eventId: event.id, kind: '24h' }
+                });
             }
 
-            // 1h before: Lock RSVP, send DMs, post final list
-            if (hoursUntil <= 1 && hoursUntil > 0.9 && !event.rsvpLocked) {
+            // 1h before: Lock RSVP, send DMs
+            if (hoursUntil <= 1 && hoursUntil > 0 && !event.reminders.some((r: any) => r.kind === '1h')) {
                 await this.lockAndNotify(client, event);
+                await prisma.eventReminder.create({
+                    data: { eventId: event.id, kind: '1h' }
+                });
             }
 
-            // Event time: Check attendance and award ZK
-            if (diff <= 0 && !event.completed) {
+            // Event time: Check attendance
+            if (diff <= 0) {
                 await this.checkAttendance(client, event);
             }
         }
     },
 
-    /**
-     * 24h before: Post event announcement with RSVP buttons
-     */
     async postAnnouncement(client: Client, event: any) {
         try {
-            const guild = client.guilds.cache.get(event.guildId);
-            if (!guild) return;
+            if (!event.announcementChannelId) return;
+            const channel = await client.channels.fetch(event.announcementChannelId) as TextChannel;
+            if (!channel) return;
 
-            // Try to find announcements/events channel
-            const channel = guild.channels.cache.find(
-                c => c.isTextBased() &&
-                    (c.name.includes('evento') || c.name.includes('anuncio') || c.name.includes('geral'))
-            ) as TextChannel;
-
-            if (!channel) {
-                console.warn(`[SCHEDULER] No announcement channel found for guild ${event.guildId}`);
-                return;
-            }
-
-            const currencySymbol = await zkSettings.getCurrencySymbol(event.guildId);
-            const eventDateStr = new Date(event.eventDate).toLocaleString('pt-BR');
+            const eventDateStr = new Date(event.startsAt).toLocaleString('pt-BR');
 
             const embed = new EmbedBuilder()
-                .setTitle(`🎉 ${event.title}`)
-                .setDescription(event.description)
+                .setTitle(`🔔 Lembrete: ${event.title}`)
+                .setDescription(`O evento começa em menos de 24 horas!\n\n${event.description || ''}`)
                 .setColor(0x6d28d9)
                 .addFields(
-                    { name: '📅 Data/Hora', value: eventDateStr, inline: true },
-                    { name: '💰 Recompensa', value: `${event.zkReward} ${currencySymbol}`, inline: true }
-                )
-                .setFooter({ text: 'Confirme sua presença abaixo!' });
-
-            if (event.imageUrl) {
-                embed.setImage(event.imageUrl);
-            }
-
-            const row = new ActionRowBuilder<ButtonBuilder>()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`event_rsvp_yes_${event.id}`)
-                        .setLabel('✅ Vou Participar')
-                        .setStyle(ButtonStyle.Success),
-                    new ButtonBuilder()
-                        .setCustomId(`event_rsvp_no_${event.id}`)
-                        .setLabel('❌ Não Vou')
-                        .setStyle(ButtonStyle.Danger)
+                    { name: '📅 Data/Hora', value: eventDateStr, inline: true }
                 );
 
-            const message = await channel.send({ embeds: [embed], components: [row] });
+            if (event.imageUrl) embed.setImage(event.imageUrl);
 
-            // Save message ID
-            await prisma.zKEvent.update({
-                where: { id: event.id },
-                data: {
-                    announcementMessageId: message.id,
-                    announcementChannelId: channel.id
-                }
-            });
-
-            console.log(`[SCHEDULER] Posted announcement for event: ${event.title}`);
-        } catch (err) {
-            console.error('[SCHEDULER] Error posting announcement:', err);
-        }
+            await channel.send({ embeds: [embed] });
+        } catch { }
     },
 
-    /**
-     * 1h before: Lock RSVP, send DMs, post final list
-     */
     async lockAndNotify(client: Client, event: any) {
+        // Send DMs to YES rsvps
         try {
-            const guild = client.guilds.cache.get(event.guildId);
-            if (!guild) return;
-
-            // Lock RSVP
-            await prisma.zKEvent.update({
-                where: { id: event.id },
-                data: { rsvpLocked: true }
-            });
-
-            // Get confirmed users
-            const confirmed = await eventRSVP.getRSVPList(event.id, 'YES');
-
-            // Send DMs
+            const confirmed = event.rsvps.filter((r: any) => r.choice === 'yes');
             for (const rsvp of confirmed) {
                 try {
                     const user = await client.users.fetch(rsvp.userId);
-                    await user.send(event.dmMessage);
-                } catch (err) {
-                    console.warn(`[SCHEDULER] Could not DM user ${rsvp.userId}:`, err);
-                }
+                    const msg = event.dmMessage || `🔔 **Lembrete:** O evento **${event.title}** começa em 1 hora!`;
+                    await user.send(msg);
+                } catch { }
             }
-
-            // Post final list
-            if (event.announcementChannelId) {
-                const channel = guild.channels.cache.get(event.announcementChannelId) as TextChannel;
-                if (channel) {
-                    const confirmedList = confirmed.length > 0
-                        ? confirmed.map((r: any) => `<@${r.userId}>`).join(', ')
-                        : 'Ninguém confirmou presença';
-
-                    const embed = new EmbedBuilder()
-                        .setTitle(`📋 Lista Final - ${event.title}`)
-                        .setDescription(`**Confirmados:** ${confirmedList}`)
-                        .setColor(0x6d28d9)
-                        .setFooter({ text: 'RSVPs travados. Boa sorte!' });
-
-                    const finalMessage = await channel.send({ embeds: [embed] });
-
-                    await prisma.zKEvent.update({
-                        where: { id: event.id },
-                        data: { finalListMessageId: finalMessage.id }
-                    });
-                }
-            }
-
-            console.log(`[SCHEDULER] Locked and notified for event: ${event.title}`);
+            console.log(`[SCHEDULER] Notified ${confirmed.length} users for event: ${event.title}`);
         } catch (err) {
             console.error('[SCHEDULER] Error in lockAndNotify:', err);
         }
     },
 
-    /**
-     * Event time: Check voice attendance and award ZK
-     */
     async checkAttendance(client: Client, event: any) {
         try {
             const guild = client.guilds.cache.get(event.guildId);
             if (!guild) return;
 
-            const voiceChannel = guild.channels.cache.get(event.voiceChannelId);
-            if (!voiceChannel || !voiceChannel.isVoiceBased()) {
-                console.warn(`[SCHEDULER] Voice channel not found: ${event.voiceChannelId}`);
-                await prisma.zKEvent.update({
-                    where: { id: event.id },
-                    data: { completed: true }
-                });
-                return;
-            }
-
-            // Get confirmed users
-            const confirmed = await eventRSVP.getRSVPList(event.id, 'YES');
-
-            // Get users currently in voice
-            const voiceMembers = Array.from(voiceChannel.members.values());
-
-            let awarded = 0;
-
-            // Award ZK to users who confirmed AND are in voice
-            for (const rsvp of confirmed) {
-                const inVoice = voiceMembers.some((m: any) => m.id === rsvp.userId);
-                if (inVoice) {
-                    await zkStore.addZK(
-                        event.guildId,
-                        rsvp.userId,
-                        event.zkReward,
-                        `Evento: ${event.title}`
-                    );
-                    awarded++;
+            // If voice channel is set, check attendance logic
+            if (event.voiceChannelId) {
+                const voiceChannel = guild.channels.cache.get(event.voiceChannelId);
+                if (voiceChannel && voiceChannel.isVoiceBased()) {
+                    // Attendance was checked, but no rewards are issued now.
                 }
             }
 
-            // Mark event as completed
-            await prisma.zKEvent.update({
+            // Mark completed
+            await prisma.event.update({
                 where: { id: event.id },
-                data: { completed: true }
+                data: { status: 'completed' }
             });
-
-            console.log(`[SCHEDULER] Event completed: ${event.title} (${awarded} users awarded)`);
         } catch (err) {
             console.error('[SCHEDULER] Error checking attendance:', err);
         }

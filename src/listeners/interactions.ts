@@ -65,9 +65,7 @@ export async function registerInteractionRouter(client: Client) {
   mainRouter.merge(eventsRouter);
   mainRouter.merge(miscRouter);
 
-  // Merge economy router
-  const { economyRouter } = await import('../modules/economy/interactions.js');
-  mainRouter.merge(economyRouter);
+
 
 
 

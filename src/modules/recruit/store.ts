@@ -144,6 +144,8 @@ export const recruitStore = {
       dmRejectedTemplate: string;
       classes: Class[]; // UI usa array; persistência usa string JSON
       defaultApprovedRoleId: string | null;
+      membersPanelChannelId: string | null;
+      membersPanelMessageId: string | null;
     }>,
   ) {
     const normalized: any = { ...data };
