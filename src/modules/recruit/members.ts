@@ -84,7 +84,7 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         }
     });
 
-    // Build summary for top section
+    // Build summary for description
     const summary = classes
         .filter(c => c.roleId && groups.has(c.roleId))
         .map(c => {
@@ -93,8 +93,14 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         })
         .join(' • ');
 
-    // Build class sections
-    const sections: string[] = [];
+    // Build Embed
+    const embed = new EmbedBuilder()
+        .setTitle(`👥 ${guild.name} - Membros`)
+        .setDescription(`**Resumo da Guilda**\n${summary}`)
+        .setColor(0x6d28d9) // Purple theme
+        .setTimestamp();
+
+    // Add fields for each class
     for (const c of classes) {
         if (!c.roleId) continue;
         const g = groups.get(c.roleId);
@@ -103,53 +109,21 @@ async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
         const count = g.members.length;
         const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
 
-        const MAX_SHOW = 30;
-        let listStr = sortedNames.slice(0, MAX_SHOW).join(', ');
+        // Limit to avoid overflow (Field value limit is 1024 chars)
+        const MAX_SHOW = 40;
+        let listStr = sortedNames.slice(0, MAX_SHOW).join('\n');
         if (count > MAX_SHOW) {
-            listStr += ` (+${count - MAX_SHOW} mais)`;
+            listStr += `\n...e mais ${count - MAX_SHOW}`;
         }
         if (count === 0) listStr = '_Sem membros_';
 
         const icon = c.emoji ? `${c.emoji} ` : '';
-        sections.push(`**${icon}${c.name}** (${count})\n${listStr}`);
+        embed.addFields({
+            name: `${icon}${c.name} (${count})`,
+            value: listStr,
+            inline: true
+        });
     }
 
-    // Use Components V2
-    const { ContainerBuilder, TextDisplayBuilder } = (await import('../../ui/v2.js')).getBuilders();
-
-    if (!ContainerBuilder || !TextDisplayBuilder) {
-        // Fallback to embeds if V2 not available (shouldn't happen)
-        const { EmbedBuilder } = await import('discord.js');
-        const embed = new EmbedBuilder()
-            .setTitle(`👥 ${guild.name} - Membros`)
-            .setDescription(`**Resumo:** ${summary}`)
-            .setColor(0x6d28d9)
-            .setTimestamp();
-
-        for (const c of classes) {
-            if (!c.roleId) continue;
-            const g = groups.get(c.roleId);
-            if (!g) continue;
-            const count = g.members.length;
-            const sortedNames = g.members.sort((a, b) => a.localeCompare(b));
-            const MAX_SHOW = 40;
-            let listStr = sortedNames.slice(0, MAX_SHOW).join('\n');
-            if (count > MAX_SHOW) listStr += `\n...e mais ${count - MAX_SHOW}`;
-            if (count === 0) listStr = '_Sem membros_';
-            const icon = c.emoji ? `${c.emoji} ` : '';
-            embed.addFields({ name: `${icon}${c.name} (${count})`, value: listStr, inline: true });
-        }
-        return { content: '', embeds: [embed] };
-    }
-
-    const container = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder()
-                .setContent(`# 👥 ${guild.name} - Membros\n\n${summary}\n\n` + sections.join('\n\n'))
-        );
-
-    return {
-        components: [container],
-        flags: 1 << 7 // IS_COMPONENTS_V2
-    };
+    return { embeds: [embed] };
 }
