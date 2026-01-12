@@ -1,12 +1,14 @@
 // src/services/xp/store.ts
 import { prisma } from '../../prisma/client.js';
 import { periodUtils } from './period.js';
+import type { IXPStore } from './types.js';
 
 /**
  * Sistema de XP com curva exponencial
  * Fórmula: XP_Necessario = 100 * (Nivel ^ 1.5)
+ * Implements IXPStore interface for type-safety and testability (Fix #11)
  */
-export const xpStore = {
+export const xpStore: IXPStore = {
     /**
      * Calcula XP necessário para o próximo nível
      */
@@ -166,6 +168,55 @@ export const xpStore = {
             xpForNextLevel,
             xpProgress: Math.min(100, Math.max(0, xpProgress)),
         };
+    },
+
+    /**
+     * Busca dados de XP de múltiplos usuários em uma única query (Fix #4)
+     * Otimização crítica para evitar N+1 queries no rank command
+     */
+    async getBatchUserLevels(guildId: string, userIds: string[]): Promise<Map<string, any>> {
+        const results = new Map<string, any>();
+
+        // Single batch query ao invés de N queries individuais
+        const data = await prisma.userLevel.findMany({
+            where: {
+                guildId,
+                userId: { in: userIds },
+            },
+        });
+
+        // Criar índice rápido com type annotation
+        const dataMap = new Map(data.map((d: { userId: string }) => [d.userId, d]));
+
+        // Processar todos os usuários
+        for (const userId of userIds) {
+            const userData = dataMap.get(userId) as { level: number; xpTotal: number } | undefined;
+
+            if (!userData) {
+                results.set(userId, {
+                    level: 1,
+                    xpTotal: 0,
+                    xpInCurrentLevel: 0,
+                    xpForNextLevel: this.getXPForLevel(1),
+                    xpProgress: 0,
+                });
+                continue;
+            }
+
+            const xpForNextLevel = this.getXPForLevel(userData.level);
+            const xpInCurrentLevel = userData.xpTotal - this.getTotalXPForLevel(userData.level);
+            const xpProgress = (xpInCurrentLevel / xpForNextLevel) * 100;
+
+            results.set(userId, {
+                level: userData.level,
+                xpTotal: userData.xpTotal,
+                xpInCurrentLevel,
+                xpForNextLevel,
+                xpProgress: Math.min(100, Math.max(0, xpProgress)),
+            });
+        }
+
+        return results;
     },
 
     /**

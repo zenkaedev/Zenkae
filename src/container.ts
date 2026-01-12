@@ -10,8 +10,9 @@ import { buildRecruitList } from './modules/recruit/staff.js';
 import { buildEventsList } from './modules/events/staff.js';
 import { buildScreen, loadBannerFrom, loadDefaultBanner } from './ui/v2.js';
 import { ids } from './ui/ids.js';
+import { suggestionStore } from './modules/suggestions/store.js';
 
-export type DashTab = 'home' | 'recruit' | 'events' | 'admin';
+export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'suggestions';
 export type DashState = { tab: DashTab; guildId?: string; filter?: FilterKind };
 
 /** Payload V2 devolvido para reply/update */
@@ -98,24 +99,52 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
 
   /* -------------------- ADMIN -------------------- */
   if (state.tab === 'admin') {
-    const { renderAdminHome } = await import('./modules/admin/panel.js');
-    return await renderAdminHome(state.guildId ?? '') as DashboardView;
+    return buildScreen({
+      banner,
+      title: 'Admin',
+      subtitle: 'Ferramentas administrativas',
+      body: '_Em breve: ferramentas de moderação e gestão._',
+      buttons: [{ id: ids.admin.clean, label: '🧹 Limpar Banco de Dados' }],
+      back: { id: ids.dash.tab('home'), label: 'Voltar' },
+    });
+  }
+
+  /* -------------------- SUGGESTIONS -------------------- */
+  if (state.tab === 'suggestions') {
+    const settings = await suggestionStore.getSettings(state.guildId ?? '');
+
+    const channelMention = settings.suggestionsChannelId
+      ? `<#${settings.suggestionsChannelId}>`
+      : '_Não configurado_';
+
+    const panelStatus = settings.panelMessageId
+      ? '✅ Painel publicado'
+      : '⚠️ Painel não publicado';
+
+    return buildScreen({
+      banner,
+      title: 'Sugestões 📢',
+      subtitle: 'Sistema de sugestões da comunidade',
+      body: `**Canal de sugestões:** ${channelMention}\n**Status:** ${panelStatus}`,
+      buttons: [
+        { id: 'suggestions:publish', label: '📢 Publicar Painel' },
+        { id: 'suggestions:setChannel', label: '⚙️ Configurar Canal' }
+      ],
+      back: { id: ids.dash.tab('home'), label: 'Voltar' },
+    });
   }
 
   /* -------------------- HOME -------------------- */
   return buildScreen({
     banner,
     title: 'Dashboard',
-    subtitle: 'Instruções rápidas:',
-    body:
-      `**Recrutamento** → fluxo público + fila\n` +
-      `**Eventos** → criação, RSVP e lembretes\n` +
-      `**Admin** → check-in e utilidades`,
+    subtitle: 'Gerencie seu servidor',
+    body: '_Escolha uma categoria abaixo para gerenciar._',
     buttons: [
-      { id: 'dash:recruit', label: 'Recrutamento' },
-      { id: 'dash:events', label: 'Eventos' },
-
-      { id: 'dash:admin', label: 'Admin' },
+      { id: ids.dash.tab('recruit'), label: '📋 Recrutamento' },
+      { id: ids.dash.tab('events'), label: '📅 Eventos' },
+      { id: ids.dash.tab('suggestions'), label: '📢 Sugestões' },
+      { id: ids.dash.tab('admin'), label: '⚙️ Admin' },
     ],
   }) as DashboardView;
 }

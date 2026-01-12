@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { logger } from '../../infra/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,7 +44,7 @@ export async function loadDefaultFonts() {
         // Using Inter from @fontsource via UNPKG
         const fontUrl = 'https://unpkg.com/@fontsource/inter@5.0.16/files/inter-latin-400-normal.woff';
 
-        console.log('[Fonts] Loading Inter from UNPKG...');
+        logger.debug('Loading Inter font from UNPKG');
         const response = await fetch(fontUrl);
 
         if (!response.ok) {
@@ -51,7 +52,7 @@ export async function loadDefaultFonts() {
         }
 
         const fontData = await response.arrayBuffer();
-        console.log('[Fonts] Inter loaded successfully');
+        logger.info('Inter font loaded successfully');
 
         return [
             {
@@ -62,7 +63,7 @@ export async function loadDefaultFonts() {
             },
         ];
     } catch (err) {
-        console.error('[Fonts] Failed to load custom font:', err);
+        logger.error({ error: err }, 'Failed to load custom font');
         // Fallback: use a minimal embedded font (Noto Sans)
         // This is a last resort - loading from CDN should work
         throw new Error('Unable to load fonts. Please check network connectivity.');

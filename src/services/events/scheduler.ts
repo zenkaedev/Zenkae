@@ -3,6 +3,7 @@ import cron from 'node-cron';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import { Context } from '../../infra/context.js';
 import { eventRSVP } from './rsvp.js';
+import { logger } from '../../infra/logger.js';
 
 const prisma = new Proxy({} as any, {
     get: (_, prop) => (Context.get().prisma as any)[prop],
@@ -20,7 +21,7 @@ export const eventScheduler = {
      */
     init(client: Client) {
         if (schedulerTask) {
-            console.log('[EVENT SCHEDULER] Already running');
+            logger.info('Event scheduler already running');
             return;
         }
 
@@ -29,11 +30,11 @@ export const eventScheduler = {
             try {
                 await this.checkEvents(client);
             } catch (err) {
-                console.error('[EVENT SCHEDULER] Error:', err);
+                logger.error({ error: err }, 'Error in event scheduler tick');
             }
         });
 
-        console.log('✅ [EVENT SCHEDULER] Initialized (runs every 5 minutes)');
+        logger.info('Event scheduler initialized (runs every 5 minutes)');
     },
 
     /**
@@ -43,7 +44,7 @@ export const eventScheduler = {
         if (schedulerTask) {
             schedulerTask.stop();
             schedulerTask = null;
-            console.log('[EVENT SCHEDULER] Stopped');
+            logger.info('Event scheduler stopped');
         }
     },
 
@@ -120,9 +121,9 @@ export const eventScheduler = {
                     await user.send(msg);
                 } catch { }
             }
-            console.log(`[SCHEDULER] Notified ${confirmed.length} users for event: ${event.title}`);
+            logger.info({ eventId: event.id, eventTitle: event.title, userCount: confirmed.length }, 'Notified users for event');
         } catch (err) {
-            console.error('[SCHEDULER] Error in lockAndNotify:', err);
+            logger.error({ error: err, eventId: event.id }, 'Error in lockAndNotify');
         }
     },
 
@@ -145,7 +146,7 @@ export const eventScheduler = {
                 data: { status: 'completed' }
             });
         } catch (err) {
-            console.error('[SCHEDULER] Error checking attendance:', err);
+            logger.error({ error: err, eventId: event.id }, 'Error checking attendance');
         }
     }
 };

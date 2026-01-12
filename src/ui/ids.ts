@@ -1,9 +1,29 @@
-export type DashTab = 'home' | 'recruit' | 'events' | 'admin';
+export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'suggestions';
 export type RsvpChoice = 'yes' | 'maybe' | 'no';
 
-function isDashTab(x: any): x is DashTab {
-  return x === 'home' || x === 'recruit' || x === 'events' || x === 'admin';
+function isDashTab(x: unknown): x is DashTab {
+  return x === 'home' || x === 'recruit' || x === 'events' || x === 'admin' || x === 'suggestions';
 }
+
+/**
+ * Suggestions System IDs
+ */
+export const SUG_IDS = {
+  // Dashboard
+  PUBLISH_PANEL: 'suggestions:publish',
+  SET_CHANNEL: 'suggestions:setChannel',
+
+  // Public
+  NEW_SUGGESTION: 'suggestion:new',
+  SUBMIT_MODAL: 'suggestion:submit',
+
+  // Voting (dynamic with ID)
+  VOTE_AGREE: (id: string) => `suggestion:vote:agree:${id}`,
+  VOTE_DISAGREE: (id: string) => `suggestion:vote:disagree:${id}`,
+
+  // Discussion
+  DISCUSS: (id: string) => `suggestion:discuss:${id}`,
+} as const;
 
 export const ids = {
   dash: {

@@ -148,7 +148,8 @@ export const recruitStore = {
       membersPanelMessageId: string | null;
     }>,
   ) {
-    const normalized: any = { ...data };
+    // Type-safe normalization without 'any'
+    const normalized: Record<string, unknown> = { ...data };
 
     if (Array.isArray(data.questions)) {
       // Limite de 5 no planejamento; use 4 se quiser manter original, aqui deixo 5.
@@ -275,7 +276,7 @@ export const recruitStore = {
     moderatedById?: string,
     moderatedByDisplay?: string,
   ) {
-    const data: any = {
+    const data: Record<string, unknown> = {
       status,
       reason: reason ?? null,
       moderatedAt: new Date(),

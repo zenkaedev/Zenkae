@@ -1,5 +1,6 @@
 import { Client, TextChannel } from 'discord.js';
 import { eventsStore } from '../modules/events/store.js';
+import { logger } from '../infra/logger.js';
 
 /**
  * Scheduler robusto para lembretes de eventos.
@@ -47,15 +48,15 @@ async function check(client: Client) {
         await sendReminder(client, ev, kind);
         // 3. Marca como enviado APENAS se sucesso (ou falha controlada)
         await eventsStore.markReminder(ev.id, kind);
-        console.log(`[reminder] Enviado ${kind} para evento ${ev.id} (${ev.title})`);
+        logger.info({ eventId: ev.id, eventTitle: ev.title, reminderType: kind }, 'Event reminder sent');
       } catch (err) {
-        console.error(`[reminder] Falha ao enviar ${kind} para evento ${ev.id}:`, err);
+        logger.error({ error: err, eventId: ev.id, reminderType: kind }, 'Failed to send event reminder');
         // Não marcamos como feito para tentar novamente no próximo tick (se ainda estiver na margem)
         // Ou marcamos se for erro fatal (ex: canal deletado) para não spammar logs
       }
     }
   } catch (err) {
-    console.error('[scheduler] Erro fatal no loop de lembretes:', err);
+    logger.error({ error: err }, 'Fatal error in event reminders loop');
   }
 }
 
@@ -74,9 +75,9 @@ async function sendReminder(client: Client, ev: any, kind: '24h' | '1h' | '15m')
       const user = await client.users.fetch(rsvp.userId);
       await user.send(
         `🔔 **Lembrete de Evento:**\n\n` +
-          `**${ev.title}**\n` +
-          `Começa ${timeStr}!\n\n` +
-          `Prepare-se! 🎮`,
+        `**${ev.title}**\n` +
+        `Começa ${timeStr}!\n\n` +
+        `Prepare-se! 🎮`,
       );
       successCount++;
     } catch {

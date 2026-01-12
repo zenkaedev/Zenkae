@@ -33,6 +33,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const targetUser = interaction.options.getUser('usuario') ?? interaction.user;
     const guildId = interaction.guildId;
+    const prisma = Context.get().prisma;
 
     try {
         // 1. Buscar dados do usuário

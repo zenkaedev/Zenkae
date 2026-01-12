@@ -8,6 +8,7 @@ import { safeUpdate } from '../../ui/v2.js';
 import type { FilterKind } from './types.js';
 import { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder, type StringSelectMenuInteraction } from 'discord.js';
 import { replyTemporary } from '../../infra/feedback.js';
+import { lifecycle } from '../../infra/lifecycle.js';
 
 // Controllers / Handlers
 import {
@@ -282,6 +283,17 @@ recruitRouter.modal(new RegExp('^recruit:decision:reject:modal:'), async (i) => 
 // Cooldown map for members panel refresh (guild -> timestamp)
 const memberRefreshCooldowns = new Map<string, number>();
 const REFRESH_COOLDOWN_MS = 30 * 1000; // 30 seconds
+
+// Cleanup expired cooldowns every 5 minutes to prevent memory leak - gerenciado pelo lifecycle
+lifecycle.registerInterval(() => {
+    const now = Date.now();
+    for (const [guildId, timestamp] of memberRefreshCooldowns.entries()) {
+        if (now - timestamp > REFRESH_COOLDOWN_MS * 2) {
+            memberRefreshCooldowns.delete(guildId);
+        }
+    }
+}, REFRESH_COOLDOWN_MS * 10, 'member-refresh-cooldown-cleanup');
+
 
 // --- MEMBERS PANEL REFRESH ---
 recruitRouter.button('members:refresh', async (i) => {

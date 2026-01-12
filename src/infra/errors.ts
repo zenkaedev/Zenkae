@@ -3,6 +3,7 @@ import {
     MessageFlags,
     type RepliableInteraction
 } from 'discord.js';
+import { randomUUID } from 'node:crypto';
 import { logger } from './logger.js';
 
 export class AppError extends Error {
@@ -17,10 +18,11 @@ export class AppError extends Error {
 }
 
 export async function handleError(interaction: RepliableInteraction, err: unknown) {
-    const errorId = Math.random().toString(36).substring(7).toUpperCase();
+    const errorId = randomUUID(); // Globalmente único (fix #15)
 
     // 1. Log structured
     logger.error({ err, errorId, user: interaction.user.tag }, 'Interaction Error');
+
 
     // 2. Determine user message
     let userMsg = 'Ocorreu um erro interno. Tente novamente mais tarde.';

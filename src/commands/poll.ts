@@ -43,6 +43,15 @@ export async function execute(inter: ChatInputCommandInteraction) {
     return;
   }
 
+  // Runtime permission check (fix #5)
+  if (!inter.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
+    await inter.reply({
+      content: '❌ Você precisa da permissão "Gerenciar Mensagens" para usar este comando.',
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
   const sub = inter.options.getSubcommand();
 
   if (sub === 'new') {

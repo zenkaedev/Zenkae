@@ -9,6 +9,7 @@ import {
   MessageFlags
 } from 'discord.js';
 import { xpStore } from '../services/xp/store.js';
+import { logger } from '../infra/logger.js';
 // Import V2 internal helpers
 import { Brand, getBuilders } from '../ui/v2.js';
 import { EMOJI } from '../ui/icons.generated.js';
@@ -54,41 +55,48 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const startIndex = (page - 1) * ITEMS_PER_PAGE;
     const pageUsers = allTopUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-    const activeUsers = await Promise.all(pageUsers.map(async (userData: any, index: number) => {
-      let displayName = 'Usuário Desconhecido';
+    // FIX #4: Batch fetch ao invés de N+1 queries
+    // ANTES: 7 users = 7 member fetches + 7 XP queries = 14 queries
+    // DEPOIS: 7 users = 1 batch member fetch + 1 batch XP query = 2 queries
 
-      try {
-        const member = await interaction.guild.members.fetch(userData.userId).catch(() => null);
-        if (member) displayName = member.displayName;
-      } catch (e) {
-        // ignore
-      }
+    const userIds = pageUsers.map((u) => u.userId);
 
-      // Para GLOBAL: Mostra Nível e Progresso
-      // Para PERÍODO: Mostra apenas XP Total Acumulado e um placeholder de barra cheia ou vazia
-      let details = '';
+    // Batch fetch members (1 única query ao Discord)
+    const members = await interaction.guild.members.fetch({
+      user: userIds
+    }).catch(() => new Map());
+
+    // Batch fetch XP stats (1 única query ao DB) - APENAS para global
+    const batchStats = range === 'global'
+      ? await xpStore.getBatchUserLevels(guildId, userIds)
+      : null;
+
+    // Processar dados já carregados (sem queries adicionais)
+    // Union type para suportar tanto UserXP (global) quanto PeriodUserXP (weekly/monthly)
+    type RankUserData = { userId: string; level?: number; xp?: number };
+    const activeUsers = (pageUsers as RankUserData[]).map((userData, index: number) => {
+      const member = members.get(userData.userId);
+      const displayName = member?.displayName || 'Usuário Desconhecido';
+
       let xpProgress = 0;
       let levelLabel = '';
 
       if (range === 'global') {
-        const stats = await xpStore.getUserLevel(guildId, userData.userId);
-        xpProgress = stats.xpProgress;
-        levelLabel = `Lvl ${userData.level}`;
+        const stats = batchStats?.get(userData.userId);
+        xpProgress = stats?.xpProgress || 0;
+        levelLabel = `Lvl ${userData.level || 1}`;
       } else {
-        // Period Mode
-        // userData tem .xp (quantidade no período)
-        // Não calculamos nível parcial, mostramos XP bruto
-        xpProgress = 100; // Barra cheia visualmente ou 0
-        levelLabel = `${userData.xp.toLocaleString()} XP`;
+        xpProgress = 100;
+        levelLabel = `${userData.xp?.toLocaleString() || 0} XP`;
       }
 
       return {
         rank: startIndex + index + 1,
         username: displayName,
-        levelLabel,     // Changed from 'level' number
+        levelLabel,
         xpProgress: xpProgress
       };
-    }));
+    });
 
     if (activeUsers.length === 0 && page > 1) {
       return null;
@@ -179,7 +187,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // 2. Collector (listen to both StringSelect and Buttons)
     const collector = message.createMessageComponentCollector({
-      time: 60000
+      time: 60000,
+      max: 50 // Limit interactions to prevent memory leak
     });
 
 
@@ -212,8 +221,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         currentPage--; // Revert if no data
       }
     });
+
+    // CRITICAL: Cleanup collector on end to prevent memory leak
+    collector.on('end', () => {
+      logger.debug({ userId: interaction.user.id }, 'Rank collector stopped');
+    });
   } catch (err) {
-    console.error('[RANK] V2 Error:', err);
+    logger.error({ error: err, userId: interaction.user.id }, 'Error rendering rank V2');
     try { await interaction.editReply('❌ Erro ao renderizar ranking V2.'); } catch { }
   }
 }

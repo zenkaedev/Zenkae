@@ -26,14 +26,12 @@ import { Env } from './env.js';
 import { registerInteractionRouter } from './listeners/interactions.js';
 import { startEventReminders } from './scheduler/eventsReminder.js';
 import { registerMessageCounter } from './listeners/messageCount.js';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const { PrismaClient } = require('@prisma/client');
-
+import { PrismaClient } from '@prisma/client';
 import { loadCommands } from './commands/index.js';
 import { registerVoiceActivity } from './listeners/voiceActivity.js';
 import { Context } from './infra/context.js';
 import { logger } from './infra/logger.js';
+
 
 const prisma = new PrismaClient();
 let clientRef: Client | null = null;
@@ -84,7 +82,7 @@ async function bootstrap() {
       });
     }
 
-    if (true || Env.DEPLOY_ON_BOOT) {
+    if (Env.DEPLOY_ON_BOOT) {
       try {
         const rest = new REST({ version: '10' }).setToken(Env.DISCORD_TOKEN);
         const clientId = Env.CLIENT_ID || c.user.id;
@@ -124,6 +122,7 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  console.error('DB/bootstrap error:', err);
+  logger.fatal({ error: err }, 'Fatal bootstrap error - Bot cannot start');
   process.exit(1);
 });
+

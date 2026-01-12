@@ -35,6 +35,7 @@ model Application {
 
   @@index([guildId, userId])
   @@index([guildId, status, createdAt])
+  @@index([status, createdAt]) // Fix #10: For global status queries
 }
 
 model RecruitSettings {
@@ -104,6 +105,8 @@ model Event {
   reminders EventReminder[]
 
   @@index([guildId, startsAt])
+  @@index([status, startsAt]) // Fix #10: For scheduler queries
+  @@index([guildId, status, startsAt]) // Fix #10: For dashboard queries
 }
 
 model EventRsvp {
@@ -298,4 +301,46 @@ model AuctionBid {
   item        AuctionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId, amount])
+}
+
+// ===== Suggestions System =====
+
+model SuggestionSettings {
+  guildId              String   @id
+  panelChannelId       String?  // Canal do painel público
+  panelMessageId       String?  // ID da mensagem do painel
+  suggestionsChannelId String?  // Canal onde sugestões são enviadas
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Suggestion {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String   // Autor
+  userDisplay String   // Display name do autor
+  title       String   @db.VarChar(100)
+  description String   @db.Text
+  channelId   String   // Canal onde foi postada
+  messageId   String   // ID da mensagem
+  threadId    String?  // ID da thread de discussão
+  createdAt   DateTime @default(now())
+
+  votes SuggestionVote[]
+
+  @@index([guildId, createdAt])
+  @@index([messageId])
+}
+
+model SuggestionVote {
+  id           String     @id @default(cuid())
+  suggestionId String
+  userId       String
+  voteType     String     // 'agree' | 'disagree'
+  createdAt    DateTime   @default(now())
+
+  suggestion Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+
+  @@unique([suggestionId, userId]) // Um voto por usuário
+  @@index([suggestionId, voteType])
 }

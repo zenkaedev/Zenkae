@@ -1,81 +1,104 @@
 import { Client, EmbedBuilder, Guild, TextChannel, MessageFlags } from 'discord.js';
-import { recruitStore } from './store.js';
+import { recruitStore, type Class } from './store.js';
 import { logger } from '../../infra/logger.js';
+import { lifecycle } from '../../infra/lifecycle.js';
+
+// Cache de members fetch com TTL
+const membersFetchCache = new Map<string, number>();
+const FETCH_INTERVAL = 5 * 60 * 1000; // 5 minutos
+
+// Limpa cache expirado a cada 10 minutos - gerenciado pelo lifecycle
+lifecycle.registerInterval(() => {
+    const now = Date.now();
+    for (const [guildId, timestamp] of membersFetchCache.entries()) {
+        if (now - timestamp > FETCH_INTERVAL * 2) {
+            membersFetchCache.delete(guildId);
+        }
+    }
+}, FETCH_INTERVAL * 2, 'members-fetch-cache-cleanup');
+
 
 export async function updateMembersPanel(guild: Guild) {
     try {
-        console.log(`[Members Panel] Starting update for guild ${guild.id}`);
+        logger.info({ guildId: guild.id }, 'Starting members panel update');
         const settings = await recruitStore.getSettings(guild.id);
 
         if (!settings.membersPanelChannelId) {
-            console.log(`[Members Panel] No channel configured, skipping update`);
+            logger.debug({ guildId: guild.id }, 'No members panel channel configured, skipping');
             return;
         }
 
         const classes = recruitStore.parseClasses(settings.classes);
-        console.log(`[Members Panel] Found ${classes.length} classes`);
+        logger.debug({ guildId: guild.id, classCount: classes.length }, 'Classes parsed');
 
         if (classes.length === 0) {
-            console.log(`[Members Panel] No classes configured, skipping update`);
+            logger.debug({ guildId: guild.id }, 'No classes configured, skipping panel update');
             return;
         }
 
-        // Try to fetch members, but don't fail if rate limited
-        try {
-            console.log(`[Members Panel] Attempting to fetch members...`);
-            await guild.members.fetch();
-            console.log(`[Members Panel] Successfully fetched ${guild.members.cache.size} members`);
-        } catch (fetchError: any) {
-            if (fetchError.name === 'GatewayRateLimitError') {
-                console.log(`[Members Panel] Rate limited on member fetch, using cache (${guild.members.cache.size} cached)`);
-            } else {
-                console.error(`[Members Panel] Error fetching members:`, fetchError);
+        // Smart cache: only fetch if needed
+        const now = Date.now();
+        const lastFetch = membersFetchCache.get(guild.id) || 0;
+
+        if (now - lastFetch > FETCH_INTERVAL) {
+            try {
+                logger.debug({ guildId: guild.id }, 'Attempting to fetch guild members');
+                await guild.members.fetch();
+                membersFetchCache.set(guild.id, now);
+                logger.info({ guildId: guild.id, memberCount: guild.members.cache.size }, 'Guild members fetched successfully');
+            } catch (fetchError: any) {
+                if (fetchError.name === 'GatewayRateLimitError') {
+                    logger.warn({ guildId: guild.id, cachedCount: guild.members.cache.size }, 'Rate limited on member fetch, using cache');
+                } else {
+                    logger.error({ guildId: guild.id, error: fetchError }, 'Error fetching members');
+                }
             }
+        } else {
+            logger.debug({ guildId: guild.id, cachedCount: guild.members.cache.size }, 'Using cached members (fetch within TTL)');
         }
 
         const panel = await renderPanel(guild, classes);
-        console.log(`[Members Panel] Panel rendered successfully`);
+        logger.debug({ guildId: guild.id }, 'Members panel rendered');
 
         // Find or send message
         const channel = guild.channels.cache.get(settings.membersPanelChannelId) as TextChannel;
         if (!channel || !channel.isTextBased()) {
-            console.error(`[Members Panel] Channel ${settings.membersPanelChannelId} not found or not text-based`);
+            logger.error({ guildId: guild.id, channelId: settings.membersPanelChannelId }, 'Members panel channel not found or not text-based');
             return;
         }
 
-        console.log(`[Members Panel] Target channel: ${channel.name}`);
+        logger.debug({ guildId: guild.id, channelName: channel.name }, 'Target channel found');
 
         if (settings.membersPanelMessageId) {
             try {
-                console.log(`[Members Panel] Attempting to edit existing message ${settings.membersPanelMessageId}`);
+                logger.debug({ guildId: guild.id, messageId: settings.membersPanelMessageId }, 'Attempting to edit existing panel message');
                 const msg = await channel.messages.fetch(settings.membersPanelMessageId);
                 if (msg) {
                     await msg.edit(panel);
-                    console.log(`[Members Panel] Successfully updated existing message`);
+                    logger.info({ guildId: guild.id, messageId: settings.membersPanelMessageId }, 'Members panel updated successfully');
                     return;
                 }
             } catch (e) {
-                console.log(`[Members Panel] Existing message not found, will create new one`);
+                logger.debug({ guildId: guild.id }, 'Existing panel message not found, will create new one');
             }
         }
 
         // Create new
-        console.log(`[Members Panel] Creating new panel message`);
+        logger.debug({ guildId: guild.id }, 'Creating new members panel message');
         const sent = await channel.send(panel);
         await recruitStore.updateSettings(guild.id, { membersPanelMessageId: sent.id });
-        console.log(`[Members Panel] Panel created successfully with ID ${sent.id}`);
+        logger.info({ guildId: guild.id, messageId: sent.id }, 'Members panel created successfully');
 
     } catch (error) {
-        console.error('[Members Panel] ERROR:', error);
         logger.error({ error, guildId: guild.id }, 'Failed to update members panel');
     }
 }
 
-async function renderPanel(guild: Guild, classes: any[]): Promise<any> {
+async function renderPanel(guild: Guild, classes: Class[]): Promise<{ embeds: EmbedBuilder[] }> {
     const members = guild.members.cache;
 
     // Group by class
-    const groups = new Map<string, { class: any, members: string[] }>();
+    const groups = new Map<string, { class: Class, members: string[] }>();
 
     // Initialize
     for (const c of classes) {
