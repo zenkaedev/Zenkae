@@ -2,18 +2,37 @@
 
 import type { PartySlots } from './types.js';
 
+// Component V2 type IDs
+const V2 = {
+    ActionRow: 1,
+    Button: 2,
+    StringSelect: 3,
+    TextInput: 4,
+    Section: 9,
+    TextDisplay: 10,
+    Thumbnail: 11,
+    MediaGallery: 12,
+    File: 13,
+    Separator: 14,
+    Container: 17,
+} as const;
+
 /**
- * Parse string "Tank:1, Healer:1, DPS:3" para objeto PartySlots
+ * Parse string "1, 2, 3" para objeto PartySlots
+ * Formato: Tank, Healer, DPS (nessa ordem)
  */
 export function parseSlots(input: string): PartySlots {
     const slots: PartySlots = {};
-    const parts = input.split(',').map(s => s.trim());
+    const numbers = input.split(',').map(s => s.trim()).map(n => parseInt(n) || 0);
 
-    for (const part of parts) {
-        const match = part.match(/^(.+?):(\d+)$/);
-        if (match) {
-            const roleName = match[1].trim();
-            const max = parseInt(match[2]);
+    // Roles padrão na ordem: Tank, Healer, DPS
+    const defaultRoles = ['Tank', 'Healer', 'DPS'];
+
+    for (let i = 0; i < Math.min(numbers.length, defaultRoles.length); i++) {
+        const roleName = defaultRoles[i];
+        const max = numbers[i];
+
+        if (max > 0) {
             slots[roleName] = { max, members: [] };
         }
     }
@@ -22,7 +41,7 @@ export function parseSlots(input: string): PartySlots {
 }
 
 /**
- * Gera o container visual da party usando codeblocks ASCII
+ * Gera o container visual da party usando Components V2
  */
 export function renderPartyContainer(data: {
     title: string;
@@ -30,58 +49,89 @@ export function renderPartyContainer(data: {
     description: string;
     leaderId: string;
     slots: PartySlots;
-}): string {
+}): any {
     const { title, datetime, description, leaderId, slots } = data;
 
-    // Header com ASCII box
-    const header = [
-        '```yaml',
-        '╔═══════════════════════════════════════╗',
-        `║ ⚔️  ${title.padEnd(34, ' ')}║`,
-        `║ 📅 ${datetime.padEnd(34, ' ')}║`,
-        '╚═══════════════════════════════════════╝',
-        '```',
-    ].join('\n');
+    // Header section com título e informações
+    const headerSection = {
+        type: V2.Section,
+        components: [
+            {
+                type: V2.TextDisplay,
+                content: `# ⚔️ ${title}`,
+            },
+            {
+                type: V2.TextDisplay,
+                content: `📅 **${datetime}**\n📝 *${description}*\n👑 **Líder:** <@${leaderId}>`,
+            },
+        ],
+    };
 
-    // Descrição e líder
-    const info = [
-        `📝 *${description}*`,
-        `👑 **Líder:** <@${leaderId}>`,
-        '',
-    ].join('\n');
+    // Separator
+    const separator = {
+        type: V2.Separator,
+        divider: true,
+        spacing: 1,
+    };
 
-    // Lista de membros por role
+    // Role emojis
     const roleEmojis: Record<string, string> = {
         Tank: '🛡️',
         Healer: '⚕️',
         DPS: '⚔️',
     };
 
-    const memberLines: string[] = ['```diff'];
+    // Sections para cada role
+    const roleSections: any[] = [];
 
     for (const [roleName, roleData] of Object.entries(slots)) {
         const emoji = roleEmojis[roleName] || '👥';
         const filled = roleData.members.length;
         const max = roleData.max;
 
-        memberLines.push(`+ ${emoji} ${roleName.toUpperCase()} (${filled}/${max})`);
+        // Lista de membros
+        const membersList: string[] = [];
 
-        // Mostrar membros
+        // Membros atuais
         for (const memberId of roleData.members) {
-            memberLines.push(`- <@${memberId}>`);
+            membersList.push(`✅ <@${memberId}>`);
         }
 
-        // Mostrar vagas vazias
+        // Vagas vazias
         for (let i = filled; i < max; i++) {
-            memberLines.push('- [ Vaga Disponível ]');
+            membersList.push(`⬜ Vaga Disponível`);
         }
 
-        memberLines.push(''); // Linha vazia entre roles
+        roleSections.push({
+            type: V2.Section,
+            components: [
+                {
+                    type: V2.TextDisplay,
+                    content: `## ${emoji} ${roleName} (${filled}/${max})`,
+                },
+                {
+                    type: V2.TextDisplay,
+                    content: membersList.join('\n'),
+                },
+            ],
+        });
     }
 
-    memberLines.push('```');
+    // Container principal
+    const container = {
+        type: V2.Container,
+        accent_color: 0x5865F2, // Blurple do Discord
+        components: [
+            headerSection,
+            separator,
+            ...roleSections,
+        ],
+    };
 
-    return [header, info, memberLines.join('\n')].join('\n\n');
+    return {
+        components: [container],
+        flags: 1 << 15, // MessageFlags.IsComponentsV2
+    };
 }
 
 /**

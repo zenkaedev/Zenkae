@@ -104,7 +104,7 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       banner,
       title: 'Matchmaking 🎮',
       subtitle: 'Sistema de formação de grupos',
-      body: `**Sistema de LFG (Looking for Group)**\n\nPublique o totem em um canal para permitir que membros criem parties para dungeons, raids e atividades.`,
+      body: `**Sistema de LFG (Looking for Group)**\n\nPublique o totem em um canal. Os membros poderão criar parties para dungeons, raids e atividades.\n\n_Use o botão abaixo para publicar o totem no canal atual._`,
       buttons: [
         { id: 'matchmaking:publishTotem', label: '📍 Publicar Totem' },
       ],

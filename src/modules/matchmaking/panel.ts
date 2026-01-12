@@ -41,7 +41,7 @@ export async function publishTotem(inter: ButtonInteraction) {
     const button = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId('matchmaking:create')
-            .setLabel('➕ Criar Nova Party')
+            .setLabel('➕ Criar Nova PT')
             .setStyle(ButtonStyle.Primary)
     );
 
@@ -64,7 +64,7 @@ export async function publishTotem(inter: ButtonInteraction) {
 export async function openCreationModal(inter: ButtonInteraction) {
     const modal = new ModalBuilder()
         .setCustomId('matchmaking:modal:create')
-        .setTitle('Criar Nova Party');
+        .setTitle('Criar Nova PT');
 
     modal.addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -94,10 +94,12 @@ export async function openCreationModal(inter: ButtonInteraction) {
         new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
                 .setCustomId('slots')
-                .setLabel('Vagas (Setup)')
-                .setPlaceholder('Tank:1, Healer:1, DPS:3')
+                .setLabel('Vagas: Tank, Healer, DPS (números)')
+                .setPlaceholder('Ex: 1, 2, 3 ou 0, 1, 5')
+                .setValue('1, 2, 3')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
+                .setMaxLength(20)
         )
     );
 
