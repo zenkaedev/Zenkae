@@ -25,6 +25,9 @@ import type { CreatePartyInput } from './types.js';
 export async function publishTotem(inter: ButtonInteraction) {
     if (!inter.inCachedGuild()) return;
 
+    // Defer imediatamente para evitar timeout
+    await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
     const channel = inter.channel;
     if (!channel?.isTextBased()) {
         await inter.editReply({ content: '❌ Use em um canal de texto.' });
@@ -244,8 +247,10 @@ export async function handleJoin(inter: ButtonInteraction, partyId: string, role
         try {
             const message = await inter.channel?.messages.fetch(party.messageId);
             if (message) {
-                await message.edit({ ...payload,
-        components: [...(payload.components || []), ...buttons] });
+                await message.edit({
+                    ...payload,
+                    components: [...(payload.components || []), ...buttons]
+                });
             }
         } catch {
             // Ignorar erro
@@ -312,8 +317,10 @@ export async function handleLeave(inter: ButtonInteraction, partyId: string) {
         try {
             const message = await inter.channel?.messages.fetch(party.messageId);
             if (message) {
-                await message.edit({ ...payload,
-        components: [...(payload.components || []), ...buttons] });
+                await message.edit({
+                    ...payload,
+                    components: [...(payload.components || []), ...buttons]
+                });
             }
         } catch {
             // Ignorar erro
@@ -415,8 +422,10 @@ export async function handleKick(inter: StringSelectMenuInteraction, partyId: st
         try {
             const message = await inter.channel?.messages.fetch(party.messageId);
             if (message) {
-                await message.edit({ ...payload,
-        components: [...(payload.components || []), ...buttons] });
+                await message.edit({
+                    ...payload,
+                    components: [...(payload.components || []), ...buttons]
+                });
             }
         } catch {
             // Ignorar erro
