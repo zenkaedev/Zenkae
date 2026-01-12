@@ -138,7 +138,7 @@ export async function handleCreation(inter: ModalSubmitInteraction) {
 
     // Enviar mensagem primeiro
     const party = await matchmakingStore.create(input, 'temp');
-    const container = renderPartyContainer({
+    const payload = renderPartyContainer({
         title: party.title,
         datetime: party.datetime,
         description: party.description,
@@ -149,8 +149,8 @@ export async function handleCreation(inter: ModalSubmitInteraction) {
     const buttons = buildPartyButtons(party.id, party.slots);
 
     const sent = await (channel as GuildTextBasedChannel).send({
-        content: container,
-        components: buttons,
+        ...payload,
+        components: [...(payload.components || []), ...buttons],
     });
 
     // Atualizar com messageId real
@@ -232,7 +232,7 @@ export async function handleJoin(inter: ButtonInteraction, partyId: string, role
     // Atualizar mensagem
     const updatedParty = await matchmakingStore.getById(partyId);
     if (updatedParty) {
-        const container = renderPartyContainer({
+        const payload = renderPartyContainer({
             title: updatedParty.title,
             datetime: updatedParty.datetime,
             description: updatedParty.description,
@@ -245,7 +245,8 @@ export async function handleJoin(inter: ButtonInteraction, partyId: string, role
         try {
             const message = await inter.channel?.messages.fetch(party.messageId);
             if (message) {
-                await message.edit({ content: container, components: buttons });
+                await message.edit({ ...payload,
+        components: [...(payload.components || []), ...buttons] });
             }
         } catch {
             // Ignorar erro
@@ -299,7 +300,7 @@ export async function handleLeave(inter: ButtonInteraction, partyId: string) {
     // Atualizar mensagem
     const updatedParty = await matchmakingStore.getById(partyId);
     if (updatedParty) {
-        const container = renderPartyContainer({
+        const payload = renderPartyContainer({
             title: updatedParty.title,
             datetime: updatedParty.datetime,
             description: updatedParty.description,
@@ -312,7 +313,8 @@ export async function handleLeave(inter: ButtonInteraction, partyId: string) {
         try {
             const message = await inter.channel?.messages.fetch(party.messageId);
             if (message) {
-                await message.edit({ content: container, components: buttons });
+                await message.edit({ ...payload,
+        components: [...(payload.components || []), ...buttons] });
             }
         } catch {
             // Ignorar erro
@@ -401,7 +403,7 @@ export async function handleKick(inter: StringSelectMenuInteraction, partyId: st
     // Atualizar mensagem
     const updatedParty = await matchmakingStore.getById(partyId);
     if (updatedParty) {
-        const container = renderPartyContainer({
+        const payload = renderPartyContainer({
             title: updatedParty.title,
             datetime: updatedParty.datetime,
             description: updatedParty.description,
@@ -414,7 +416,8 @@ export async function handleKick(inter: StringSelectMenuInteraction, partyId: st
         try {
             const message = await inter.channel?.messages.fetch(party.messageId);
             if (message) {
-                await message.edit({ content: container, components: buttons });
+                await message.edit({ ...payload,
+        components: [...(payload.components || []), ...buttons] });
             }
         } catch {
             // Ignorar erro
