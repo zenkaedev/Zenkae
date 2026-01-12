@@ -54,7 +54,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         // 2. Datas formatadas
         const joinedAt = member.joinedAt
-            ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(member.joinedAt)
+            ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(member.joinedAt)
             : '—';
 
         // 3. Avatar, Banner e Cargo

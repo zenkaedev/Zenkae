@@ -11,7 +11,7 @@ import type { EventWithCounts } from './types.js';
 import { buildScreen, replyV2Notice } from '../../ui/v2.js';
 
 function brDate(dt: Date) {
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeStyle: 'short' }).format(dt);
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(dt);
 }
 
 export async function buildEventsList(guildId: string) {

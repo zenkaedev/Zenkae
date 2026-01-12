@@ -1,8 +1,8 @@
-export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'suggestions';
+export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'suggestions' | 'matchmaking';
 export type RsvpChoice = 'yes' | 'maybe' | 'no';
 
 function isDashTab(x: unknown): x is DashTab {
-  return x === 'home' || x === 'recruit' || x === 'events' || x === 'admin' || x === 'suggestions';
+  return x === 'home' || x === 'recruit' || x === 'events' || x === 'admin' || x === 'suggestions' || x === 'matchmaking';
 }
 
 /**

@@ -94,7 +94,7 @@ export const eventScheduler = {
             const channel = await client.channels.fetch(event.announcementChannelId) as TextChannel;
             if (!channel) return;
 
-            const eventDateStr = new Date(event.startsAt).toLocaleString('pt-BR');
+            const eventDateStr = new Date(event.startsAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
             const embed = new EmbedBuilder()
                 .setTitle(`🔔 Lembrete: ${event.title}`)

@@ -344,3 +344,46 @@ model SuggestionVote {
   @@unique([suggestionId, userId]) // Um voto por usuário
   @@index([suggestionId, voteType])
 }
+
+// ===== Matchmaking / LFG System =====
+
+model Party {
+  id          String   @id @default(cuid())
+  guildId     String
+  channelId   String
+  messageId   String   @unique
+  leaderId    String   // Discord user ID
+  title       String
+  datetime    String   // Formato livre: "Sexta-feira, 20:00"
+  description String   @db.Text
+  slotsJson   String   @db.Text // JSON: { "Tank": { max: 1, members: [...] }, ... }
+  status      String   @default("open") // 'open' | 'full' | 'cancelled'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members PartyMember[]
+
+  @@index([guildId, status])
+  @@index([messageId])
+}
+
+model PartyMember {
+  id        String   @id @default(cuid())
+  partyId   String
+  userId    String   // Discord user ID
+  role      String   // 'Tank', 'Healer', 'DPS', etc
+  joinedAt  DateTime @default(now())
+
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  @@unique([partyId, userId]) // Um usuário só pode estar uma vez na mesma party
+  @@index([partyId, role])
+}
+
+model MatchmakingSettings {
+  guildId        String   @id
+  totemChannelId String?  // Canal onde o totem está publicado
+  totemMessageId String?  // ID da mensagem do totem
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

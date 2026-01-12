@@ -16,6 +16,7 @@ import { eventsRouter } from '../modules/events/interactions.js';
 import { miscRouter } from '../modules/misc/interactions.js';
 import { suggestionRouter } from '../modules/suggestions/interactions.js';
 import { suggestionDashRouter } from '../modules/suggestions/dashboard.js';
+import { matchmakingRouter } from '../modules/matchmaking/interactions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,6 +69,7 @@ export async function registerInteractionRouter(client: Client) {
   mainRouter.merge(miscRouter);
   mainRouter.merge(suggestionRouter);
   mainRouter.merge(suggestionDashRouter);
+  mainRouter.merge(matchmakingRouter);
 
 
   // Register generic dashboard navigation (that sits on root)

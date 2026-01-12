@@ -392,7 +392,7 @@ export async function renderEventsManager(guildId: string): Promise<any> {
   // Select Menu for events
   const options = events.map(e => ({
     label: e.title.substring(0, 99),
-    description: new Date(e.startsAt).toLocaleString('pt-BR'),
+    description: new Date(e.startsAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     value: e.id,
     emoji: '📅'
   }));
@@ -446,7 +446,7 @@ export async function handleManagerAction(inter: ButtonInteraction | StringSelec
       .setTitle(`⚙️ Gerenciando: ${event.title}`)
       .setDescription(event.description || 'Sem descrição')
       .addFields(
-        { name: 'Data', value: new Date(event.startsAt).toLocaleString('pt-BR'), inline: true },
+        { name: 'Data', value: new Date(event.startsAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }), inline: true },
         { name: 'ID', value: `\`${event.id}\``, inline: true }
       )
       .setColor(0x3d348b);

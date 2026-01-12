@@ -12,7 +12,7 @@ import { buildScreen, loadBannerFrom, loadDefaultBanner } from './ui/v2.js';
 import { ids } from './ui/ids.js';
 import { suggestionStore } from './modules/suggestions/store.js';
 
-export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'suggestions';
+export type DashTab = 'home' | 'recruit' | 'events' | 'admin' | 'suggestions' | 'matchmaking';
 export type DashState = { tab: DashTab; guildId?: string; filter?: FilterKind };
 
 /** Payload V2 devolvido para reply/update */
@@ -31,7 +31,9 @@ function bannerFor(tab: DashTab) {
         ? 'recruit'
         : tab === 'events'
           ? 'events'
-          : 'admin';
+          : tab === 'matchmaking'
+            ? 'matchmaking'
+            : 'admin';
 
   return loadBannerFrom(dir) ?? loadDefaultBanner();
 }
@@ -77,6 +79,7 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       const when = new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
         timeStyle: 'short',
+        timeZone: 'America/Sao_Paulo',
       }).format(new Date(e.startsAt));
       lines.push(`- **${e.title}** — ${when} · ✅ ${e.yes} · ❔ ${e.maybe} · ❌ ${e.no}`);
     }
@@ -95,7 +98,19 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
     }) as DashboardView;
   }
 
-
+  /* -------------------- MATCHMAKING -------------------- */
+  if (state.tab === 'matchmaking') {
+    return buildScreen({
+      banner,
+      title: 'Matchmaking 🎮',
+      subtitle: 'Sistema de formação de grupos',
+      body: `**Sistema de LFG (Looking for Group)**\n\nPublique o totem em um canal para permitir que membros criem parties para dungeons, raids e atividades.`,
+      buttons: [
+        { id: 'matchmaking:publishTotem', label: '📍 Publicar Totem' },
+      ],
+      back: { id: ids.dash.tab('home'), label: 'Voltar' },
+    });
+  }
 
   /* -------------------- ADMIN -------------------- */
   if (state.tab === 'admin') {
@@ -143,6 +158,7 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
     buttons: [
       { id: ids.dash.tab('recruit'), label: '📋 Recrutamento' },
       { id: ids.dash.tab('events'), label: '📅 Eventos' },
+      { id: ids.dash.tab('matchmaking'), label: '🎮 Matchmaking' },
       { id: ids.dash.tab('suggestions'), label: '📢 Sugestões' },
       { id: ids.dash.tab('admin'), label: '⚙️ Admin' },
     ],

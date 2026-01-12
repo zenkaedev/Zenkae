@@ -258,6 +258,7 @@ function formatDate(ts: MaybeDate, locale = 'pt-BR'): string {
   return new Intl.DateTimeFormat(locale, {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
   }).format(d);
 }
 

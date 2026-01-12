@@ -18,7 +18,7 @@ function weekStart(d = new Date()) {
 function panel(count: number, week: Date) {
   return buildScreen({
     title: '✅ Check-in semanal',
-    subtitle: `Semana iniciada em **${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(week)}**`,
+    subtitle: `Semana iniciada em **${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeZone: 'America/Sao_Paulo' }).format(week)}**`,
     body: `**Ativos nesta semana:** ${count}\n\nClique em **Estou ativo** para marcar sua presença.`,
     buttons: [{ id: 'activity:check', label: 'Estou ativo' }],
   });
