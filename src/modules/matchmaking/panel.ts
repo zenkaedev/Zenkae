@@ -27,7 +27,7 @@ export async function publishTotem(inter: ButtonInteraction) {
 
     const channel = inter.channel;
     if (!channel?.isTextBased()) {
-        await inter.reply({ content: '❌ Use em um canal de texto.', flags: MessageFlags.Ephemeral });
+        await inter.editReply({ content: '❌ Use em um canal de texto.' });
         return;
     }
 
@@ -52,9 +52,8 @@ export async function publishTotem(inter: ButtonInteraction) {
 
     await matchmakingStore.saveTotem(inter.guildId, channel.id, sent.id);
 
-    await inter.reply({
+    await inter.editReply({
         content: '✅ Totem de Matchmaking publicado com sucesso!',
-        flags: MessageFlags.Ephemeral,
     });
 }
 
