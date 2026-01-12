@@ -121,22 +121,20 @@ suggestionRouter.modal('suggestion:submit', async (i: ModalSubmitInteraction) =>
             return;
         }
 
-        // Create card
-        const tempSuggestion = {
-            id: 'temp',
+        // HOTFIX: Create in DB FIRST to get real ID
+        const savedSuggestion = await suggestionStore.create({
             guildId: i.guild.id,
             userId: i.user.id,
             userDisplay: getDisplayName(i.member, i.user.displayName),
             title,
             description,
             channelId: settings.suggestionsChannelId,
-            messageId: '',
-            threadId: null,
-            createdAt: new Date()
-        };
+            messageId: 'pending' // Temporary, will update
+        });
 
+        // Now build card with REAL ID (no more 'temp'!)
         const card = buildSuggestionCard({
-            suggestion: tempSuggestion as any,
+            suggestion: savedSuggestion,
             agreeCount: 0,
             disagreeCount: 0
         });
@@ -144,15 +142,38 @@ suggestionRouter.modal('suggestion:submit', async (i: ModalSubmitInteraction) =>
         // Send to channel
         const message = await channel.send(card);
 
-        // Save to database
-        await suggestionStore.create({
-            guildId: i.guild.id,
-            userId: i.user.id,
-            userDisplay: getDisplayName(i.member, i.user.displayName),
-            title,
-            description,
-            channelId: settings.suggestionsChannelId,
-            messageId: message.id
+        // Create thread automatically using Discord's native feature
+        let threadId: string | null = null;
+        try {
+            // Check if bot has permission to create threads
+            if ('permissionsFor' in channel) {
+                const botMember = await i.guild.members.fetchMe().catch(() => null);
+                if (botMember) {
+                    const permissions = channel.permissionsFor(botMember);
+                    if (permissions?.has(PermissionFlagsBits.CreatePublicThreads)) {
+                        const thread = await message.startThread({
+                            name: `💬 ${title.slice(0, 90)}`,
+                            autoArchiveDuration: 1440 // 24 hours
+                        });
+                        threadId = thread.id;
+
+                        logger.info({
+                            guildId: i.guild.id,
+                            suggestionId: savedSuggestion.id,
+                            threadId: thread.id
+                        }, 'Thread created automatically');
+                    }
+                }
+            }
+        } catch (err) {
+            // Thread creation failed, but suggestion is still valid
+            logger.warn({ error: err, messageId: message.id }, 'Could not create thread');
+        }
+
+        // Update with real messageId and threadId (if created)
+        await suggestionStore.update(savedSuggestion.id, {
+            messageId: message.id,
+            ...(threadId && { threadId })
         });
 
         // Fix #8: Set cooldown
@@ -161,6 +182,7 @@ suggestionRouter.modal('suggestion:submit', async (i: ModalSubmitInteraction) =>
         logger.info({
             guildId: i.guild.id,
             userId: i.user.id,
+            suggestionId: savedSuggestion.id,
             messageId: message.id,
             title
         }, 'Suggestion created');
@@ -220,92 +242,5 @@ suggestionRouter.button(/^suggestion:vote:(agree|disagree):(.+)$/, async (i: But
             content: '❌ Erro ao registrar voto. Tente novamente.',
             flags: MessageFlags.Ephemeral
         }).catch(() => { });
-    }
-});
-
-/* ----------------------------- THREAD DISCUSSION ----------------------------- */
-
-suggestionRouter.button(/^suggestion:discuss:(.+)$/, async (i: ButtonInteraction) => {
-    await i.deferReply({ flags: MessageFlags.Ephemeral });
-
-    try {
-        const suggestionId = i.customId.split(':')[2];
-        const suggestion = await suggestionStore.get(suggestionId);
-
-        if (!suggestion) {
-            await i.editReply('❌ Sugestão não encontrada.');
-            return;
-        }
-
-        // Check if thread already exists
-        if (suggestion.threadId && i.channel) {
-            try {
-                // Type guard for channels with threads
-                if ('threads' in i.channel) {
-                    const thread = await i.channel.threads.fetch(suggestion.threadId);
-                    if (thread) {
-                        await i.editReply(`💬 Participe da discussão: ${thread.url}`);
-                        return;
-                    }
-                }
-            } catch {
-                // Thread doesn't exist, create new one
-            }
-        }
-
-        // Create thread
-        if (!i.channel || !('messages' in i.channel)) {
-            await i.editReply('❌ Não é possível criar thread neste tipo de canal.');
-            return;
-        }
-
-        // Fix #9: Check bot permissions
-        if (!i.guild) {
-            await i.editReply('❌ Erro ao verificar permissões.');
-            return;
-        }
-
-        const botMember = await i.guild.members.fetchMe().catch(() => null);
-        if (!botMember) {
-            await i.editReply('❌ Erro ao verificar permissões do bot.');
-            return;
-        }
-
-        // Type guard - permissionsFor only exists on GuildChannel
-        if (!('permissionsFor' in i.channel)) {
-            await i.editReply('❌ Não é possível verificar permissões neste tipo de canal.');
-            return;
-        }
-
-        const permissions = i.channel.permissionsFor(botMember);
-        if (!permissions?.has(PermissionFlagsBits.CreatePublicThreads)) {
-            await i.editReply('❌ Bot não tem permissão para criar threads neste canal.');
-            return;
-        }
-
-        const message = await i.channel.messages.fetch(suggestion.messageId);
-        if (!message) {
-            await i.editReply('❌ Mensagem não encontrada.');
-            return;
-        }
-
-        const thread = await message.startThread({
-            name: `💬 ${suggestion.title.slice(0, 90)}`,
-            autoArchiveDuration: 1440 // 24 hours
-        });
-
-        // Update suggestion with threadId
-        await suggestionStore.update(suggestionId, { threadId: thread.id });
-
-        logger.info({
-            suggestionId,
-            threadId: thread.id,
-            userId: i.user.id
-        }, 'Thread created for suggestion');
-
-        await i.editReply(`✅ Thread criada! Participe da discussão: ${thread.url}`);
-    } catch (err) {
-        logger.error({ error: err, customId: i.customId }, 'Error creating thread');
-        await handleError(i, err);
     }
 });

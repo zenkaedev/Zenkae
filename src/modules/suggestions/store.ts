@@ -75,7 +75,7 @@ export const suggestionStore = {
         });
     },
 
-    async update(id: string, data: Partial<{ threadId: string }>) {
+    async update(id: string, data: Partial<{ threadId: string; messageId: string }>) {
         return prisma.suggestion.update({
             where: { id },
             data

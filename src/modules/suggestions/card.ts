@@ -46,7 +46,7 @@ export function buildSuggestionCard(data: SuggestionCardData) {
         new TextDisplayBuilder().setContent(quotedDescription)
     );
 
-    // Votação
+    // Votação (apenas 2 botões, thread é automática!)
     const voteRow = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
             new ButtonBuilder()
@@ -62,17 +62,6 @@ export function buildSuggestionCard(data: SuggestionCardData) {
         );
 
     container.addActionRowComponents(voteRow);
-
-    // Botão de Thread
-    const threadRow = new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId(`suggestion:discuss:${suggestion.id}`)
-                .setLabel('💬 Comentem sobre')
-                .setStyle(ButtonStyle.Secondary)
-        );
-
-    container.addActionRowComponents(threadRow);
 
     const FLAGS_V2 = (MessageFlags as unknown as Record<string, number>).IsComponentsV2 || 128;
 
