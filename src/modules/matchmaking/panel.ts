@@ -16,8 +16,11 @@ import {
 } from 'discord.js';
 
 import { matchmakingStore } from './store.js';
-import { renderPartyContainer, getRoleEmoji } from './visual.js';
+import { renderPartyContainer } from './visual.js';
 import type { CreatePartyInput } from './types.js';
+
+// Estado temporário para armazenar seleções de dia/hora/role por usuário
+const creationState = new Map<string, { day?: string; time?: string; role?: string }>();
 
 /**
  * Publica o "Totem" - Mensagem persistente com botão para criar parties
@@ -30,7 +33,7 @@ export async function publishTotem(inter: ButtonInteraction) {
 
     const channel = inter.channel;
     if (!channel?.isTextBased()) {
-        await inter.editReply({ content: '❌ Use em um canal de texto.' });
+        await inter.editReply('❌ Use em um canal de texto.');
         return;
     }
 
@@ -55,15 +58,184 @@ export async function publishTotem(inter: ButtonInteraction) {
 
     await matchmakingStore.saveTotem(inter.guildId, channel.id, sent.id);
 
+    await inter.editReply('✅ Totem de Matchmaking publicado com sucesso!');
+}
+
+/**
+ * Passo 1: Abre mensagem com selects para dia e hora
+ */
+export async function openCreationModal(inter: ButtonInteraction) {
+    await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const daySelect = new StringSelectMenuBuilder()
+        .setCustomId('matchmaking:create:day')
+        .setPlaceholder('📅 Escolha o dia')
+        .addOptions([
+            { label: 'Segunda-feira', value: 'Segunda', emoji: '📅' },
+            { label: 'Terça-feira', value: 'Terça', emoji: '📅' },
+            { label: 'Quarta-feira', value: 'Quarta', emoji: '📅' },
+            { label: 'Quinta-feira', value: 'Quinta', emoji: '📅' },
+            { label: 'Sexta-feira', value: 'Sexta', emoji: '📅' },
+            { label: 'Sábado', value: 'Sábado', emoji: '📅' },
+            { label: 'Domingo', value: 'Domingo', emoji: '📅' },
+        ]);
+
+    const timeOptions = [];
+    for (let h = 0; h < 24; h++) {
+        const hour = h.toString().padStart(2, '0');
+        timeOptions.push({ label: `${hour}:00`, value: `${hour}:00` });
+    }
+
+    const timeSelect = new StringSelectMenuBuilder()
+        .setCustomId('matchmaking:create:time')
+        .setPlaceholder('🕐 Escolha o horário')
+        .addOptions(timeOptions);
+
+    const roleSelect = new StringSelectMenuBuilder()
+        .setCustomId('matchmaking:create:role')
+        .setPlaceholder('🎭 Escolha sua role')
+        .addOptions([
+            { label: 'Tank', value: 'Tank', emoji: '🛡️' },
+            { label: 'Healer', value: 'Healer', emoji: '⚕️' },
+            { label: 'DPS', value: 'DPS', emoji: '⚔️' },
+        ]);
+
+    const continueBtn = new ButtonBuilder()
+        .setCustomId('matchmaking:create:continue')
+        .setLabel('Continuar →')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(true);
+
     await inter.editReply({
-        content: '✅ Totem de Matchmaking publicado com sucesso!',
+        content: '📝 **Criar Nova PT**\n\nPreencha as informações:',
+        components: [
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(daySelect),
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(timeSelect),
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(roleSelect),
+            new ActionRowBuilder<ButtonBuilder>().addComponents(continueBtn),
+        ],
     });
 }
 
 /**
- * Abre modal de criação de party
+ * Handler para seleção de dia
  */
-export async function openCreationModal(inter: ButtonInteraction) {
+export async function handleSelectDay(inter: StringSelectMenuInteraction) {
+    const userId = inter.user.id;
+    const day = inter.values[0];
+
+    let state = creationState.get(userId) || {};
+    state.day = day;
+    creationState.set(userId, state);
+
+    await updateCreationMessage(inter, state);
+}
+
+/**
+ * Handler para seleção de hora
+ */
+export async function handleSelectTime(inter: StringSelectMenuInteraction) {
+    const userId = inter.user.id;
+    const time = inter.values[0];
+
+    let state = creationState.get(userId) || {};
+    state.time = time;
+    creationState.set(userId, state);
+
+    await updateCreationMessage(inter, state);
+}
+
+/**
+ * Handler para seleção de role
+ */
+export async function handleSelectRole(inter: StringSelectMenuInteraction) {
+    const userId = inter.user.id;
+    const role = inter.values[0];
+
+    let state = creationState.get(userId) || {};
+    state.role = role;
+    creationState.set(userId, state);
+
+    await updateCreationMessage(inter, state);
+}
+
+/**
+ * Atualiza mensagem quando selects mudam
+ */
+async function updateCreationMessage(inter: StringSelectMenuInteraction, state: { day?: string; time?: string; role?: string }) {
+    await inter.deferUpdate();
+
+    const allSelected = state.day && state.time;
+
+    const summary = allSelected
+        ? `\n\n✅ **${state.day}, ${state.time}**`
+        : '';
+
+    const continueBtn = new ButtonBuilder()
+        .setCustomId('matchmaking:create:continue')
+        .setLabel('Continuar →')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!allSelected);
+
+    // Recriar selects (manter valores)
+    const daySelect = new StringSelectMenuBuilder()
+        .setCustomId('matchmaking:create:day')
+        .setPlaceholder(state.day || '📅 Escolha o dia')
+        .addOptions([
+            { label: 'Segunda-feira', value: 'Segunda', emoji: '📅' },
+            { label: 'Terça-feira', value: 'Terça', emoji: '📅' },
+            { label: 'Quarta-feira', value: 'Quarta', emoji: '📅' },
+            { label: 'Quinta-feira', value: 'Quinta', emoji: '📅' },
+            { label: 'Sexta-feira', value: 'Sexta', emoji: '📅' },
+            { label: 'Sábado', value: 'Sábado', emoji: '📅' },
+            { label: 'Domingo', value: 'Domingo', emoji: '📅' },
+        ]);
+
+    const timeOptions = [];
+    for (let h = 0; h < 24; h++) {
+        const hour = h.toString().padStart(2, '0');
+        timeOptions.push({ label: `${hour}:00`, value: `${hour}:00` });
+    }
+
+    const timeSelect = new StringSelectMenuBuilder()
+        .setCustomId('matchmaking:create:time')
+        .setPlaceholder(state.time || '🕐 Escolha o horário')
+        .addOptions(timeOptions);
+
+    const roleSelect = new StringSelectMenuBuilder()
+        .setCustomId('matchmaking:create:role')
+        .setPlaceholder(state.role || '🎭 Escolha sua role')
+        .addOptions([
+            { label: 'Tank', value: 'Tank', emoji: '🛡️' },
+            { label: 'Healer', value: 'Healer', emoji: '⚕️' },
+            { label: 'DPS', value: 'DPS', emoji: '⚔️' },
+        ]);
+
+    await inter.editReply({
+        content: `📝 **Criar Nova PT**\n\nPreencha as informações:${summary}`,
+        components: [
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(daySelect),
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(timeSelect),
+            new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(roleSelect),
+            new ActionRowBuilder<ButtonBuilder>().addComponents(continueBtn),
+        ],
+    });
+}
+
+/**
+ * Passo 2: Abre modal após selecionar dia e hora
+ */
+export async function handleContinue(inter: ButtonInteraction) {
+    const state = creationState.get(inter.user.id);
+
+    if (!state?.day || !state?.time || !state?.role) {
+        await inter.reply({
+            content: '❌ Selecione dia, hora e role primeiro!',
+            flags: MessageFlags.Ephemeral,
+        });
+        return;
+    }
+
     const modal = new ModalBuilder()
         .setCustomId('matchmaking:modal:create')
         .setTitle('Criar Nova PT');
@@ -79,62 +251,53 @@ export async function openCreationModal(inter: ButtonInteraction) {
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
-                .setCustomId('day')
-                .setLabel('Dia da Semana')
-                .setPlaceholder('Segunda, Terça, Quarta, Quinta, Sexta, Sábado, Domingo')
-                .setValue('Sexta')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMaxLength(15)
-        ),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-                .setCustomId('time')
-                .setLabel('Horário (formato 24h)')
-                .setPlaceholder('00:00 até 23:00 - Ex: 20:00')
-                .setValue('20:00')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMaxLength(5)
-        ),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
                 .setCustomId('description')
                 .setLabel('Descrição Rápida')
                 .setPlaceholder('Ex: Foco em clear rápido, traga pot')
                 .setStyle(TextInputStyle.Paragraph)
                 .setRequired(true)
         ),
+
         new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
-                .setCustomId('role')
-                .setLabel('Sua Role')
-                .setPlaceholder('Tank, Healer ou DPS')
-                .setValue('DPS')
+                .setCustomId('slots')
+                .setLabel('Vagas: Tank, Healer, DPS (total sempre 5)')
+                .setPlaceholder('Ex: 1, 1, 3 (padrão) ou 1, 0, 4 ou 0, 1, 4')
+                .setValue('1, 1, 3')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
-                .setMaxLength(10)
+                .setMaxLength(20)
         )
     );
-
-    // Nota: Campo 'slots' será adicionado em follow-up ou teremos que fazer 2-step flow
-    // Discord limita modais a 5 ActionRows, então precisamos decidir:
 
     await inter.showModal(modal);
 }
 
 /**
- * Processa criação da party
+ * Processa criação final da party
  */
 export async function handleCreation(inter: ModalSubmitInteraction) {
     if (!inter.inCachedGuild()) return;
 
     await inter.deferReply({ flags: MessageFlags.Ephemeral });
 
+    // Pegar estado salvo
+    const state = creationState.get(inter.user.id);
+    if (!state?.day || !state?.time || !state?.role) {
+        await inter.editReply('❌ Erro: Estado perdido. Tente novamente.');
+        return;
+    }
+
+    // Limpar estado
+    creationState.delete(inter.user.id);
+
+    // Ler campos do modal
     const title = inter.fields.getTextInputValue('title');
-    const datetime = inter.fields.getTextInputValue('datetime');
     const description = inter.fields.getTextInputValue('description');
     const slotsString = inter.fields.getTextInputValue('slots');
+
+    // Role vem do estado, não do modal
+    const role = state.role;
 
     const channel = inter.channel;
     if (!channel?.isTextBased()) {
@@ -142,11 +305,37 @@ export async function handleCreation(inter: ModalSubmitInteraction) {
         return;
     }
 
-    // Criar party no DB (temporário sem messageId)
+    // Validar role
+    const validRoles = ['Tank', 'Healer', 'DPS'];
+    const normalizedRole = validRoles.find(r => r.toLowerCase() === role.toLowerCase());
+
+    if (!normalizedRole) {
+        await inter.editReply('❌ Role inválida. Use: Tank, Healer ou DPS');
+        return;
+    }
+
+    // Validar slots (deve somar 5 total)
+    const slotNumbers = slotsString.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    if (slotNumbers.length !== 3) {
+        await inter.editReply('❌ Forneça exatamente 3 números separados por vírgula (Tank, Healer, DPS)');
+        return;
+    }
+
+    const totalSlots = slotNumbers.reduce((sum, n) => sum + n, 0);
+    if (totalSlots !== 5) {
+        await inter.editReply(`❌ Total de vagas deve ser **5** (você colocou ${totalSlots})`);
+        return;
+    }
+
+    // Combinar datetime
+    const datetime = `${state.day}, ${state.time}`;
+
+    // Criar party
     const input: CreatePartyInput = {
         guildId: inter.guildId,
         channelId: channel.id,
         leaderId: inter.user.id,
+        leaderRole: normalizedRole,
         title,
         datetime,
         description,
@@ -163,70 +352,73 @@ export async function handleCreation(inter: ModalSubmitInteraction) {
         slots: party.slots,
     });
 
-    const buttons = buildPartyButtons(party.id, party.slots);
+    const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`matchmaking:join:${party.id}`)
+            .setLabel('Entrar na PT')
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(`matchmaking:leave:${party.id}`)
+            .setLabel('Sair da PT')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId(`matchmaking:cancel:${party.id}`)
+            .setLabel('❌ Cancelar (Líder)')
+            .setStyle(ButtonStyle.Danger)
+    );
 
     const sent = await (channel as GuildTextBasedChannel).send({
         ...payload,
-        components: [...(payload.components || []), ...buttons],
+        components: [...(payload.components || []), buttons],
     });
 
     // Atualizar com messageId real
     await matchmakingStore.updateMessageId(party.id, sent.id);
 
-    try {
-        // Notificar líder
-        const leader = await inter.client.users.fetch(inter.user.id);
-        await leader.send(`🚀 Sua party **${title}** foi criada com sucesso!`);
-    } catch {
-        // Ignorar se DM falhar
-    }
-
-    await inter.editReply('✅ Party criada com sucesso!');
+    await inter.editReply({ content: `✅ PT criada! ${sent.url}` });
 }
 
-/**
- * Constrói botões da party
- */
-function buildPartyButtons(partyId: string, slots: any): ActionRowBuilder<ButtonBuilder>[] {
-    const roleButtons = new ActionRowBuilder<ButtonBuilder>();
+// ... resto dos handlers (handleJoin, handleLeave, handleKick, handleCancel)
+// Mantém igual ao que já está no arquivo
+const roleButtons = new ActionRowBuilder<ButtonBuilder>();
 
-    // Botões por role
-    for (const roleName of Object.keys(slots)) {
-        const emoji = getRoleEmoji(roleName);
-        roleButtons.addComponents(
-            new ButtonBuilder()
-                .setCustomId(`matchmaking:join:${partyId}:${roleName}`)
-                .setLabel(roleName)
-                .setEmoji(emoji)
-                .setStyle(ButtonStyle.Secondary)
-        );
-    }
-
-    // Botão de sair
+// BotÃµes por role
+for (const roleName of Object.keys(slots)) {
+    const emoji = getRoleEmoji(roleName);
     roleButtons.addComponents(
         new ButtonBuilder()
-            .setCustomId(`matchmaking:leave:${partyId}`)
-            .setLabel('Sair')
-            .setStyle(ButtonStyle.Danger)
+            .setCustomId(`matchmaking:join:${partyId}:${roleName}`)
+            .setLabel(roleName)
+            .setEmoji(emoji)
+            .setStyle(ButtonStyle.Secondary)
     );
+}
 
-    // Botões de gerenciamento
-    const manageButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-            .setCustomId(`matchmaking:manage:${partyId}`)
-            .setLabel('⚙️ Gerenciar')
-            .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId(`matchmaking:cancel:${partyId}`)
-            .setLabel('🗑️ Cancelar PT')
-            .setStyle(ButtonStyle.Danger)
-    );
+// BotÃ£o de sair
+roleButtons.addComponents(
+    new ButtonBuilder()
+        .setCustomId(`matchmaking:leave:${partyId}`)
+        .setLabel('Sair')
+        .setStyle(ButtonStyle.Danger)
+);
 
-    return [roleButtons, manageButtons];
+// BotÃµes de gerenciamento
+const manageButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+        .setCustomId(`matchmaking:manage:${partyId}`)
+        .setLabel('âš™ï¸ Gerenciar')
+        .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+        .setCustomId(`matchmaking:cancel:${partyId}`)
+        .setLabel('ðŸ—‘ï¸ Cancelar PT')
+        .setStyle(ButtonStyle.Danger)
+);
+
+return [roleButtons, manageButtons];
 }
 
 /**
- * Usuário entra na party
+ * UsuÃ¡rio entra na party
  */
 export async function handleJoin(inter: ButtonInteraction, partyId: string, role: string) {
     if (!inter.inCachedGuild()) return;
@@ -235,14 +427,14 @@ export async function handleJoin(inter: ButtonInteraction, partyId: string, role
 
     const party = await matchmakingStore.getById(partyId);
     if (!party) {
-        await inter.editReply('❌ Party não encontrada.');
+        await inter.editReply('âŒ Party nÃ£o encontrada.');
         return;
     }
 
     const success = await matchmakingStore.addMember(partyId, inter.user.id, role);
 
     if (!success) {
-        await inter.editReply('❌ Não foi possível entrar. Vaga pode estar cheia ou você já está na party.');
+        await inter.editReply('âŒ NÃ£o foi possÃ­vel entrar. Vaga pode estar cheia ou vocÃª jÃ¡ estÃ¡ na party.');
         return;
     }
 
@@ -271,7 +463,7 @@ export async function handleJoin(inter: ButtonInteraction, partyId: string, role
             // Ignorar erro
         }
 
-        // Notificar líder
+        // Notificar lÃ­der
         try {
             const leader = await inter.client.users.fetch(party.leaderId);
             const remaining = Object.values(updatedParty.slots).reduce(
@@ -279,18 +471,18 @@ export async function handleJoin(inter: ButtonInteraction, partyId: string, role
                 0
             );
             await leader.send(
-                `🚀 **Update:** <@${inter.user.id}> acabou de entrar como **${role}** na sua party "${party.title}". (Faltam ${remaining} vagas)`
+                `ðŸš€ **Update:** <@${inter.user.id}> acabou de entrar como **${role}** na sua party "${party.title}". (Faltam ${remaining} vagas)`
             );
         } catch {
             // Ignorar se DM falhar
         }
     }
 
-    await inter.editReply(`✅ Você entrou como **${role}**!`);
+    await inter.editReply(`âœ… VocÃª entrou como **${role}**!`);
 }
 
 /**
- * Usuário sai da party
+ * UsuÃ¡rio sai da party
  */
 export async function handleLeave(inter: ButtonInteraction, partyId: string) {
     if (!inter.inCachedGuild()) return;
@@ -299,20 +491,20 @@ export async function handleLeave(inter: ButtonInteraction, partyId: string) {
 
     const party = await matchmakingStore.getById(partyId);
     if (!party) {
-        await inter.editReply('❌ Party não encontrada.');
+        await inter.editReply('âŒ Party nÃ£o encontrada.');
         return;
     }
 
-    // Líder não pode sair
+    // LÃ­der nÃ£o pode sair
     if (inter.user.id === party.leaderId) {
-        await inter.editReply('❌ O líder não pode sair. Use "Cancelar PT" para encerrar a party.');
+        await inter.editReply('âŒ O lÃ­der nÃ£o pode sair. Use "Cancelar PT" para encerrar a party.');
         return;
     }
 
     const success = await matchmakingStore.removeMember(partyId, inter.user.id);
 
     if (!success) {
-        await inter.editReply('❌ Você não está nesta party.');
+        await inter.editReply('âŒ VocÃª nÃ£o estÃ¡ nesta party.');
         return;
     }
 
@@ -342,31 +534,31 @@ export async function handleLeave(inter: ButtonInteraction, partyId: string) {
         }
     }
 
-    await inter.editReply('✅ Você saiu da party.');
+    await inter.editReply('âœ… VocÃª saiu da party.');
 }
 
 /**
- * Abre menu de gerenciamento (só líder)
+ * Abre menu de gerenciamento (sÃ³ lÃ­der)
  */
 export async function handleManage(inter: ButtonInteraction, partyId: string) {
     if (!inter.inCachedGuild()) return;
 
     const party = await matchmakingStore.getById(partyId);
     if (!party) {
-        await inter.reply({ content: '❌ Party não encontrada.', flags: MessageFlags.Ephemeral });
+        await inter.reply({ content: 'âŒ Party nÃ£o encontrada.', flags: MessageFlags.Ephemeral });
         return;
     }
 
-    // Validar líder
+    // Validar lÃ­der
     if (inter.user.id !== party.leaderId) {
         await inter.reply({
-            content: `⛔ Apenas o líder <@${party.leaderId}> pode gerenciar esta PT.`,
+            content: `â›” Apenas o lÃ­der <@${party.leaderId}> pode gerenciar esta PT.`,
             flags: MessageFlags.Ephemeral,
         });
         return;
     }
 
-    // Buscar membros (exceto líder)
+    // Buscar membros (exceto lÃ­der)
     const members: string[] = [];
     for (const roleData of Object.values(party.slots)) {
         for (const memberId of roleData.members) {
@@ -378,7 +570,7 @@ export async function handleManage(inter: ButtonInteraction, partyId: string) {
 
     if (members.length === 0) {
         await inter.reply({
-            content: '⚠️ Não há membros para gerenciar (apenas você está na party).',
+            content: 'âš ï¸ NÃ£o hÃ¡ membros para gerenciar (apenas vocÃª estÃ¡ na party).',
             flags: MessageFlags.Ephemeral,
         });
         return;
@@ -400,7 +592,7 @@ export async function handleManage(inter: ButtonInteraction, partyId: string) {
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
     await inter.reply({
-        content: '⚙️ **Gerenciar Party** - Selecione um membro para remover:',
+        content: 'âš™ï¸ **Gerenciar Party** - Selecione um membro para remover:',
         components: [row],
         flags: MessageFlags.Ephemeral,
     });
@@ -447,16 +639,16 @@ export async function handleKick(inter: StringSelectMenuInteraction, partyId: st
         }
     }
 
-    // DM para usuário removido
+    // DM para usuÃ¡rio removido
     try {
         const kickedUser = await inter.client.users.fetch(kickUserId);
-        await kickedUser.send(`⚠️ Você foi removido da party "${party.title}" pelo líder.`);
+        await kickedUser.send(`âš ï¸ VocÃª foi removido da party "${party.title}" pelo lÃ­der.`);
     } catch {
         // Ignorar se DM falhar
     }
 
     await inter.editReply({
-        content: `✅ <@${kickUserId}> foi removido da party.`,
+        content: `âœ… <@${kickUserId}> foi removido da party.`,
         components: [],
     });
 }
@@ -469,14 +661,14 @@ export async function handleCancel(inter: ButtonInteraction, partyId: string) {
 
     const party = await matchmakingStore.getById(partyId);
     if (!party) {
-        await inter.reply({ content: '❌ Party não encontrada.', flags: MessageFlags.Ephemeral });
+        await inter.reply({ content: 'âŒ Party nÃ£o encontrada.', flags: MessageFlags.Ephemeral });
         return;
     }
 
-    // Validar líder
+    // Validar lÃ­der
     if (inter.user.id !== party.leaderId) {
         await inter.reply({
-            content: `⛔ Apenas o líder <@${party.leaderId}> pode cancelar esta PT.`,
+            content: `â›” Apenas o lÃ­der <@${party.leaderId}> pode cancelar esta PT.`,
             flags: MessageFlags.Ephemeral,
         });
         return;
@@ -488,7 +680,7 @@ export async function handleCancel(inter: ButtonInteraction, partyId: string) {
         const message = await inter.channel?.messages.fetch(party.messageId);
         if (message) {
             await message.edit({
-                content: `~~${message.content}~~\n\n❌ **Esta party foi cancelada pelo líder.**`,
+                content: `~~${message.content}~~\n\nâŒ **Esta party foi cancelada pelo lÃ­der.**`,
                 components: [],
             });
         }
@@ -496,5 +688,5 @@ export async function handleCancel(inter: ButtonInteraction, partyId: string) {
         // Ignorar erro
     }
 
-    await inter.reply({ content: '✅ Party cancelada.', flags: MessageFlags.Ephemeral });
+    await inter.reply({ content: 'âœ… Party cancelada.', flags: MessageFlags.Ephemeral });
 }
