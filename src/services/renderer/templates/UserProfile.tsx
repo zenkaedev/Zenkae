@@ -53,7 +53,7 @@ export function UserProfile(props: UserProfileProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 width: '1200px',
-                height: '900px',
+                height: '600px',
                 background: '#101822',
                 borderRadius: '20px',
                 overflow: 'hidden',
@@ -271,7 +271,7 @@ export function UserProfile(props: UserProfileProps) {
             <div style={{
                 display: 'flex',
                 padding: '0 40px',
-                marginTop: '40px',
+                marginTop: '10px',
                 gap: '20px',
                 height: '180px', // Fixed height to stop them from being huge pillars
                 // flex: 1 removed so they don't stretch
