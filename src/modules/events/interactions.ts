@@ -42,6 +42,11 @@ eventsRouter.button(new RegExp('^events:manager:'), async (i) => {
     }
     await handleManagerAction(i);
 });
+eventsRouter.modal(new RegExp('^events:manager:update:'), async (i) => {
+    if (!(await assertStaff(i))) return;
+    const { handleManagerAction } = await import('./panel.js');
+    await handleManagerAction(i);
+});
 eventsRouter.select(new RegExp('^events:draft:select:'), async (i) => {
     if (!(await assertStaff(i))) return;
     await handleDraftAction(i);
