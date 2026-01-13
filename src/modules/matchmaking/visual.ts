@@ -52,27 +52,27 @@ export function renderPartyContainer(data: {
 }): any {
     const { title, datetime, description, leaderId, slots } = data;
 
-    // Header section com título e informações
-    const headerSection = {
-        type: V2.Section,
-        components: [
-            {
-                type: V2.TextDisplay,
-                content: `# ⚔️ ${title}`,
-            },
-            {
-                type: V2.TextDisplay,
-                content: `📅 **${datetime}**\n📝 *${description}*\n👑 **Líder:** <@${leaderId}>`,
-            },
-        ],
-    };
+    // Lista linear de componentes para o container
+    const components: any[] = [];
 
-    // Separator
-    const separator = {
+    // 1. Header (Título)
+    components.push({
+        type: V2.TextDisplay,
+        content: `# ⚔️ ${title}`,
+    });
+
+    // 2. Info (Data, Descrição, Líder)
+    components.push({
+        type: V2.TextDisplay,
+        content: `📅 **${datetime}**\n📝 *${description}*\n👑 **Líder:** <@${leaderId}>`,
+    });
+
+    // 3. Separator
+    components.push({
         type: V2.Separator,
         divider: true,
         spacing: 1,
-    };
+    });
 
     // Role emojis
     const roleEmojis: Record<string, string> = {
@@ -81,9 +81,7 @@ export function renderPartyContainer(data: {
         DPS: '⚔️',
     };
 
-    // Sections para cada role
-    const roleSections: any[] = [];
-
+    // 4. Roles
     for (const [roleName, roleData] of Object.entries(slots)) {
         const emoji = roleEmojis[roleName] || '👥';
         const filled = roleData.members.length;
@@ -91,29 +89,23 @@ export function renderPartyContainer(data: {
 
         // Lista de membros
         const membersList: string[] = [];
-
-        // Membros atuais
         for (const memberId of roleData.members) {
             membersList.push(`✅ <@${memberId}>`);
         }
-
-        // Vagas vazias
         for (let i = filled; i < max; i++) {
             membersList.push(`⬜ Vaga Disponível`);
         }
 
-        roleSections.push({
-            type: V2.Section,
-            components: [
-                {
-                    type: V2.TextDisplay,
-                    content: `## ${emoji} ${roleName} (${filled}/${max})`,
-                },
-                {
-                    type: V2.TextDisplay,
-                    content: membersList.join('\n'),
-                },
-            ],
+        // Título da Role
+        components.push({
+            type: V2.TextDisplay,
+            content: `## ${emoji} ${roleName} (${filled}/${max})`,
+        });
+
+        // Lista de membros
+        components.push({
+            type: V2.TextDisplay,
+            content: membersList.join('\n'),
         });
     }
 
@@ -121,11 +113,7 @@ export function renderPartyContainer(data: {
     const container = {
         type: V2.Container,
         accent_color: 0x5865F2, // Blurple do Discord
-        components: [
-            headerSection,
-            separator,
-            ...roleSections,
-        ],
+        components: components,
     };
 
     return {
