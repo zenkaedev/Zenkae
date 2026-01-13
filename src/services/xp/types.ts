@@ -57,7 +57,12 @@ export interface IXPStore {
     /**
      * Adiciona XP ao usuário por mensagem (com cooldown de 60s)
      */
-    addMessageXP(guildId: string, userId: string): Promise<XPResult>;
+    addMessageXP(guildId: string, userId: string, options?: { min?: number, max?: number }): Promise<XPResult>;
+
+    /**
+     * Adiciona XP manualmente ou por sistema (sem cooldown de mensagem)
+     */
+    addManualXP(guildId: string, userId: string, xp: number): Promise<void>;
 
     /**
      * Adiciona XP por tempo em voz

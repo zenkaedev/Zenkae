@@ -41,13 +41,15 @@ export const xpStore: IXPStore = {
      * Adiciona XP ao usuário (com cooldown de 60s para mensagens)
      * @returns {levelUp: boolean, newLevel: number, xpGained: number}
      */
-    async addMessageXP(guildId: string, userId: string): Promise<{
+    async addMessageXP(guildId: string, userId: string, options?: { min?: number, max?: number }): Promise<{
         levelUp: boolean;
         newLevel: number;
         xpGained: number;
     }> {
         const now = new Date();
         const cooldownSeconds = 60;
+        const minXP = options?.min ?? 15;
+        const maxXP = options?.max ?? 25;
 
         // Buscar ou criar registro
         let userLevel = await prisma.userLevel.findUnique({
@@ -56,7 +58,7 @@ export const xpStore: IXPStore = {
 
         if (!userLevel) {
             // Primeiro XP do usuário
-            const xpGained = this.randomXP(15, 25);
+            const xpGained = this.randomXP(minXP, maxXP);
             userLevel = await prisma.userLevel.create({
                 data: {
                     guildId,
@@ -80,7 +82,7 @@ export const xpStore: IXPStore = {
         }
 
         // Ganhar XP
-        const xpGained = this.randomXP(15, 25);
+        const xpGained = this.randomXP(minXP, maxXP);
         const newXPTotal = userLevel.xpTotal + xpGained;
         const newLevel = this.getLevelFromXP(newXPTotal);
         const levelUp = newLevel > userLevel.level;
@@ -99,6 +101,45 @@ export const xpStore: IXPStore = {
         await this.addPeriodXP(guildId, userId, xpGained);
 
         return { levelUp, newLevel, xpGained };
+    },
+
+    /**
+     * Adiciona XP manualmente ou por sistema (sem cooldown)
+     */
+    async addManualXP(guildId: string, userId: string, xp: number): Promise<void> {
+        if (xp <= 0) return;
+
+        let userLevel = await prisma.userLevel.findUnique({
+            where: { guildId_userId: { guildId, userId } },
+        });
+
+        if (!userLevel) {
+            await prisma.userLevel.create({
+                data: {
+                    guildId,
+                    userId,
+                    xpTotal: xp,
+                    level: this.getLevelFromXP(xp),
+                },
+            });
+            // Period
+            await this.addPeriodXP(guildId, userId, xp);
+            return;
+        }
+
+        const newXPTotal = userLevel.xpTotal + xp;
+        const newLevel = this.getLevelFromXP(newXPTotal);
+
+        await prisma.userLevel.update({
+            where: { guildId_userId: { guildId, userId } },
+            data: {
+                xpTotal: newXPTotal,
+                level: newLevel,
+            },
+        });
+
+        // Period
+        await this.addPeriodXP(guildId, userId, xp);
     },
 
     /**

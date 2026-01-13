@@ -43,6 +43,7 @@ async function bootstrap() {
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildMessageReactions,
     ],
   });
   clientRef = client;
@@ -117,6 +118,12 @@ async function bootstrap() {
 
   const { registerMembersListeners } = await import('./listeners/members.js');
   registerMembersListeners(client);
+
+  const { registerInviteTracker } = await import('./listeners/invites.js');
+  registerInviteTracker(client);
+
+  const { registerReactionTracker } = await import('./listeners/reactions.js');
+  registerReactionTracker(client);
 
   await client.login(Env.DISCORD_TOKEN);
 }

@@ -171,6 +171,50 @@ export const eventScheduler = {
                 }
             }
 
+            // Handle Recurrence
+            if (event.recurrence === 'WEEKLY') {
+                try {
+                    const nextDate = new Date(event.startsAt);
+                    nextDate.setDate(nextDate.getDate() + 7);
+
+                    const { eventPublicPayload } = await import('../../modules/events/panel.js');
+
+                    // Create next event
+                    const nextEvent = await prisma.event.create({
+                        data: {
+                            guildId: event.guildId,
+                            title: event.title,
+                            description: event.description,
+                            startsAt: nextDate,
+                            channelId: event.channelId,
+                            messageId: 'pending', // Will be updated
+                            imageUrl: event.imageUrl,
+                            voiceChannelId: event.voiceChannelId,
+                            zkReward: event.zkReward,
+                            recurrence: 'WEEKLY',
+                            dmMessage: event.dmMessage,
+                            announcementChannelId: event.announcementChannelId
+                        }
+                    });
+
+                    // Post new message
+                    if (event.channelId) {
+                        const channel = await client.channels.fetch(event.channelId) as TextChannel;
+                        if (channel) {
+                            const payload = eventPublicPayload(nextEvent as any, nextEvent.id);
+                            const msg = await channel.send(payload);
+                            await prisma.event.update({
+                                where: { id: nextEvent.id },
+                                data: { messageId: msg.id }
+                            });
+                        }
+                    }
+                    logger.info({ oldId: event.id, newId: nextEvent.id }, 'Recurred event created');
+                } catch (recurErr) {
+                    logger.error({ error: recurErr, eventId: event.id }, 'Failed to recur event');
+                }
+            }
+
             // Mark completed
             await prisma.event.update({
                 where: { id: event.id },

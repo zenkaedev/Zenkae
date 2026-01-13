@@ -1,5 +1,5 @@
 // src/listeners/messageCount.ts
-import { Client, Events, MessageFlags } from 'discord.js';
+import { Client, Events, MessageFlags, ChannelType } from 'discord.js';
 import { Context } from '../infra/context.js';
 import { xpStore } from '../services/xp/store.js';
 
@@ -33,7 +33,27 @@ export function registerMessageCounter(client: Client) {
       // 2. Adicionar XP (com cooldown de 60s)
       // Integração com sistema XP
       try {
-        const result = await xpStore.addMessageXP(guildId, userId);
+        let xpResult;
+
+        // Verificar se é um Post no Forum (New Thread in Forum Channel)
+        // Se a mensagem for o ID do canal (thread), ela é a mensagem inicial
+        // E se o pai for um Fórum
+        if (msg.channel.isThread() && msg.id === msg.channel.id) {
+          const parent = msg.channel.parent;
+          if (parent && parent.type === ChannelType.GuildForum) {
+            // É um post novo no fórum -> 300~400 XP
+            Context.get().logger.info({ guildId, userId, channelId: msg.channel.id }, 'Forum Post detected - awarding bonus XP');
+            xpResult = await xpStore.addMessageXP(guildId, userId, { min: 300, max: 400 });
+          } else {
+            // Thread normal ou reply
+            xpResult = await xpStore.addMessageXP(guildId, userId);
+          }
+        } else {
+          // Mensagem normal
+          xpResult = await xpStore.addMessageXP(guildId, userId);
+        }
+
+        const result = xpResult;
 
         if (result.levelUp) {
           Context.get().logger.info({ guildId, userId, newLevel: result.newLevel }, 'User leveled up');
