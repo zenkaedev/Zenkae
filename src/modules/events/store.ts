@@ -136,7 +136,7 @@ export const eventsStore = {
     });
   },
 
-  async update(eventId: string, data: Partial<{ messageId: string; channelId: string; status: EventStatus }>) {
+  async update(eventId: string, data: Partial<any>) {
     await prisma.event.update({
       where: { id: eventId },
       data,

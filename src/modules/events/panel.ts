@@ -456,7 +456,8 @@ export async function handleManagerAction(inter: ButtonInteraction | StringSelec
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('title').setLabel('Título').setValue(event.title).setStyle(TextInputStyle.Short).setRequired(true)),
       new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Descrição').setValue(event.description || '').setStyle(TextInputStyle.Paragraph).setRequired(false)),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('image').setLabel('URL Banner (Opcional)').setValue(event.imageUrl || '').setStyle(TextInputStyle.Short).setRequired(false))
+      new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('image').setLabel('URL Banner (Opcional)').setValue(event.imageUrl || '').setStyle(TextInputStyle.Short).setRequired(false)),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('dmMessage').setLabel('Mensagem DM (Variáveis: {user})').setValue(event.dmMessage || '').setStyle(TextInputStyle.Paragraph).setRequired(false))
     );
 
     await inter.showModal(modal);
@@ -469,6 +470,7 @@ export async function handleManagerAction(inter: ButtonInteraction | StringSelec
     const title = inter.fields.getTextInputValue('title');
     const desc = inter.fields.getTextInputValue('desc');
     const img = inter.fields.getTextInputValue('image');
+    const dmMessage = inter.fields.getTextInputValue('dmMessage');
 
     await inter.deferUpdate();
 
@@ -476,7 +478,8 @@ export async function handleManagerAction(inter: ButtonInteraction | StringSelec
     await eventsStore.update(eventId, {
       title,
       description: desc,
-      imageUrl: img.length > 5 ? img : null
+      imageUrl: img.length > 5 ? img : null,
+      dmMessage: dmMessage.length > 1 ? dmMessage : null
     });
 
     // 2. Update Message
