@@ -15,10 +15,11 @@ export const matchmakingStore = {
     async create(input: CreatePartyInput, messageId: string): Promise<PartyData> {
         const slots = parseSlots(input.slotsString);
 
-        // Adicionar líder automaticamente na primeira vaga de DPS (ou primeira role disponível)
-        const firstRole = Object.keys(slots)[0];
-        if (firstRole && slots[firstRole].max > 0) {
-            slots[firstRole].members.push(input.leaderId);
+        // Adicionar líder na role selecionada se houver vaga
+        const targetRole = slots[input.leaderRole] ? input.leaderRole : Object.keys(slots)[0];
+
+        if (slots[targetRole] && slots[targetRole].max > 0) {
+            slots[targetRole].members.push(input.leaderId);
         }
 
         const party = await prisma.party.create({
@@ -36,12 +37,12 @@ export const matchmakingStore = {
         });
 
         // Criar membro para o líder
-        if (firstRole) {
+        if (slots[targetRole] && slots[targetRole].members.includes(input.leaderId)) {
             await prisma.partyMember.create({
                 data: {
                     partyId: party.id,
                     userId: input.leaderId,
-                    role: firstRole,
+                    role: targetRole,
                 },
             });
         }

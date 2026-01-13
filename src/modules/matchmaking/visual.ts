@@ -58,13 +58,13 @@ export function renderPartyContainer(data: {
     // 1. Header (Título)
     components.push({
         type: V2.TextDisplay,
-        content: `# ⚔️ ${title}`,
+        content: `# ${title}`,
     });
 
     // 2. Info (Data, Descrição, Líder)
     components.push({
         type: V2.TextDisplay,
-        content: `📅 **${datetime}**\n📝 *${description}*\n👑 **Líder:** <@${leaderId}>`,
+        content: `**${datetime}**\n*${description}*\n**Líder:** <@${leaderId}>`,
     });
 
     // 3. Separator

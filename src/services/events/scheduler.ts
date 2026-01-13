@@ -1,6 +1,6 @@
 // src/services/events/scheduler.ts
 import cron from 'node-cron';
-import { Client, TextChannel, EmbedBuilder } from 'discord.js';
+import { Client, TextChannel, EmbedBuilder, ActionRowBuilder } from 'discord.js';
 import { Context } from '../../infra/context.js';
 import { eventRSVP } from './rsvp.js';
 import { logger } from '../../infra/logger.js';
@@ -111,7 +111,7 @@ export const eventScheduler = {
     },
 
     async lockAndNotify(client: Client, event: any) {
-        // Send DMs to YES rsvps
+        // 1. Send DMs to YES rsvps
         try {
             const confirmed = event.rsvps.filter((r: any) => r.choice === 'yes');
             for (const rsvp of confirmed) {
@@ -123,7 +123,36 @@ export const eventScheduler = {
             }
             logger.info({ eventId: event.id, eventTitle: event.title, userCount: confirmed.length }, 'Notified users for event');
         } catch (err) {
-            logger.error({ error: err, eventId: event.id }, 'Error in lockAndNotify');
+            logger.error({ error: err, eventId: event.id }, 'Error in lockAndNotify (DMs)');
+        }
+
+        // 2. Lock Voting (Disable Buttons)
+        try {
+            if (event.channelId && event.messageId) {
+                const channel = await client.channels.fetch(event.channelId) as TextChannel;
+                if (channel?.isTextBased()) {
+                    const message = await channel.messages.fetch(event.messageId);
+                    if (message) {
+                        // Rebuild components with disabled buttons
+                        const rows = message.components.map(comp => {
+                            const newRow = ActionRowBuilder.from(comp);
+                            newRow.components.forEach((btn: any) => {
+                                if (btn.setDisabled) btn.setDisabled(true);
+                            });
+                            return newRow;
+                        });
+
+                        // Add "Inscrições encerradas" to footer or content
+                        const embed = EmbedBuilder.from(message.embeds[0]);
+                        const currentFooter = embed.data.footer?.text || '';
+                        embed.setFooter({ text: `${currentFooter} • 🔒 Inscrições Encerradas` });
+
+                        await message.edit({ embeds: [embed], components: rows as any });
+                    }
+                }
+            }
+        } catch (err) {
+            logger.error({ error: err, eventId: event.id }, 'Error in lockAndNotify (Locking)');
         }
     },
 

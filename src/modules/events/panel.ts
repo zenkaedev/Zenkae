@@ -89,7 +89,6 @@ export function renderDraftPanel(data: EventDraftData) {
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('events:draft:toggle:recur').setLabel(data.recurrence === 'WEEKLY' ? 'Desativar Repetição' : 'Ativar Repetição Semanal').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('events:draft:edit:reward').setLabel(`💎 Recompensa (${data.zkReward})`).setStyle(ButtonStyle.Primary),
   );
 
   // Channel Selector
@@ -134,9 +133,8 @@ export function eventPublicPayload(data: EventDraftData, eventId: string) {
   }
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`event:rsvp:yes:${eventId}`).setLabel('Vou').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`event:rsvp:maybe:${eventId}`).setLabel('Talvez').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`event:rsvp:no:${eventId}`).setLabel('Não vou').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`events:rsvp:yes:${eventId}`).setLabel('Vou').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`events:rsvp:no:${eventId}`).setLabel('Não vou').setStyle(ButtonStyle.Danger),
   );
 
   return { embeds: [embed], components: [row] };
@@ -370,7 +368,7 @@ export async function handleRsvpClick(
           const embed = EmbedBuilder.from(payload.embeds[0]);
           embed.addFields({
             name: 'Participantes',
-            value: `✅ ${counts.yes}  ❔ ${counts.maybe}  ❌ ${counts.no}`,
+            value: `✅ ${counts.yes}  ❌ ${counts.no}`,
             inline: false
           });
 

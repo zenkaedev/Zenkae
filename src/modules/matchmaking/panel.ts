@@ -56,13 +56,30 @@ export async function publishTotem(inter: ButtonInteraction) {
         return;
     }
 
-    const content = [
-        '# 📍 **Central de Equipes**',
-        '',
-        'Pensamos neste espaço para facilitar a sua jornada e ajudar você a fechar aquele time perfeito, sem precisar ficar mandando várias mensagens no chat geral. Aqui a gente deixa tudo combinado com antecedência e organização.',
-        '',
-        '**Como funciona:** É super simples: clique no botão "Criar Nova Party", preencha o dia, o horário e o que você precisa. O bot vai criar um painel automático e os outros membros poderão ocupar as vagas de (Tank, Healer ou DPS) com apenas um clique.',
-    ].join('\n');
+    // Container Wrapper
+    const container = {
+        type: 17, // V2.Container
+        accent_color: 0x6d28d9, // Brand.purple
+        components: [
+            {
+                type: 10, // V2.TextDisplay
+                content: '# 📍 **Central de Equipes**',
+            },
+            {
+                type: 10, // V2.TextDisplay
+                content: 'Pensamos neste espaço para facilitar a sua jornada e ajudar você a fechar aquele time perfeito, sem precisar ficar mandando várias mensagens no chat geral. Aqui a gente deixa tudo combinado com antecedência e organização.',
+            },
+            {
+                type: 14, // V2.Separator
+                divider: true,
+                spacing: 1,
+            },
+            {
+                type: 10, // V2.TextDisplay
+                content: '**Como funciona:** É super simples: clique no botão "Criar Nova Party", preencha o dia, o horário e o que você precisa. O bot vai criar um painel automático e os outros membros poderão ocupar as vagas de (Tank, Healer ou DPS) com apenas um clique.',
+            }
+        ],
+    };
 
     const button = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -72,8 +89,9 @@ export async function publishTotem(inter: ButtonInteraction) {
     );
 
     const sent = await (channel as GuildTextBasedChannel).send({
-        content,
-        components: [button],
+        content: '',
+        components: [container as any, button],
+        flags: 1 << 15, // MessageFlags.IsComponentsV2
     });
 
     await matchmakingStore.saveTotem(inter.guildId, channel.id, sent.id);
@@ -395,16 +413,12 @@ function buildPartyButtons(partyId: string, slots: any): ActionRowBuilder<Button
             .setStyle(ButtonStyle.Danger)
     );
 
-    // Botões de gerenciamento
+    // Botões de gerenciamento (Agrupados)
     const manageButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId(`matchmaking:manage:${partyId}`)
-            .setLabel('⚙️ Gerenciar')
-            .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-            .setCustomId(`matchmaking:cancel:${partyId}`)
-            .setLabel('🗑️ Cancelar PT')
-            .setStyle(ButtonStyle.Danger)
+            .setLabel('⚙️ Painel do Líder')
+            .setStyle(ButtonStyle.Secondary)
     );
 
     return [roleButtons, manageButtons];
@@ -584,9 +598,17 @@ export async function handleManage(inter: ButtonInteraction, partyId: string) {
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
+    // Botão de cancelar PT dentro do menu gerencial
+    const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`matchmaking:cancel:${partyId}`)
+            .setLabel('🗑️ Cancelar Party')
+            .setStyle(ButtonStyle.Danger)
+    );
+
     await inter.reply({
-        content: '⚙️ **Gerenciar Party** - Selecione um membro para remover:',
-        components: [row],
+        content: '⚙️ **Painel do Líder**\nGerencie os membros ou cancele a atividade:',
+        components: [row, cancelRow],
         flags: MessageFlags.Ephemeral,
     });
 }
