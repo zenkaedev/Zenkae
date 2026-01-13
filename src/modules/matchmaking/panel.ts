@@ -79,11 +79,23 @@ export async function openCreationModal(inter: ButtonInteraction) {
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
-                .setCustomId('datetime')
-                .setLabel('Dia & Horário')
-                .setPlaceholder('Ex: Sexta-feira, 20:00')
+                .setCustomId('day')
+                .setLabel('Dia da Semana')
+                .setPlaceholder('Segunda, Terça, Quarta, Quinta, Sexta, Sábado, Domingo')
+                .setValue('Sexta')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
+                .setMaxLength(15)
+        ),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+                .setCustomId('time')
+                .setLabel('Horário (formato 24h)')
+                .setPlaceholder('00:00 até 23:00 - Ex: 20:00')
+                .setValue('20:00')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMaxLength(5)
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
@@ -95,15 +107,18 @@ export async function openCreationModal(inter: ButtonInteraction) {
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
-                .setCustomId('slots')
-                .setLabel('Vagas: Tank, Healer, DPS (números)')
-                .setPlaceholder('Ex: 1, 2, 3 ou 0, 1, 5')
-                .setValue('1, 2, 3')
+                .setCustomId('role')
+                .setLabel('Sua Role')
+                .setPlaceholder('Tank, Healer ou DPS')
+                .setValue('DPS')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
-                .setMaxLength(20)
+                .setMaxLength(10)
         )
     );
+
+    // Nota: Campo 'slots' será adicionado em follow-up ou teremos que fazer 2-step flow
+    // Discord limita modais a 5 ActionRows, então precisamos decidir:
 
     await inter.showModal(modal);
 }
