@@ -29,8 +29,9 @@ export interface CreatePartyInput {
     guildId: string;
     channelId: string;
     leaderId: string;
+    leaderRole: string; // 'Tank', 'Healer', ou 'DPS'
     title: string;
     datetime: string;
     description: string;
-    slotsString: string; // "Tank:1, Healer:1, DPS:3"
+    slotsString: string; // "1, 2, 3" (Tank, Healer, DPS)
 }
