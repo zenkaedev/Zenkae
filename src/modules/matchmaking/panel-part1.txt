@@ -1,0 +1,62 @@
+// src/modules/matchmaking/panel.ts
+
+import {
+    ButtonBuilder,
+    ButtonStyle,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ActionRowBuilder,
+    StringSelectMenuBuilder,
+    type ButtonInteraction,
+    type ModalSubmitInteraction,
+    type StringSelectMenuInteraction,
+    type GuildTextBasedChannel,
+    MessageFlags,
+} from 'discord.js';
+
+import { matchmakingStore } from './store.js';
+import { renderPartyContainer, getRoleEmoji } from './visual.js';
+import type { CreatePartyInput } from './types.js';
+
+/**
+ * Publica o "Totem" - Mensagem persistente com botão para criar parties
+ */
+export async function publishTotem(inter: ButtonInteraction) {
+    if (!inter.inCachedGuild()) return;
+
+    // Defer imediatamente para evitar timeout
+    await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const channel = inter.channel;
+    if (!channel?.isTextBased()) {
+        await inter.editReply({ content: '❌ Use em um canal de texto.' });
+        return;
+    }
+
+    const content = [
+        '# 📍 **MATCHMAKING HUB**',
+        '',
+        '> Monte sua party para dungeons, raids e atividades!',
+        '> Clique no botão abaixo para criar uma nova party.',
+    ].join('\n');
+
+    const button = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+            .setCustomId('matchmaking:create')
+            .setLabel('➕ Criar Nova PT')
+            .setStyle(ButtonStyle.Primary)
+    );
+
+    const sent = await (channel as GuildTextBasedChannel).send({
+        content,
+        components: [button],
+    });
+
+    await matchmakingStore.saveTotem(inter.guildId, channel.id, sent.id);
+
+    await inter.editReply({
+        content: '✅ Totem de Matchmaking publicado com sucesso!',
+    });
+}
+
