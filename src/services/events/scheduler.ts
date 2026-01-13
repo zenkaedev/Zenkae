@@ -117,7 +117,9 @@ export const eventScheduler = {
             for (const rsvp of confirmed) {
                 try {
                     const user = await client.users.fetch(rsvp.userId);
-                    const msg = event.dmMessage || `🔔 **Lembrete:** O evento **${event.title}** começa em 1 hora!`;
+                    let msg = event.dmMessage || `🔔 **Lembrete:** O evento **${event.title}** começa em 1 hora!`;
+                    // Replace variables
+                    msg = msg.replace(/{user}/g, user.displayName).replace(/{user_mention}/g, `<@${user.id}>`);
                     await user.send(msg);
                 } catch { }
             }
@@ -134,8 +136,8 @@ export const eventScheduler = {
                     const message = await channel.messages.fetch(event.messageId);
                     if (message) {
                         // Rebuild components with disabled buttons
-                        const rows = message.components.map(comp => {
-                            const newRow = ActionRowBuilder.from(comp);
+                        const rows = message.components.map((comp: any) => {
+                            const newRow = ActionRowBuilder.from(comp as any);
                             newRow.components.forEach((btn: any) => {
                                 if (btn.setDisabled) btn.setDisabled(true);
                             });

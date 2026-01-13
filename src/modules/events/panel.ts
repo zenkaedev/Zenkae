@@ -37,8 +37,8 @@ function extractDataFromEmbed(embed: EmbedBuilder): EventDraftData {
   const voiceMatch = footer.match(/Voice: (\d+)/);
 
   return {
-    title: (embed.data.title || '').replace('📅 ', ''),
-    description: desc.split('\n\n⏰')[0] || '', // Remove a parte do tempo
+    title: (embed.data.description?.split('\n')[0] || '').replace(/^# /, '').trim(),
+    description: (embed.data.description?.split('\n\n⏰')[0] || '').split('\n').slice(2).join('\n') || '', // Hacky but works for now to strip title and time
     startsAt,
     bannerUrl: embed.data.image?.url || null,
     recurrence: (recurrenceMatch ? recurrenceMatch[1] : 'NONE') as 'WEEKLY' | 'NONE',
@@ -68,15 +68,13 @@ export function renderDraftPanel(data: EventDraftData) {
 
   // 1. O Embed de Preview (O que será postado)
   const embed = new EmbedBuilder()
-    .setTitle(`📅 ${data.title}`)
-    .setDescription(`${data.description ? data.description + '\n\n' : ''}⏰ **Quando:** ${timeString}`)
+    .setDescription(`# ${data.title}\n\n${data.description ? data.description + '\n\n' : ''}⏰ **Quando:** ${timeString}`)
     .setColor(0x3d348b)
     .addFields(
-      { name: '💎 Recompensa', value: `${data.zkReward} ZK`, inline: true },
       { name: '🔁 Recorrência', value: recurText, inline: true },
       { name: '🔊 Canal de Voz', value: voiceText, inline: true }
     )
-    .setFooter({ text: `Preview Mode • Recurrence: ${data.recurrence} • Reward: ${data.zkReward} • Voice: ${data.voiceChannelId || ''}` }); // Metadata persistence
+    .setFooter({ text: `Preview Mode • Recurrence: ${data.recurrence} • Voice: ${data.voiceChannelId || ''}` }); // Metadata persistence
 
   if (data.bannerUrl) embed.setImage(data.bannerUrl);
 
@@ -115,16 +113,10 @@ export function eventPublicPayload(data: EventDraftData, eventId: string) {
   const timeString = `<t:${ts}:F> (<t:${ts}:R>)`;
 
   const embed = new EmbedBuilder()
-    .setTitle(`📅 ${data.title}`)
-    .setDescription(`${data.description ? data.description + '\n\n' : ''}⏰ **Quando:** ${timeString}`)
+    .setDescription(`# ${data.title}\n\n${data.description ? data.description + '\n\n' : ''}⏰ **Quando:** ${timeString}`)
     .setColor(0x3d348b);
 
   if (data.bannerUrl) embed.setImage(data.bannerUrl);
-
-  // Mostra recompensa se > 0
-  if (data.zkReward > 0) {
-    embed.addFields({ name: '💎 Recompensa', value: `${data.zkReward} ZK por participar`, inline: true });
-  }
 
   if (data.recurrence === 'WEEKLY') {
     const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -151,7 +143,7 @@ export async function openNewEventModal(inter: ButtonInteraction) {
     startsAt: new Date(Date.now() + 3600000), // +1h
     bannerUrl: null,
     recurrence: 'NONE',
-    zkReward: 10
+    zkReward: 0
   };
 
   await inter.reply(renderDraftPanel(defaultData) as any);
@@ -261,14 +253,7 @@ export async function handleDraftAction(inter: ButtonInteraction | ModalSubmitIn
     await inter.showModal(modal);
     return;
   }
-  if (customId === 'events:draft:edit:reward') {
-    const modal = new ModalBuilder().setCustomId('events:draft:submit:reward').setTitle('Recompensa (ZK)');
-    modal.addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('amount').setLabel('Quantidade').setValue(currentData.zkReward.toString()).setStyle(TextInputStyle.Short).setRequired(true))
-    );
-    await inter.showModal(modal);
-    return;
-  }
+  // Removed reward modal opener
 
   // -> CHANNEL SELECT
   if (customId === 'events:draft:select:voice') {
@@ -289,16 +274,18 @@ export async function handleDraftAction(inter: ButtonInteraction | ModalSubmitIn
     }
     else if (customId === 'events:draft:submit:time') {
       const raw = inter.fields.getTextInputValue('datetime');
-      const newDate = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T') + ':00');
+      // Fix Timezone: Append -03:00 to force parser to treat as GMT-3
+      // Format accepted by Date ctor with timezone: YYYY-MM-DDTHH:mm:ss-03:00
+      let isoStr = raw.includes('T') ? raw : raw.replace(' ', 'T');
+      if (isoStr.length === 16) isoStr += ':00'; // Add seconds
+      if (!isoStr.match(/[-+]\d{2}:?\d{2}$/)) isoStr += '-03:00'; // Append offset if missing
+
+      const newDate = new Date(isoStr);
       if (!isNaN(newDate.getTime())) currentData.startsAt = newDate;
     }
     else if (customId === 'events:draft:submit:image') {
       const url = inter.fields.getTextInputValue('url');
       currentData.bannerUrl = url.length > 5 ? url : null;
-    }
-    else if (customId === 'events:draft:submit:reward') {
-      const amt = parseInt(inter.fields.getTextInputValue('amount'));
-      if (!isNaN(amt) && amt >= 0) currentData.zkReward = amt;
     }
 
     // CRITICAL FIX: Use update() if available, otherwise just rely on editReply via update call?
@@ -450,11 +437,74 @@ export async function handleManagerAction(inter: ButtonInteraction | StringSelec
       .setColor(0x3d348b);
 
     const controls = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('events:manager:back').setLabel('🔙 Voltar a Lista').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`events:manager:delete:${event.id}`).setLabel('❌ Deletar Evento').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('events:manager:back').setLabel('🔙 Voltar').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`events:manager:edit:${event.id}`).setLabel('📝 Editar').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`events:manager:delete:${event.id}`).setLabel('❌ Deletar').setStyle(ButtonStyle.Danger)
     );
 
     await inter.update({ embeds: [embed], components: [controls] });
+    return;
+  }
+
+  // -> OPEN EDIT MODAL
+  if (inter.customId.startsWith('events:manager:edit:')) {
+    const eventId = inter.customId.split(':')[3];
+    const event = await eventsStore.getById(eventId);
+    if (!event) return;
+
+    const modal = new ModalBuilder().setCustomId(`events:manager:update:${eventId}`).setTitle('Editar Evento');
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('title').setLabel('Título').setValue(event.title).setStyle(TextInputStyle.Short).setRequired(true)),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('desc').setLabel('Descrição').setValue(event.description || '').setStyle(TextInputStyle.Paragraph).setRequired(false)),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId('image').setLabel('URL Banner (Opcional)').setValue(event.imageUrl || '').setStyle(TextInputStyle.Short).setRequired(false))
+    );
+
+    await inter.showModal(modal);
+    return;
+  }
+
+  // -> PROCESS UPDATE
+  if (inter.isModalSubmit() && inter.customId.startsWith('events:manager:update:')) {
+    const eventId = inter.customId.split(':')[3];
+    const title = inter.fields.getTextInputValue('title');
+    const desc = inter.fields.getTextInputValue('desc');
+    const img = inter.fields.getTextInputValue('image');
+
+    await inter.deferUpdate();
+
+    // 1. Update DB
+    await eventsStore.update(eventId, {
+      title,
+      description: desc,
+      imageUrl: img.length > 5 ? img : null
+    });
+
+    // 2. Update Message
+    const event = await eventsStore.getById(eventId);
+    if (event && event.channelId && event.messageId) {
+      try {
+        const ch = await inter.client.channels.fetch(event.channelId);
+        if (ch?.isTextBased()) {
+          const msg = await (ch as GuildTextBasedChannel).messages.fetch(event.messageId);
+          if (msg) {
+            // Rebuild Embed
+            const oldEmbed = msg.embeds[0];
+            const ts = Math.floor(new Date(event.startsAt).getTime() / 1000);
+            const timeString = `<t:${ts}:F> (<t:${ts}:R>)`;
+
+            const newEmbed = EmbedBuilder.from(oldEmbed)
+              .setDescription(`# ${title}\n\n${desc ? desc + '\n\n' : ''}⏰ **Quando:** ${timeString}`);
+
+            if (img.length > 5) newEmbed.setImage(img);
+            else newEmbed.setImage(null);
+
+            await msg.edit({ embeds: [newEmbed] });
+          }
+        }
+      } catch (e) { console.error('Error updating event message:', e); }
+    }
+
+    await inter.editReply({ content: '✅ Evento atualizado com sucesso!', embeds: [], components: [] });
     return;
   }
 
