@@ -58,9 +58,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             : '—';
 
         // 3. Avatar, Banner e Cargo
-        const avatarUrl = targetUser.displayAvatarURL({ size: 256, extension: 'png' });
+        const avatarUrl = targetUser.displayAvatarURL({ size: 128, extension: 'png' });
         const userFull = await targetUser.fetch();
-        const bannerUrl = userFull.bannerURL({ size: 1024, extension: 'png' }) ?? undefined;
+        const bannerUrl = userFull.bannerURL({ size: 512, extension: 'png' }) ?? undefined;
 
         // Get Highest Role
         const roles = member.roles.cache
