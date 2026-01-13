@@ -26,9 +26,9 @@ matchmakingRouter.button('matchmaking:publishTotem', publishTotem);
 // Create Party Flow - Selects Step
 matchmakingRouter.button('matchmaking:create', openCreationModal);
 
-matchmakingRouter.stringSelect('matchmaking:create:day', handleSelectDay);
-matchmakingRouter.stringSelect('matchmaking:create:time', handleSelectTime);
-matchmakingRouter.stringSelect('matchmaking:create:role', handleSelectRole);
+matchmakingRouter.select('matchmaking:create:day', handleSelectDay);
+matchmakingRouter.select('matchmaking:create:time', handleSelectTime);
+matchmakingRouter.select('matchmaking:create:role', handleSelectRole);
 matchmakingRouter.button('matchmaking:create:continue', handleContinue);
 
 // Create Party Flow - Final Modal Step
