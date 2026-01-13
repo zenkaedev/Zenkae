@@ -147,6 +147,7 @@ export async function handleCreation(inter: ModalSubmitInteraction) {
         guildId: inter.guildId,
         channelId: channel.id,
         leaderId: inter.user.id,
+        leaderRole: 'DPS', // Padrão até implementar seleção
         title,
         datetime,
         description,
