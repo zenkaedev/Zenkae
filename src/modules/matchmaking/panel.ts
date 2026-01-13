@@ -334,7 +334,9 @@ export async function handleCreation(inter: ModalSubmitInteraction) {
     };
 
     // Enviar mensagem primeiro
-    const party = await matchmakingStore.create(input, 'temp');
+    // Usamos o ID da interação como messageId temporário para garantir unicidade
+    const tempMessageId = `temp-${inter.id}`;
+    const party = await matchmakingStore.create(input, tempMessageId);
     const payload = renderPartyContainer({
         title: party.title,
         datetime: party.datetime,
