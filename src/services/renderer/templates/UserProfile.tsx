@@ -72,25 +72,7 @@ export function UserProfile(props: UserProfileProps) {
                     background: '#1b2838',
                 }}
             >
-                {/* GLOBAL RANK BADGE (Absolute Top Right) */}
-                {rank && (
-                    <div style={{
-                        display: 'flex',
-                        position: 'absolute',
-                        top: '20px',
-                        right: '20px',
-                        background: 'rgba(0, 0, 0, 0.6)',
-                        backdropFilter: 'blur(4px)',
-                        padding: '8px 16px',
-                        borderRadius: '12px',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        alignItems: 'center',
-                        zIndex: 10
-                    }}>
-                        <span style={{ color: '#8f98a0', fontSize: '14px', marginRight: '6px', fontWeight: '600' }}>RANK</span>
-                        <span style={{ color: '#ffffff', fontSize: '20px', fontWeight: '800' }}>#{rank}</span>
-                    </div>
-                )}
+
 
                 {bannerUrl ? (
                     <img
@@ -116,6 +98,25 @@ export function UserProfile(props: UserProfileProps) {
                         backgroundImage: 'linear-gradient(to bottom, transparent 0%, #101822 100%)',
                     }}
                 />
+
+                {/* GLOBAL RANK BADGE (Absolute Top Right) - Moved to end for stacking order */}
+                {rank && (
+                    <div style={{
+                        display: 'flex',
+                        position: 'absolute',
+                        top: '20px',
+                        right: '25px', // Little more margin
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        backdropFilter: 'blur(4px)',
+                        padding: '8px 16px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        alignItems: 'center',
+                    }}>
+                        <span style={{ color: '#8f98a0', fontSize: '14px', marginRight: '6px', fontWeight: '600' }}>RANK</span>
+                        <span style={{ color: '#ffffff', fontSize: '20px', fontWeight: '800' }}>#{rank}</span>
+                    </div>
+                )}
             </div>
 
             {/* 2. PROFILE HEADER (Floating) */}
@@ -238,7 +239,7 @@ export function UserProfile(props: UserProfileProps) {
                         {/* Removed Rank Position from here to move to absolute top right */}
 
                         {/* XP Fraction */}
-                        <div style={{ display: 'flex', flexDirection: 'row', color: '#66c0f4', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'row', color: '#66c0f4', fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>
                             <span style={{ color: '#fff' }}>{currentXP.toLocaleString()}</span>
                             <span style={{ margin: '0 4px', color: '#8f98a0' }}>/</span>
                             <span style={{ color: '#8f98a0' }}>{requiredXP.toLocaleString()} XP</span>
@@ -258,7 +259,7 @@ export function UserProfile(props: UserProfileProps) {
                         </div>
 
                         {/* Progress Percentage (Below Bar) */}
-                        <div style={{ display: 'flex', fontSize: '13px', color: '#8f98a0', fontWeight: '500' }}>
+                        <div style={{ display: 'flex', fontSize: '15px', color: '#8f98a0', fontWeight: '600' }}>
                             <span>{Math.round(xpProgress)}% to next level</span>
                         </div>
                     </div>
