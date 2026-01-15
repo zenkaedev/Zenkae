@@ -54,9 +54,18 @@ export const eventScheduler = {
     async checkEvents(client: Client) {
         const now = new Date();
 
-        // Find incomplete events
+        // === JOB 1: Publicar eventos agendados ===
+        await this.publishScheduledEvents(client);
+
+        // === JOB 2: Lock RSVP e enviar DMs (1h antes) ===
+        await this.lockRsvpForUpcomingEvents(client);
+
+        // === JOB 3: Cleanup e recorrência (+1h após início) ===
+        await this.cleanupCompletedEvents(client);
+
+        // === JOB 4: Announcement 24h antes (já existe) ===
         const events = await prisma.event.findMany({
-            where: { status: 'scheduled' },
+            where: { status: 'scheduled', publishedAt: { not: null } },
             include: { rsvps: true, reminders: true }
         });
 
@@ -65,26 +74,94 @@ export const eventScheduler = {
             const diff = eventDate.getTime() - now.getTime();
             const hoursUntil = diff / (1000 * 60 * 60);
 
-            // 24h before: Post announcement
-            if (hoursUntil <= 24 && hoursUntil > 23 && event.announcementChannelId && !event.reminders.some((r: any) => r.kind === '24h')) {
+            // 24h before: Post announcement (narrow window to prevent duplicates)
+            if (hoursUntil <= 24 && hoursUntil > 23.5 && event.announcementChannelId && !event.reminders.some((r: any) => r.kind === '24h')) {
                 await this.postAnnouncement(client, event);
                 await prisma.eventReminder.create({
                     data: { eventId: event.id, kind: '24h' }
                 });
             }
+        }
+    },
 
-            // 1h before: Lock RSVP, send DMs
-            if (hoursUntil <= 1 && hoursUntil > 0 && !event.reminders.some((r: any) => r.kind === '1h')) {
+    /**
+     * JOB 1: Publicar eventos agendados para 24h antes
+     */
+    async publishScheduledEvents(client: Client) {
+        try {
+            const { eventsStore } = await import('../../modules/events/store.js');
+            const { eventPublicPayload } = await import('../../modules/events/panel.js');
+
+            const eventsToPublish = await eventsStore.listScheduledForPublication();
+
+            for (const event of eventsToPublish) {
+                try {
+                    const channel = await client.channels.fetch(event.channelId);
+                    if (!channel?.isTextBased()) continue;
+
+                    // Reconstruct payload
+                    const payload = eventPublicPayload({
+                        title: event.title,
+                        description: event.description || '',
+                        startsAt: new Date(event.startsAt),
+                        bannerUrl: event.imageUrl || null,
+                        recurrence: (event.recurrence as 'WEEKLY' | 'NONE') || 'NONE',
+                        zkReward: event.zkReward,
+                        voiceChannelId: event.voiceChannelId || null,
+                    }, event.id);
+
+                    const msg = await (channel as any).send(payload);
+
+                    // Update event with real message ID and mark as published
+                    await eventsStore.update(event.id, { messageId: msg.id });
+                    await eventsStore.markPublished(event.id);
+
+                    logger.info({ eventId: event.id, title: event.title }, 'Published scheduled event');
+                } catch (err) {
+                    logger.error({ err, eventId: event.id }, 'Failed to publish scheduled event');
+                }
+            }
+        } catch (err) {
+            logger.error({ err }, 'Error in publishScheduledEvents job');
+        }
+    },
+
+    /**
+     * JOB 2: Lock RSVP e enviar DMs (1h antes do evento)
+     */
+    async lockRsvpForUpcomingEvents(client: Client) {
+        try {
+            const { eventsStore } = await import('../../modules/events/store.js');
+            const events = await eventsStore.listEventsNeedingRsvpLock();
+
+            for (const event of events) {
+                // Se já foi travado, skip
+                if (event.rsvpLockedAt) continue;
+
                 await this.lockAndNotify(client, event);
-                await prisma.eventReminder.create({
-                    data: { eventId: event.id, kind: '1h' }
-                });
-            }
+                await eventsStore.markRsvpLocked(event.id);
 
-            // Event time: Check attendance
-            if (diff <= 0) {
-                await this.checkAttendance(client, event);
+                logger.info({ eventId: event.id }, 'Locked RSVP for upcoming event');
             }
+        } catch (err) {
+            logger.error({ err }, 'Error in lockRsvpForUpcomingEvents job');
+        }
+    },
+
+    /**
+     * JOB 3: Cleanup e recorrência (+1h após início)
+     */
+    async cleanupCompletedEvents(client: Client) {
+        try {
+            const { eventsStore } = await import('../../modules/events/store.js');
+            const events = await eventsStore.listEventsForCleanup();
+
+            for (const event of events) {
+                await this.checkAttendance(client, event);
+                logger.info({ eventId: event.id }, 'Cleaned up completed event');
+            }
+        } catch (err) {
+            logger.error({ err }, 'Error in cleanupCompletedEvents job');
         }
     },
 
@@ -107,7 +184,10 @@ export const eventScheduler = {
             if (event.imageUrl) embed.setImage(event.imageUrl);
 
             await channel.send({ embeds: [embed] });
-        } catch { }
+            logger.info({ eventId: event.id, title: event.title }, 'Posted 24h announcement');
+        } catch (err) {
+            logger.error({ err, eventId: event.id }, 'Failed to post 24h announcement');
+        }
     },
 
     async lockAndNotify(client: Client, event: any) {
@@ -121,7 +201,9 @@ export const eventScheduler = {
                     // Replace variables
                     msg = msg.replace(/{user}/g, user.displayName).replace(/{user_mention}/g, `<@${user.id}>`);
                     await user.send(msg);
-                } catch { }
+                } catch (err) {
+                    logger.warn({ err, userId: rsvp.userId, eventId: event.id }, 'Failed to send DM to user');
+                }
             }
             logger.info({ eventId: event.id, eventTitle: event.title, userCount: confirmed.length }, 'Notified users for event');
         } catch (err) {

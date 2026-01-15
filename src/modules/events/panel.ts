@@ -17,6 +17,7 @@ import {
 } from 'discord.js';
 
 import { eventsStore } from './store.js';
+import { prisma } from '../../db/prisma.js';
 import { replyV2Notice } from '../../ui/v2.js';
 
 /**
@@ -438,6 +439,7 @@ export async function handleManagerAction(inter: ButtonInteraction | StringSelec
 
     const controls = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('events:manager:back').setLabel('🔙 Voltar').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`events:manager:participants:${event.id}`).setLabel('📋 Ver Participantes').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`events:manager:edit:${event.id}`).setLabel('📝 Editar').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`events:manager:delete:${event.id}`).setLabel('❌ Deletar').setStyle(ButtonStyle.Danger)
     );
@@ -518,9 +520,193 @@ export async function handleManagerAction(inter: ButtonInteraction | StringSelec
     return;
   }
 
+  // Handler: Ver Participantes
+  if (inter.customId.startsWith('events:manager:participants:')) {
+    const eventId = inter.customId.split(':')[3];
+    await showParticipantsList(inter, eventId);
+    return;
+  }
+
   if (inter.customId === 'events:manager:back' || inter.customId === 'events:manager:refresh') {
     const payload = await renderEventsManager(inter.guildId!);
     await inter.update(payload);
     return;
   }
 }
+
+/**
+ * Exibe lista completa de participantes do evento para a staff
+ */
+async function showParticipantsList(inter: ButtonInteraction, eventId: string) {
+  await inter.deferUpdate();
+
+  const event = await eventsStore.getById(eventId);
+  if (!event) {
+    await inter.editReply({ content: '❌ Evento não encontrado.', embeds: [], components: [] });
+    return;
+  }
+
+  // Buscar RSVPs diretamente do Prisma
+  const allRsvps = await prisma.eventRsvp.findMany({
+    where: { eventId },
+    orderBy: { updatedAt: 'desc' }
+  });
+
+  const confirmed = allRsvps.filter(r => r.choice === 'yes');
+  const maybe = allRsvps.filter(r => r.choice === 'maybe');
+  const declined = allRsvps.filter(r => r.choice === 'no');
+
+  // Limitar a 20 por lista para evitar overflow
+  const confirmedList = confirmed.length > 0
+    ? confirmed.slice(0, 20).map(r => `• <@${r.userId}>`).join('\n') + (confirmed.length > 20 ? `\n*...e mais ${confirmed.length - 20}*` : '')
+    : '*Nenhum confirmado*';
+
+  const maybeList = maybe.length > 0
+    ? maybe.slice(0, 20).map(r => `• <@${r.userId}>`).join('\n') + (maybe.length > 20 ? `\n*...e mais ${maybe.length - 20}*` : '')
+    : '*Nenhum*';
+
+  const declinedList = declined.length > 0
+    ? declined.slice(0, 20).map(r => `• <@${r.userId}>`).join('\n') + (declined.length > 20 ? `\n*...e mais ${declined.length - 20}*` : '')
+    : '*Nenhum*';
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📋 Participantes: ${event.title}`)
+    .setDescription(`Lista completa de respostas`)
+    .addFields(
+      {
+        name: `✅ Confirmados (${confirmed.length})`,
+        value: confirmedList,
+        inline: false
+      },
+      {
+        name: `❓ Talvez (${maybe.length})`,
+        value: maybeList,
+        inline: false
+      },
+      {
+        name: `❌ Não vão (${declined.length})`,
+        value: declinedList,
+        inline: false
+      }
+    )
+    .addFields({
+      name: '📊 Resumo',
+      value: `**Total:** ${allRsvps.length} respostas\n**Atualizado:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+      inline: false
+    })
+    .setColor(0x3d348b)
+    .setFooter({ text: `Evento ID: ${eventId}` });
+
+  const backButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('events:manager:back')
+      .setLabel('🔙 Voltar ao Gerenciador')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await inter.editReply({ embeds: [embed], components: [backButton] });
+}
+
+/**
+ * Abre modal de configurações de eventos
+ */
+export async function openEventSettingsModal(inter: ButtonInteraction) {
+  const settings = await eventsStore.getSettings(inter.guildId!);
+
+  const modal = new ModalBuilder()
+    .setCustomId('events:settings:submit')
+    .setTitle('⚙️ Configurações de Eventos');
+
+  const publicationChannelInput = new TextInputBuilder()
+    .setCustomId('publicationChannelId')
+    .setLabel('ID do Canal de Publicação')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('Cole o ID do canal aqui')
+    .setValue(settings?.publicationChannelId || '')
+    .setRequired(false);
+
+  const announcementChannelInput = new TextInputBuilder()
+    .setCustomId('announcementChannelId')
+    .setLabel('ID do Canal de Anúncios (24h antes)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('Cole o ID do canal aqui (opcional)')
+    .setValue(settings?.announcementChannelId || '')
+    .setRequired(false);
+
+  const defaultDmInput = new TextInputBuilder()
+    .setCustomId('defaultDmMessage')
+    .setLabel('Mensagem DM Padrão (1h antes)')
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder('Olá {user}! O evento "{event_title}" começa em 1h!')
+    .setValue(settings?.defaultDmMessage || 'Olá {user}! O evento "{event_title}" começa em 1 hora! 🎉')
+    .setMaxLength(500)
+    .setRequired(false);
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(publicationChannelInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(announcementChannelInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(defaultDmInput)
+  );
+
+  await inter.showModal(modal);
+}
+
+/**
+ * Processa submit do modal de configurações
+ */
+export async function handleEventSettingsSubmit(inter: ModalSubmitInteraction) {
+  await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const publicationChannelId = inter.fields.getTextInputValue('publicationChannelId').trim() || null;
+  const announcementChannelId = inter.fields.getTextInputValue('announcementChannelId').trim() || null;
+  const defaultDmMessage = inter.fields.getTextInputValue('defaultDmMessage').trim() || null;
+
+  // Validar canais se fornecidos
+  if (publicationChannelId) {
+    try {
+      const channel = await inter.guild!.channels.fetch(publicationChannelId);
+      if (!channel?.isTextBased()) {
+        await inter.editReply({ content: '❌ Canal de publicação inválido. Deve ser um canal de texto.' });
+        return;
+      }
+    } catch {
+      await inter.editReply({ content: '❌ Canal de publicação não encontrado. Verifique o ID.' });
+      return;
+    }
+  }
+
+  if (announcementChannelId) {
+    try {
+      const channel = await inter.guild!.channels.fetch(announcementChannelId);
+      if (!channel?.isTextBased()) {
+        await inter.editReply({ content: '❌ Canal de anúncios inválido. Deve ser um canal de texto.' });
+        return;
+      }
+    } catch {
+      await inter.editReply({ content: '❌ Canal de anúncios não encontrado. Verifique o ID.' });
+      return;
+    }
+  }
+
+  // Salvar configurações
+  await eventsStore.updateSettings(inter.guildId!, {
+    publicationChannelId: publicationChannelId || undefined,
+    announcementChannelId: announcementChannelId || undefined,
+    defaultDmMessage: defaultDmMessage || undefined,
+  });
+
+  let summary = '✅ **Configurações Salvas com Sucesso!**\n\n';
+
+  if (publicationChannelId) {
+    summary += `📢 Canal de Publicação: <#${publicationChannelId}>\n`;
+  }
+  if (announcementChannelId) {
+    summary += `📣 Canal de Anúncios: <#${announcementChannelId}>\n`;
+  }
+  if (defaultDmMessage) {
+    summary += `💬 Mensagem DM configurada\n`;
+  }
+
+  await inter.editReply({ content: summary });
+}
+

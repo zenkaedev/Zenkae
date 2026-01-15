@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
   type ButtonInteraction,
   type InteractionUpdateOptions,
   type GuildTextBasedChannel,
@@ -50,9 +51,12 @@ export function buildEventsTabContent(list: EventWithCounts[]): InteractionUpdat
 }
 
 export async function notifyConfirmed(inter: ButtonInteraction, eventId: string) {
+  // Defer imediatamente para evitar timeout durante loop de DMs
+  await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
   const list = await eventsStore.listConfirmedUsers(eventId);
   if (list.length === 0) {
-    await replyV2Notice(inter, 'Não há confirmados para notificar.', true);
+    await inter.editReply({ content: '⚠️ Não há confirmados para notificar.' });
     return;
   }
 
@@ -69,18 +73,20 @@ export async function notifyConfirmed(inter: ButtonInteraction, eventId: string)
       fail++;
     }
   }
-  await replyV2Notice(
-    inter,
-    `✅ Notifiquei ${ok} usuário(s).${fail ? ` Falhas: ${fail}.` : ''}`,
-    true,
-  );
+  await inter.editReply({
+    content: `✅ Notifiquei ${ok} usuário(s).${fail ? ` Falhas: ${fail}.` : ''}`,
+  });
 }
 
 export async function cancelEvent(inter: ButtonInteraction, eventId: string) {
   if (!inter.inCachedGuild()) return;
+
+  // Defer imediatamente para evitar timeout
+  await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
   const ev = await eventsStore.getById(eventId);
   if (!ev) {
-    await replyV2Notice(inter, 'Evento não encontrado.', true);
+    await inter.editReply({ content: '❌ Evento não encontrado.' });
     return;
   }
   await eventsStore.setStatus(eventId, 'cancelled');
@@ -99,5 +105,5 @@ export async function cancelEvent(inter: ButtonInteraction, eventId: string) {
     // ignore
   }
 
-  await replyV2Notice(inter, `✅ Evento **${ev.title}** cancelado.`, true);
+  await inter.editReply({ content: `✅ Evento **${ev.title}** cancelado.` });
 }

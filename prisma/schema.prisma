@@ -39,9 +39,9 @@ model Application {
 }
 
 model RecruitSettings {
-  guildId        String  @id
-  panelChannelId String?
-  formsChannelId String?
+  guildId               String  @id
+  panelChannelId        String?
+  formsChannelId        String?
   membersPanelChannelId String? // Canal do painel de membros
   membersPanelMessageId String? // ID da mensagem do painel de membros
 
@@ -80,6 +80,15 @@ model RecruitPanel {
 
 // ===== Eventos (Unificado: RSVP + ZK + Recorrência) =====
 
+model EventSettings {
+  guildId               String   @id
+  publicationChannelId  String? // Canal onde eventos são publicados
+  announcementChannelId String? // Canal para anúncios 24h antes
+  defaultDmMessage      String? // Template padrão de DM (1h antes)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
 model Event {
   id          String   @id @default(cuid())
   guildId     String
@@ -98,8 +107,13 @@ model Event {
   zkReward              Int     @default(0)
   announcementChannelId String?
   recurrence            String? // 'WEEKLY' ou null
-  recurrenceDay         Int?    // 0=Domingo, 1=Segunda...
+  recurrenceDay         Int? // 0=Domingo, 1=Segunda...
   dmMessage             String? // Mensagem personalizada enviada 1h antes
+
+  // Controle de publicação e estado
+  publishAt    DateTime? // Quando publicar (null = já publicado ou publicar agora)
+  publishedAt  DateTime? // Timestamp de quando foi publicado
+  rsvpLockedAt DateTime? // Timestamp de quando respostas foram travadas
 
   rsvps     EventRsvp[]
   reminders EventReminder[]
@@ -226,20 +240,20 @@ model UserLevel {
 model UserZK {
   guildId String
   userId  String
-  balance Int      @default(0)
+  balance Int    @default(0)
 
   @@id([guildId, userId])
 }
 
 model ZKTransaction {
-  id        String   @id @default(cuid())
-  guildId   String
-  userId    String
-  amount    Int
-  reason    String
+  id            String   @id @default(cuid())
+  guildId       String
+  userId        String
+  amount        Int
+  reason        String
   balanceBefore Int
   balanceAfter  Int
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 
   @@index([guildId, userId])
 }
@@ -254,11 +268,11 @@ model RankSettings {
 }
 
 model EconomySettings {
-  guildId           String   @id
-  currencyName      String   @default("Coins")
-  currencyEmoji     String   @default("🪙")
+  guildId            String   @id
+  currencyName       String   @default("Coins")
+  currencyEmoji      String   @default("🪙")
   eventDefaultReward Int      @default(10)
-  updatedAt         DateTime @updatedAt
+  updatedAt          DateTime @updatedAt
 }
 
 model UserXPPeriod {
@@ -292,13 +306,13 @@ model AuctionItem {
 }
 
 model AuctionBid {
-  id          String      @id @default(cuid())
-  guildId     String
-  itemId      String
-  userId      String
-  amount      Int
-  createdAt   DateTime    @default(now())
-  item        AuctionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  guildId   String
+  itemId    String
+  userId    String
+  amount    Int
+  createdAt DateTime    @default(now())
+  item      AuctionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([itemId, amount])
 }
@@ -307,9 +321,9 @@ model AuctionBid {
 
 model SuggestionSettings {
   guildId              String   @id
-  panelChannelId       String?  // Canal do painel público
-  panelMessageId       String?  // ID da mensagem do painel
-  suggestionsChannelId String?  // Canal onde sugestões são enviadas
+  panelChannelId       String? // Canal do painel público
+  panelMessageId       String? // ID da mensagem do painel
+  suggestionsChannelId String? // Canal onde sugestões são enviadas
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -317,13 +331,13 @@ model SuggestionSettings {
 model Suggestion {
   id          String   @id @default(cuid())
   guildId     String
-  userId      String   // Autor
-  userDisplay String   // Display name do autor
+  userId      String // Autor
+  userDisplay String // Display name do autor
   title       String   @db.VarChar(100)
   description String   @db.Text
-  channelId   String   // Canal onde foi postada
-  messageId   String   // ID da mensagem
-  threadId    String?  // ID da thread de discussão
+  channelId   String // Canal onde foi postada
+  messageId   String // ID da mensagem
+  threadId    String? // ID da thread de discussão
   createdAt   DateTime @default(now())
 
   votes SuggestionVote[]
@@ -333,11 +347,11 @@ model Suggestion {
 }
 
 model SuggestionVote {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   suggestionId String
   userId       String
-  voteType     String     // 'agree' | 'disagree'
-  createdAt    DateTime   @default(now())
+  voteType     String // 'agree' | 'disagree'
+  createdAt    DateTime @default(now())
 
   suggestion Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
 
@@ -352,9 +366,9 @@ model Party {
   guildId     String
   channelId   String
   messageId   String   @unique
-  leaderId    String   // Discord user ID
+  leaderId    String // Discord user ID
   title       String
-  datetime    String   // Formato livre: "Sexta-feira, 20:00"
+  datetime    String // Formato livre: "Sexta-feira, 20:00"
   description String   @db.Text
   slotsJson   String   @db.Text // JSON: { "Tank": { max: 1, members: [...] }, ... }
   status      String   @default("open") // 'open' | 'full' | 'cancelled'
@@ -368,11 +382,11 @@ model Party {
 }
 
 model PartyMember {
-  id        String   @id @default(cuid())
-  partyId   String
-  userId    String   // Discord user ID
-  role      String   // 'Tank', 'Healer', 'DPS', etc
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  partyId  String
+  userId   String // Discord user ID
+  role     String // 'Tank', 'Healer', 'DPS', etc
+  joinedAt DateTime @default(now())
 
   party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
 
@@ -382,8 +396,8 @@ model PartyMember {
 
 model MatchmakingSettings {
   guildId        String   @id
-  totemChannelId String?  // Canal onde o totem está publicado
-  totemMessageId String?  // ID da mensagem do totem
+  totemChannelId String? // Canal onde o totem está publicado
+  totemMessageId String? // ID da mensagem do totem
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

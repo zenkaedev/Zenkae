@@ -674,17 +674,19 @@ export async function handleKick(inter: StringSelectMenuInteraction, partyId: st
 export async function handleCancel(inter: ButtonInteraction, partyId: string) {
     if (!inter.inCachedGuild()) return;
 
+    // Defer imediatamente para evitar timeout
+    await inter.deferReply({ flags: MessageFlags.Ephemeral });
+
     const party = await matchmakingStore.getById(partyId);
     if (!party) {
-        await inter.reply({ content: '❌ Party não encontrada.', flags: MessageFlags.Ephemeral });
+        await inter.editReply({ content: '❌ Party não encontrada.' });
         return;
     }
 
     // Validar líder
     if (inter.user.id !== party.leaderId) {
-        await inter.reply({
+        await inter.editReply({
             content: `⛔ Apenas o líder <@${party.leaderId}> pode cancelar esta PT.`,
-            flags: MessageFlags.Ephemeral,
         });
         return;
     }
@@ -703,5 +705,5 @@ export async function handleCancel(inter: ButtonInteraction, partyId: string) {
         // Ignorar erro
     }
 
-    await inter.reply({ content: '✅ Party cancelada.', flags: MessageFlags.Ephemeral });
+    await inter.editReply({ content: '✅ Party cancelada.' });
 }

@@ -19,6 +19,9 @@ function toDTO(e: any): EventDTO {
     announcementChannelId: e.announcementChannelId,
     recurrence: e.recurrence,
     dmMessage: e.dmMessage,
+    publishAt: e.publishAt ? new Date(e.publishAt).getTime() : null,
+    publishedAt: e.publishedAt ? new Date(e.publishedAt).getTime() : null,
+    rsvpLockedAt: e.rsvpLockedAt ? new Date(e.rsvpLockedAt).getTime() : null,
   };
 }
 
@@ -136,7 +139,19 @@ export const eventsStore = {
     });
   },
 
-  async update(eventId: string, data: Partial<any>) {
+  async update(eventId: string, data: Partial<{
+    title?: string;
+    description?: string;
+    imageUrl?: string;
+    dmMessage?: string;
+    messageId?: string;
+    channelId?: string;
+    status?: EventStatus;
+    startsAt?: Date;
+    publishAt?: Date | null;
+    publishedAt?: Date | null;
+    rsvpLockedAt?: Date | null;
+  }>) {
     await prisma.event.update({
       where: { id: eventId },
       data,
@@ -145,5 +160,85 @@ export const eventsStore = {
 
   async delete(eventId: string) {
     await prisma.event.delete({ where: { id: eventId } });
+  },
+
+  // ===== Event Settings =====
+
+  async getSettings(guildId: string) {
+    return await prisma.eventSettings.findUnique({
+      where: { guildId },
+    });
+  },
+
+  async updateSettings(guildId: string, data: {
+    publicationChannelId?: string;
+    announcementChannelId?: string;
+    defaultDmMessage?: string;
+  }) {
+    return await prisma.eventSettings.upsert({
+      where: { guildId },
+      update: data,
+      create: {
+        guildId,
+        ...data,
+      },
+    });
+  },
+
+  // ===== Publicação e Lock =====
+
+  async markPublished(eventId: string) {
+    await prisma.event.update({
+      where: { id: eventId },
+      data: {
+        publishedAt: new Date(),
+        publishAt: null, // Limpa agendamento
+      },
+    });
+  },
+
+  async markRsvpLocked(eventId: string) {
+    await prisma.event.update({
+      where: { id: eventId },
+      data: { rsvpLockedAt: new Date() },
+    });
+  },
+
+  async listScheduledForPublication(): Promise<EventDTO[]> {
+    const now = new Date();
+    const rows = await prisma.event.findMany({
+      where: {
+        status: 'scheduled',
+        publishAt: { lte: now },
+        publishedAt: null,
+      },
+      orderBy: { publishAt: 'asc' },
+    });
+    return rows.map(toDTO);
+  },
+
+  async listEventsNeedingRsvpLock(): Promise<EventDTO[]> {
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+    const rows = await prisma.event.findMany({
+      where: {
+        status: 'scheduled',
+        startsAt: { lte: oneHourFromNow },
+        rsvpLockedAt: null,
+      },
+    });
+    return rows.map(toDTO);
+  },
+
+  async listEventsForCleanup(): Promise<EventDTO[]> {
+    const now = new Date();
+    const rows = await prisma.event.findMany({
+      where: {
+        status: 'scheduled',
+        startsAt: { lte: new Date(now.getTime() - 60 * 60 * 1000) }, // -1h
+      },
+    });
+    return rows.map(toDTO);
   },
 };

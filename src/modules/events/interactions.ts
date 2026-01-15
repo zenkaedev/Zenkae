@@ -69,24 +69,18 @@ eventsRouter.button(new RegExp('^events:rsvp:'), async (i) => {
     await handleRsvpClick(i, parsed.choice, parsed.eventId);
 });
 
-// Generic RSVP (Public)
+// Generic RSVP (Public) - Consolidated to reuse handleRsvpClick
 eventsRouter.button(/^event_rsvp_(yes|no)_/, async (interaction) => {
     if (!interaction.isButton()) return;
 
     const match = interaction.customId.match(/^event_rsvp_(yes|no)_(.+)$/);
     if (!match) return;
 
-    const response = match[1].toUpperCase() as 'YES' | 'NO';
+    const choice = match[1]; // 'yes' or 'no'
     const eventId = match[2];
 
-    const { rsvpChoiceToEnum } = await import('../../services/events/rsvp.js');
-    await eventsStore.rsvp(eventId, interaction.guildId!, interaction.user.id, rsvpChoiceToEnum(response));
-
-    const emoji = response === 'YES' ? '✅' : '❌';
-    await interaction.reply({
-        content: `${emoji} Resposta registrada!`,
-        flags: 64
-    });
+    // Reuse the consolidated RSVP handler
+    await handleRsvpClick(interaction, choice, eventId);
 });
 
 // Notify
@@ -109,4 +103,17 @@ eventsRouter.button(new RegExp('^events:cancel:'), async (i) => {
         return;
     }
     await cancelEvent(i, c.eventId);
+});
+
+// Settings
+eventsRouter.button('events:settings:open', async (i) => {
+    if (!(await assertStaff(i))) return;
+    const { openEventSettingsModal } = await import('./panel.js');
+    await openEventSettingsModal(i);
+});
+
+eventsRouter.modal('events:settings:submit', async (i) => {
+    if (!(await assertStaff(i))) return;
+    const { handleEventSettingsSubmit } = await import('./panel.js');
+    await handleEventSettingsSubmit(i);
 });

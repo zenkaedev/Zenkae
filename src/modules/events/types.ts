@@ -18,6 +18,9 @@ export interface EventDTO {
   announcementChannelId?: string | null;
   recurrence?: string | null;
   dmMessage?: string | null;
+  publishAt?: number | null;
+  publishedAt?: number | null;
+  rsvpLockedAt?: number | null;
 }
 
 export interface EventWithCounts extends EventDTO {

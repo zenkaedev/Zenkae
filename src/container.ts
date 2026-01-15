@@ -92,7 +92,8 @@ export async function renderDashboard(state: DashState): Promise<DashboardView> 
       body,
       buttons: [
         { id: ids.events.new, label: 'Novo Evento' },
-        { id: 'events:manager:open', label: '⚙️ Gerenciar' }
+        { id: 'events:settings:open', label: '⚙️ Configurações' },
+        { id: 'events:manager:open', label: '📋 Gerenciar' }
       ],
       back: { id: 'dash:home', label: 'Voltar' },
     }) as DashboardView;
